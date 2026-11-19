@@ -50,8 +50,10 @@ export async function api<T = unknown>(path: string, options: { method?: string;
   });
   if (response.status === 401) {
     setToken(null);
-    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/connexion")) {
-      window.location.href = "/connexion";
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname;
+      const login = path.startsWith("/assureur") ? "/assureur/connexion" : "/connexion";
+      if (path !== login) window.location.href = login;
     }
   }
   const data = response.status === 204 ? null : await response.json().catch(() => null);
@@ -119,3 +121,37 @@ export type Policy = {
 export type Provider = { code: string; label: string };
 
 export type PaymentStart = { payment_id: string; reference: string; amount: number; instructions: string };
+
+// --- Portail assureur ---------------------------------------------------------
+
+export type InsurerMe = {
+  agent: { full_name: string; phone: string };
+  insurer: { name: string; legal_name: string; slug: string; logo: string | null };
+};
+
+export type InsurerPolicy = Policy & {
+  customer: { full_name: string; phone: string; nni: string };
+  vehicle: { make: string; fiscal_power: number | null; usage: string };
+  payment_provider: string | null;
+  kyc_status: User["kyc_status"];
+  indicative: boolean;
+  insurer_reference: string;
+  decided_at: string | null;
+};
+
+export type CommissionMonth = { period: string; policies: number; premiums: number; amount: number; paid: number; due: number };
+
+export type CommissionItem = {
+  id: number;
+  policy_id: number;
+  plate: string;
+  product: string;
+  premium: number;
+  rate: string;
+  amount: number;
+  period: string;
+  is_paid: boolean;
+  created_at: string;
+};
+
+export type InsurerCommissions = { indicative: boolean; months: CommissionMonth[]; items: CommissionItem[] };

@@ -1,5 +1,6 @@
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
@@ -10,7 +11,7 @@ from rest_framework.views import APIView
 from apps.attestations.models import Attestation
 
 from . import services
-from .models import Claim, InsuredAsset, Policy, Quote
+from .models import Claim, Commission, InsuredAsset, Policy, Quote
 
 
 def django_errors(fn):
@@ -168,6 +169,8 @@ class ClaimView(APIView):
 
 
 # --- Portail assureur ---------------------------------------------------------
+# Chaque lecture et chaque décision passe par services.insurer_* : la compagnie
+# vient toujours du compte de l'agent, jamais de la requête.
 
 
 class IsInsurerAgent(BasePermission):
@@ -178,29 +181,59 @@ class IsInsurerAgent(BasePermission):
 
 class InsurerPolicySerializer(PolicySerializer):
     customer = serializers.SerializerMethodField()
+    vehicle = serializers.SerializerMethodField()
     payment_provider = serializers.SerializerMethodField()
     kyc_status = serializers.CharField(source="customer.kyc_status", read_only=True)
+    indicative = serializers.BooleanField(source="product.is_indicative", read_only=True)
 
     class Meta(PolicySerializer.Meta):
-        fields = PolicySerializer.Meta.fields + ["customer", "payment_provider", "kyc_status"]
+        fields = PolicySerializer.Meta.fields + [
+            "customer", "vehicle", "payment_provider", "kyc_status", "indicative", "insurer_reference", "decided_at",
+        ]
 
     def get_customer(self, policy):
         return {"full_name": policy.customer.full_name, "phone": policy.customer.phone, "nni": policy.customer.nni}
 
+    def get_vehicle(self, policy):
+        attrs = policy.asset.attributes
+        return {"make": attrs.get("make", ""), "fiscal_power": attrs.get("fiscal_power"), "usage": attrs.get("usage", "")}
+
     def get_payment_provider(self, policy):
-        paid = policy.payments.filter(status="succeeded").first()
+        paid = next((p for p in policy.payments.all() if p.status == "succeeded"), None)
         return paid.provider if paid else None
+
+    def get_renewed(self, policy):
+        return any(r.status not in ("refused", "cancelled") for r in policy.renewals.all())
+
+    def get_attestation(self, policy):
+        att = next((a for a in policy.attestations.all() if a.status == Attestation.Status.VALID), None)
+        return AttestationSerializer(att).data if att else None
+
+
+class InsurerMeView(APIView):
+    permission_classes = [IsInsurerAgent]
+
+    @django_errors
+    def get(self, request):
+        insurer = services.agent_insurer(request.user)
+        return Response({
+            "agent": {"full_name": request.user.full_name, "phone": request.user.phone},
+            "insurer": {
+                "name": insurer.name,
+                "legal_name": insurer.legal_name,
+                "slug": insurer.slug,
+                "logo": logo_url(insurer),
+            },
+        })
 
 
 class InsurerPolicyListView(APIView):
     permission_classes = [IsInsurerAgent]
 
+    @django_errors
     def get(self, request):
-        qs = Policy.objects.filter(product__insurer_id=request.user.insurer_id).select_related(
-            "product__insurer", "asset", "customer"
-        )
-        if request.query_params.get("status"):
-            qs = qs.filter(status=request.query_params["status"])
+        statuses = services.parse_statuses(request.query_params.get("status"))
+        qs = services.insurer_policies(request.user, statuses)
         return Response(InsurerPolicySerializer(qs, many=True).data)
 
 
@@ -209,11 +242,39 @@ class InsurerDecisionView(APIView):
 
     @django_errors
     def post(self, request, policy_id, decision):
-        policy = get_object_or_404(Policy, pk=policy_id, product__insurer_id=request.user.insurer_id)
+        if decision not in ("validate", "refuse"):
+            return Response({"detail": "Décision inconnue."}, status=404)
+        try:
+            policy = services.insurer_policy(request.user, policy_id)
+        except Policy.DoesNotExist:
+            raise Http404 from None
         if decision == "validate":
             policy = services.validate_policy(policy, request.user, request.data.get("insurer_reference", ""))
-        elif decision == "refuse":
-            policy = services.refuse_policy(policy, request.user, request.data.get("reason", ""))
         else:
-            return Response({"detail": "Décision inconnue."}, status=404)
+            policy = services.refuse_policy(policy, request.user, request.data.get("reason", ""))
+        policy = services.insurer_policy(request.user, policy.pk)  # relu avec l'attestation émise
         return Response(InsurerPolicySerializer(policy).data)
+
+
+class CommissionSerializer(serializers.ModelSerializer):
+    policy_id = serializers.IntegerField(source="policy.id")
+    plate = serializers.CharField(source="policy.asset.reference")
+    product = serializers.CharField(source="policy.product.name")
+    premium = serializers.IntegerField(source="policy.premium")
+
+    class Meta:
+        model = Commission
+        fields = ["id", "policy_id", "plate", "product", "premium", "rate", "amount", "period", "is_paid", "created_at"]
+
+
+class InsurerCommissionView(APIView):
+    permission_classes = [IsInsurerAgent]
+
+    @django_errors
+    def get(self, request):
+        data = services.insurer_commissions(request.user)
+        return Response({
+            "indicative": data["indicative"],
+            "months": data["months"],
+            "items": CommissionSerializer(data["items"], many=True).data,
+        })

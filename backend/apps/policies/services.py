@@ -9,6 +9,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from apps.audit.models import record
@@ -206,3 +207,69 @@ def policies_due_for_reminder(days: int, today: date | None = None):
     return Policy.objects.filter(status=Policy.Status.ACTIVE, ends_on=today + timedelta(days=days)).select_related(
         "customer", "asset"
     )
+
+
+# --- Portail assureur -----------------------------------------------------------
+# Toutes les lectures partent de la compagnie de l'agent : un agent ne voit jamais
+# les polices ni les commissions d'une autre compagnie.
+
+# Taux de commission provisoire (15 %) tant que les contrats de partenariat ne sont
+# pas signés : les montants sont affichés comme indicatifs.
+COMMISSION_RATES_INDICATIVE = True
+
+
+def agent_insurer(agent):
+    """Compagnie de l'agent ; refuse tout compte qui n'est pas agent d'une compagnie."""
+    if agent.role != agent.Role.INSURER_AGENT or not agent.insurer_id:
+        raise PermissionDenied("Réservé aux agents d'une compagnie d'assurance.")
+    return agent.insurer
+
+
+def parse_statuses(raw: str | None) -> list[str]:
+    """« paid » ou « active,expired » → liste de statuts connus (ValidationError sinon)."""
+    statuses = [s.strip() for s in (raw or "").split(",") if s.strip()]
+    unknown = set(statuses) - set(Policy.Status.values)
+    if unknown:
+        raise ValidationError(f"Statut inconnu : {', '.join(sorted(unknown))}.")
+    return statuses
+
+
+def insurer_policies(agent, statuses: list[str] | None = None):
+    insurer = agent_insurer(agent)
+    qs = Policy.objects.filter(product__insurer=insurer).select_related(
+        "product__insurer", "asset", "customer"
+    ).prefetch_related("attestations", "payments", "renewals")
+    if statuses:
+        qs = qs.filter(status__in=statuses)
+    return qs
+
+
+def insurer_policy(agent, policy_id: int) -> Policy:
+    """Police de la compagnie de l'agent ; Policy.DoesNotExist pour toute autre compagnie."""
+    return insurer_policies(agent).get(pk=policy_id)
+
+
+def insurer_commissions(agent) -> dict:
+    """Relevés mensuels et détail des commissions de la compagnie de l'agent."""
+    insurer = agent_insurer(agent)
+    qs = Commission.objects.filter(insurer=insurer)
+    months = (
+        qs.values("period")
+        .annotate(
+            policies=Count("id"),
+            premiums=Sum("policy__premium"),
+            total=Sum("amount"),
+            paid=Sum("amount", filter=Q(is_paid=True), default=0),
+        )
+        .order_by("-period")
+    )
+    items = qs.select_related("policy__asset", "policy__product").order_by("-period", "-created_at")
+    return {
+        "indicative": COMMISSION_RATES_INDICATIVE,
+        "months": [
+            {"period": m["period"], "policies": m["policies"], "premiums": m["premiums"],
+             "amount": m["total"], "paid": m["paid"], "due": m["total"] - m["paid"]}
+            for m in months
+        ],
+        "items": items,
+    }

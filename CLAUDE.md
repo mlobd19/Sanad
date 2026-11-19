@@ -42,7 +42,8 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
   - `catalog` : compagnies, produits, facteurs tarifaires, logos ;
     commandes `seed_demo` et `import_logos`
   - `policies` : véhicules, devis, polices (cycle de vie dans `services.py`),
-    sinistres, commissions, portail assureur (API)
+    sinistres, commissions, portail assureur (API `/api/insurer/*`, toujours
+    filtrée sur la compagnie de l'agent via `services.insurer_*`)
   - `payments` : un adaptateur par opérateur (`providers.py`), callbacks signés
     HMAC et idempotents, remboursements
   - `attestations` : numéro `SN-AAAA-NNNNNN`, signature Ed25519, QR, vérification
@@ -56,7 +57,10 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
   - API : `lib/api.ts` ; `/api`, `/v` et `/media` sont relayés vers Django
     (`next.config.ts`).
   - Composants partagés : `components/Shell.tsx` (TopBar, Stepper, BottomNav…),
-    `Logo.tsx` (logo khaïma), `InsurerLogo.tsx`.
+    `Logo.tsx` (logo khaïma), `InsurerLogo.tsx`, `OtpLogin.tsx` (connexion SMS
+    partagée par `/connexion` et `/assureur/connexion`).
+  - Portail assureur : `/assureur` (web, bureau d'abord, styles `.portal*`),
+    réservé au rôle `insurer_agent`.
 
 ## Règles métier à respecter
 
@@ -98,10 +102,9 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 ## Pas encore fait (feuille de route)
 
-1. Portail assureur **web** (l'API existe : `/api/insurer/policies`)
-2. PDF de l'attestation
-3. Dépôt des pièces KYC et déclaration de sinistre dans l'app
-4. Mise en ligne (Render : Django + PostgreSQL, Next.js)
-5. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
+1. PDF de l'attestation
+2. Dépôt des pièces KYC et déclaration de sinistre dans l'app
+3. Mise en ligne (Render : Django + PostgreSQL, Next.js)
+4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
    fournisseur SMS et WhatsApp Business
-6. Mode hors ligne (service worker)
+5. Mode hors ligne (service worker)

@@ -40,9 +40,29 @@ codes pointent vers l'app, lancez le backend avec
 En développement, l'écran de paiement propose « Simuler la confirmation » :
 le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 
-Pour valider une police comme le ferait l'assureur : back-office Django,
-action « Valider les polices payées », ou API du portail assureur avec le
-compte de démo de la compagnie.
+## Portail assureur
+
+http://localhost:3000/assureur : l'espace web des agents des compagnies
+(bureau d'abord, utilisable sur tablette, français et arabe). Connexion par code
+SMS avec un agent démo, par exemple `+22220000002` pour MAR.
+
+- **Demandes à valider** : polices payées de la compagnie de l'agent (client,
+  véhicule, formule, prime, moyen de paiement, statut KYC). « Valider » active la
+  police et émet l'attestation ; « Refuser » exige un motif et rembourse le client.
+- **Polices émises** : actives, expirées et résiliées ; filtre « Refusées » pour
+  retrouver les refus et leur motif.
+- **Commissions** : relevé par mois et détail par police. Le taux (15 %) est
+  provisoire : les montants sont marqués « Indicatif ».
+
+Un agent ne voit et ne décide que sur les polices de **sa** compagnie.
+
+> Démo : le jeton de session est commun à l'app client et au portail. Se connecter
+> en agent remplace donc la session client dans le même navigateur (et
+> inversement). Pour tester les deux à la fois, utilisez une fenêtre de
+> navigation privée ou un autre navigateur.
+
+On peut aussi valider une police depuis le back-office Django (action « Valider
+les polices payées »).
 
 ## Catalogue auto de démonstration
 
@@ -131,8 +151,10 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 | GET | `/api/verify/{jeton}` | Vérification publique (données masquées) |
 | GET | `/api/verify/public-key` | Clé publique pour la vérification hors ligne |
 | GET | `/v/{jeton}` | Page web ouverte en scannant le QR |
-| GET | `/api/insurer/policies?status=paid` | Portail assureur : demandes à valider |
-| POST | `/api/insurer/policies/{id}/validate` ou `/refuse` | Décision de l'assureur |
+| GET | `/api/insurer/me` | Portail assureur : agent et compagnie (nom, logo) |
+| GET | `/api/insurer/policies?status=paid` | Polices de la compagnie de l'agent ; plusieurs statuts possibles (`status=active,expired,cancelled`) |
+| POST | `/api/insurer/policies/{id}/validate` ou `/refuse` | Décision de l'assureur (`{insurer_reference?}` ou `{reason}` obligatoire) |
+| GET | `/api/insurer/commissions` | Commissions par mois et détail par police (`indicative` tant que le taux est provisoire) |
 
 ## Ce qui reste à brancher
 
@@ -143,7 +165,6 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
   (agrégateur SMS local, fournisseur WhatsApp Business).
 - **Stockage des pièces** : stockage objet chiffré en production.
 - **PDF de l'attestation**, dépôt des pièces KYC et déclaration de sinistre dans l'app client.
-- **Portail assureur** (écran web ; l'API existe déjà).
 - **Mode hors ligne** de l'app (service worker).
 - **Grilles tarifaires réelles** et accords de partenariat avec les compagnies
   (les primes de `seed_demo` sont fictives).

@@ -33,7 +33,9 @@ api = [
     path("verify/public-key", attestations.PublicKeyView.as_view()),
     path("verify/<str:token>", attestations.VerifyView.as_view()),
     # Portail assureur
+    path("insurer/me", policies.InsurerMeView.as_view()),
     path("insurer/policies", policies.InsurerPolicyListView.as_view()),
+    path("insurer/commissions", policies.InsurerCommissionView.as_view()),
     path("insurer/policies/<int:policy_id>/<str:decision>", policies.InsurerDecisionView.as_view()),
 ]
 
