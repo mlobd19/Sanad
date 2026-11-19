@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_DB: taamine
-      POSTGRES_USER: taamine
-      POSTGRES_PASSWORD: taamine
+      POSTGRES_DB: sanad
+      POSTGRES_USER: sanad
+      POSTGRES_PASSWORD: sanad
     volumes: [pgdata:/var/lib/postgresql/data]
 
   redis:
@@ -14,7 +14,7 @@ services:
     build: ./backend
     env_file: .env
     environment:
-      DATABASE_URL: postgres://taamine:taamine@db:5432/taamine
+      DATABASE_URL: postgres://sanad:sanad@db:5432/sanad
       REDIS_URL: redis://redis:6379/0
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,web
       ATTESTATION_VERIFY_BASE_URL: http://localhost:3000/v/
@@ -39,7 +39,7 @@ services:
     build: ./backend
     env_file: .env
     environment:
-      DATABASE_URL: postgres://taamine:taamine@db:5432/taamine
+      DATABASE_URL: postgres://sanad:sanad@db:5432/sanad
       REDIS_URL: redis://redis:6379/0
       CELERY_TASK_ALWAYS_EAGER: "false"
     command: celery -A config worker --beat -l info

@@ -1,4 +1,4 @@
-"""Réglages Django de la plateforme Taamine (nom de travail).
+"""Réglages Django de la plateforme Sanad.
 
 Toute valeur sensible vient de variables d'environnement ; voir .env.example.
 """
@@ -105,7 +105,7 @@ REST_FRAMEWORK = {
 
 # --- Métier -----------------------------------------------------------------
 
-PLATFORM_NAME = env("PLATFORM_NAME", "Taamine")
+PLATFORM_NAME = env("PLATFORM_NAME", "Sanad")
 CURRENCY = "MRU"
 
 OTP_TTL_SECONDS = int(env("OTP_TTL_SECONDS", 300))
@@ -115,7 +115,7 @@ OTP_MAX_ATTEMPTS = int(env("OTP_MAX_ATTEMPTS", 5))
 # En production, elle vient d'un coffre de clés ; jamais du dépôt.
 ATTESTATION_SIGNING_KEY = env("ATTESTATION_SIGNING_KEY", "")
 ATTESTATION_VERIFY_BASE_URL = env("ATTESTATION_VERIFY_BASE_URL", "http://localhost:8000/v/")
-ATTESTATION_NUMBER_PREFIX = env("ATTESTATION_NUMBER_PREFIX", "TA")
+ATTESTATION_NUMBER_PREFIX = env("ATTESTATION_NUMBER_PREFIX", "SN")
 
 # Fournisseurs de paiement actifs. "simulated" n'existe que hors production.
 PAYMENT_PROVIDERS = [p for p in env("PAYMENT_PROVIDERS", "simulated").split(",") if p]

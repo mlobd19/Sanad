@@ -1,6 +1,6 @@
-# Taamine — plateforme d'assurance digitale (Mauritanie)
+# Sanad — plateforme d'assurance digitale (Mauritanie)
 
-« Taamine » est un nom de travail. Ce dépôt contient le MVP : le parcours
+**Sanad** (سند, « appui, soutien »). Ce dépôt contient le MVP : le parcours
 **assurance auto** de bout en bout, de la connexion par SMS à l'attestation
 signée vérifiable par QR code.
 

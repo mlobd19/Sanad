@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 export type Lang = "fr" | "ar";
 
 const fr = {
-  appName: "Taamine",
+  appName: "Sanad",
   tagline: "Toutes vos assurances, un seul espace.",
   // Connexion
   loginTitle: "Connexion",
@@ -124,7 +124,7 @@ const fr = {
 export type Key = keyof typeof fr;
 
 const ar: Record<Key, string> = {
-  appName: "تأمين",
+  appName: "سند",
   tagline: "كل تأميناتك في مكان واحد.",
   loginTitle: "تسجيل الدخول",
   loginIntro: "أدخل رقمك الموريتاني. ستصلك رسالة نصية برمز.",
@@ -232,7 +232,7 @@ const ar: Record<Key, string> = {
 };
 
 const dictionaries: Record<Lang, Record<Key, string>> = { fr, ar };
-const LANG_KEY = "taamine.lang";
+const LANG_KEY = "sanad.lang";
 
 type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (key: Key, vars?: Record<string, string | number>) => string };
 

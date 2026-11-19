@@ -1,6 +1,6 @@
 // Client de l'API Django. Le jeton est gardé dans le navigateur de l'utilisateur.
 
-const TOKEN_KEY = "taamine.token";
+const TOKEN_KEY = "sanad.token";
 
 export function getToken(): string | null {
   try {

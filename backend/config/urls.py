@@ -6,8 +6,8 @@ from apps.attestations import api as attestations
 from apps.payments import api as payments
 from apps.policies import api as policies
 
-admin.site.site_header = "Taamine · back-office"
-admin.site.site_title = "Taamine"
+admin.site.site_header = "Sanad · back-office"
+admin.site.site_title = "Sanad"
 
 api = [
     # Compte et KYC

@@ -6,11 +6,11 @@ import { I18nProvider } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Taamine",
+  title: "Sanad",
   description: "Toutes vos assurances, un seul espace.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
-  appleWebApp: { capable: true, title: "Taamine", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Sanad", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = { themeColor: "#0b6e4f", width: "device-width", initialScale: 1 };
