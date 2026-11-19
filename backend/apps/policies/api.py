@@ -44,13 +44,19 @@ class AssetSerializer(serializers.ModelSerializer):
 
 class QuoteSerializer(serializers.ModelSerializer):
     insurer = serializers.CharField(source="product.insurer.name")
+    insurer_legal_name = serializers.CharField(source="product.insurer.legal_name")
+    insurer_slug = serializers.CharField(source="product.insurer.slug")
     product = serializers.CharField(source="product.name")
     product_code = serializers.CharField(source="product.code")
     coverages = serializers.JSONField(source="product.coverages")
+    indicative = serializers.BooleanField(source="product.is_indicative")
 
     class Meta:
         model = Quote
-        fields = ["id", "insurer", "product", "product_code", "coverages", "premium", "expires_at"]
+        fields = [
+            "id", "insurer", "insurer_legal_name", "insurer_slug", "product", "product_code",
+            "coverages", "indicative", "premium", "expires_at",
+        ]
 
 
 class AttestationSerializer(serializers.ModelSerializer):

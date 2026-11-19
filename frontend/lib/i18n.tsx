@@ -157,6 +157,11 @@ const fr = {
   close: "Fermer",
   controlHint: "Montez la luminosité de l'écran pour le scan.",
   worksOffline: "La signature se vérifie sans réseau.",
+  formula: "Formule",
+  rcRegulated: "Tarif RC fixé par l'État : même prix chez tous les assureurs.",
+  indicativeNote: "Tarifs indicatifs (démo), en attente des grilles officielles des assureurs.",
+  indicative: "Indicatif",
+  offersCount: "{count} offre(s)",
 };
 
 export type Key = keyof typeof fr;
@@ -304,6 +309,11 @@ const ar: Record<Key, string> = {
   close: "إغلاق",
   controlHint: "ارفع سطوع الشاشة لتسهيل المسح.",
   worksOffline: "يمكن التحقق من التوقيع دون اتصال.",
+  formula: "الصيغة",
+  rcRegulated: "تعريفة المسؤولية المدنية تحددها الدولة: نفس السعر لدى جميع الشركات.",
+  indicativeNote: "أسعار إرشادية (تجريبية) في انتظار التعريفات الرسمية لشركات التأمين.",
+  indicative: "إرشادي",
+  offersCount: "{count} عرض",
 };
 
 const dictionaries: Record<Lang, Record<Key, string>> = { fr, ar };

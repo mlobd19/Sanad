@@ -13,7 +13,7 @@ signée vérifiable par QR code.
 cd backend
 pip install -r requirements-dev.txt
 python manage.py migrate
-python manage.py seed_demo          # 3 assureurs FICTIFS + un agent assureur
+python manage.py seed_demo          # 5 compagnies auto (tarifs fictifs) + un agent démo chacune
 python manage.py createsuperuser    # numéro +222XXXXXXXX
 python manage.py runserver
 ```
@@ -40,9 +40,28 @@ codes pointent vers l'app, lancez le backend avec
 En développement, l'écran de paiement propose « Simuler la confirmation » :
 le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 
-Pour valider une police comme le ferait l'assureur B : back-office Django,
+Pour valider une police comme le ferait l'assureur : back-office Django,
 action « Valider les polices payées », ou API du portail assureur avec le
-compte de démo `+22220000002`.
+compte de démo de la compagnie.
+
+## Catalogue auto de démonstration
+
+`seed_demo` crée les 5 premières compagnies du marché (classement du rapport
+du ministère des Finances sur l'exercice 2022) et un agent démo par compagnie :
+
+| Compagnie | Raison sociale | Formules | Agent démo |
+| --- | --- | --- | --- |
+| NASR | Nationale d'Assurance et de Réassurance | RC, Tiers étendu, Tous risques | `+22220000001` |
+| DAMANE Assurances | DAMANE Assurances | RC, Tiers étendu, Tous risques | `+22220000002` |
+| CNA | Compagnie Nouvelle des Assurances | RC, Tiers étendu | `+22220000003` |
+| MAR | Mauritanienne d'Assurance et de Réassurance | RC, Tiers étendu | `+22220000004` |
+| CAR | Compagnie d'Assurance et de Réassurance | RC, Tiers étendu | `+22220000005` |
+
+**Les primes sont fictives.** Chaque produit est marqué « indicatif » et l'app
+l'affiche. La RC automobile, seule branche à tarif homologué, a le même prix
+partout. Aucun partenariat n'est signé à ce stade : ne pas publier ces noms
+hors d'un cadre de démonstration. Relancer `seed_demo` retire les anciens
+assureurs fictifs A, B et C (ou les désactive s'ils ont déjà des contrats).
 
 ## Démarrer avec Docker
 
@@ -113,5 +132,5 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 - **PDF de l'attestation**, dépôt des pièces KYC et déclaration de sinistre dans l'app client.
 - **Portail assureur** (écran web ; l'API existe déjà).
 - **Mode hors ligne** de l'app (service worker).
-- **Grilles tarifaires réelles** des assureurs partenaires (les données de
-  `seed_demo` sont fictives).
+- **Grilles tarifaires réelles** et accords de partenariat avec les compagnies
+  (les primes de `seed_demo` sont fictives).

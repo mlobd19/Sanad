@@ -9,11 +9,13 @@ import { api, ApiError, type Asset, type Policy, type Quote } from "@/lib/api";
 import { date, money } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 
-/** Lettre de l'avatar : initiale du dernier mot du nom, sans les mentions entre parenthèses. */
+/** Contenu de l'avatar : le sigle s'il est court (NASR, CNA), sinon l'initiale du premier mot. */
 function initial(name: string) {
-  const words = name.replace(/\(.*?\)/g, "").trim().split(/\s+/);
-  return (words.at(-1) ?? name).charAt(0).toUpperCase();
+  const first = name.replace(/\(.*?\)/g, "").trim().split(/\s+/)[0] ?? name;
+  return /^[A-Z]{2,4}$/.test(first) ? first : first.charAt(0).toUpperCase();
 }
+
+const FORMULA_ORDER = ["rc", "tiers-etendu", "tous-risques"];
 
 const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial", taxi: "usageTaxi" };
 
@@ -27,6 +29,7 @@ function QuotesScreen() {
   const [asset, setAsset] = useState<Asset | null>(null);
   const [quotes, setQuotes] = useState<Quote[] | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
+  const [formula, setFormula] = useState<string>("");
   const [startsOn, setStartsOn] = useState(search.get("debut") ?? new Date().toISOString().slice(0, 10));
   const [editDate, setEditDate] = useState(false);
   const [error, setError] = useState("");
@@ -39,7 +42,9 @@ function QuotesScreen() {
     api<Quote[]>(`assets/${assetId}/quotes`, { method: "POST" })
       .then((qs) => {
         setQuotes(qs);
-        setPicked(qs[0]?.id ?? null);
+        const first = FORMULA_ORDER.find((code) => qs.some((q) => q.product_code === code)) ?? qs[0]?.product_code ?? "";
+        setFormula(first);
+        setPicked(qs.find((q) => q.product_code === first)?.id ?? null);
       })
       .catch((e) => setError(e.message));
   }, [assetId]);
@@ -75,8 +80,22 @@ function QuotesScreen() {
 
   if (!quotes && !error) return <App>{header}<Loading /></App>;
 
-  const cheapest = quotes && quotes.length > 1 ? Math.min(...quotes.map((q) => q.premium)) : null;
+  const formulas = quotes
+    ? [...new Map(quotes.map((q) => [q.product_code, q.product])).entries()].sort(
+        ([a], [b]) => (FORMULA_ORDER.indexOf(a) + 1 || 99) - (FORMULA_ORDER.indexOf(b) + 1 || 99),
+      )
+    : [];
+  const shown = (quotes ?? []).filter((q) => q.product_code === formula);
+  const prices = shown.map((q) => q.premium);
+  const min = Math.min(...prices);
+  // « Le moins cher » seulement s'il y a un vrai écart (pas pour la RC, au tarif identique partout).
+  const cheapest = shown.length > 1 && prices.filter((p) => p === min).length === 1 ? min : null;
   const chosen = quotes?.find((q) => q.id === picked);
+
+  function chooseFormula(code: string) {
+    setFormula(code);
+    setPicked((quotes ?? []).find((q) => q.product_code === code)?.id ?? null);
+  }
 
   return (
     <App>
@@ -96,8 +115,21 @@ function QuotesScreen() {
         {quotes && quotes.length === 0 && <p className="ink2">{t("noQuotes")}</p>}
         {quotes && quotes.length > 0 && (
           <>
+            <div className="chips" role="group" aria-label={t("formula")}>
+              {formulas.map(([code, label]) => (
+                <button key={code} type="button" aria-pressed={formula === code} onClick={() => chooseFormula(code)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {formula === "rc" && shown.length > 1 && cheapest === null && (
+              <p className="note" style={{ margin: 0 }}>
+                <Icon name="shield" size={16} strokeWidth={2} />
+                {t("rcRegulated")}
+              </p>
+            )}
             <div className="stack" role="radiogroup" aria-label={t("quotesTitle")}>
-              {quotes.map((q) => {
+              {shown.map((q) => {
                 const on = q.id === picked;
                 return (
                   <button
@@ -109,16 +141,19 @@ function QuotesScreen() {
                     onClick={() => setPicked(q.id)}
                   >
                     <div className="row">
-                      <span className={`avatar${on ? " on" : ""}`} aria-hidden="true">
+                      <span className={`avatar${on ? " on" : ""}`} aria-hidden="true" style={{ fontSize: initial(q.insurer).length > 2 ? 11 : 15 }}>
                         {on ? <Icon name="check" size={20} strokeWidth={3} /> : initial(q.insurer)}
                       </span>
                       <div className="grow stack" style={{ gap: 2 }}>
                         <strong style={{ fontSize: 16 }}>{q.insurer}</strong>
-                        <span className="ink2" style={{ fontSize: 14 }}>{q.product}</span>
+                        <span className="ink2" style={{ fontSize: 13 }}>
+                          {q.insurer_legal_name && q.insurer_legal_name !== q.insurer ? q.insurer_legal_name : q.product}
+                        </span>
                       </div>
                       <div className="stack" style={{ gap: 4, alignItems: "flex-end" }}>
                         <span className="price">{money(q.premium, lang)}</span>
                         {q.premium === cheapest && <span className="badge-sand">{t("cheapest")}</span>}
+                        {q.indicative && <span className="small muted">{t("indicative")}</span>}
                       </div>
                     </div>
                     {on && (
@@ -136,6 +171,9 @@ function QuotesScreen() {
               })}
             </div>
             <span className="small muted" style={{ textAlign: "center" }}>{t("pricesNote")}</span>
+            {quotes.some((q) => q.indicative) && (
+              <p className="note" style={{ margin: 0, justifyContent: "center", textAlign: "center" }}>{t("indicativeNote")}</p>
+            )}
           </>
         )}
       </main>

@@ -54,8 +54,11 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     assert quotes_asset["reference"] == "5678 AB 00"
     quotes = customer_client.post(f"/api/assets/{quotes_asset['id']}/quotes").data
     assert [q["premium"] for q in quotes] == sorted(q["premium"] for q in quotes)
-    b = next(q for q in quotes if q["product_code"] == "tiers-etendu")
+    b = next(q for q in quotes if q["product_code"] == "tiers-etendu" and q["insurer_slug"] == "damane")
     assert b["premium"] == 22500  # 18 000 × 1,25 (puissance 7–10 CV)
+    assert b["indicative"] is True and b["insurer_legal_name"] == "DAMANE Assurances"
+    rc_prices = {q["premium"] for q in quotes if q["product_code"] == "rc"}
+    assert len(rc_prices) == 1  # RC à tarif homologué : identique chez tous les assureurs
 
     policy = customer_client.post("/api/policies", {"quote_id": b["id"]}, format="json").data
     assert policy["status"] == "draft"
@@ -97,8 +100,8 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     assert {"policy.created", "payment.succeeded", "policy.activated", "attestation.issued"} <= actions
 
 
-def test_auto_validating_insurer_activates_on_payment(customer_client):
-    policy, pay = buy(customer_client, product_code="tous-risques")
+def test_auto_validating_insurer_activates_on_payment(customer_client, auto_insurer):
+    policy, pay = buy(customer_client, insurer="car")
     simulate_callback(APIClient(), pay["reference"], pay["amount"])
     assert Policy.objects.get(pk=policy["id"]).status == Policy.Status.ACTIVE
     assert Attestation.objects.filter(policy_id=policy["id"]).exists()
@@ -155,7 +158,7 @@ def test_refusal_refunds_and_notifies(customer_client, agent_client, outbox, dja
 
 
 def test_agent_cannot_decide_for_another_insurer(customer_client, demo):
-    policy, pay = buy(customer_client, product_code="rc")  # produit de l'assureur A
+    policy, pay = buy(customer_client, product_code="rc", insurer="nasr")  # produit de NASR, agent de DAMANE
     simulate_callback(APIClient(), pay["reference"], pay["amount"])
     agent_b = APIClient()
     agent_b.force_authenticate(User.objects.get(phone="+22220000002"))
@@ -258,10 +261,10 @@ def test_payment_simulator_only_when_enabled(customer_client, settings):
     assert Policy.objects.get(pk=policy["id"]).status == Policy.Status.PAID
 
 
-def test_renewal_starts_after_current_cover(customer_client):
+def test_renewal_starts_after_current_cover(customer_client, auto_insurer):
     from datetime import timedelta
 
-    policy, pay = buy(customer_client, product_code="tous-risques")  # assureur C : activation automatique
+    policy, pay = buy(customer_client, insurer="car")  # CAR : activation automatique
     simulate_callback(APIClient(), pay["reference"], pay["amount"])
     current = Policy.objects.get(pk=policy["id"])
     current.ends_on = current.starts_on + timedelta(days=10)
@@ -274,3 +277,17 @@ def test_renewal_starts_after_current_cover(customer_client):
     )
     assert resp.status_code == 201, resp.data
     assert customer_client.get(f"/api/policies/{current.pk}").data["renewed"] is True
+
+
+def test_seed_retires_old_demo_insurers(db):
+    from django.core.management import call_command
+
+    from apps.catalog.models import Insurer
+
+    Insurer.objects.create(name="Assureur A (démo)", slug="assureur-a", commission_rate="0.1500")
+    call_command("seed_demo", verbosity=0)
+    call_command("seed_demo", verbosity=0)  # relançable sans doublon
+    assert sorted(Insurer.objects.filter(is_active=True).values_list("slug", flat=True)) == [
+        "car", "cna", "damane", "mar", "nasr"
+    ]
+    assert not Insurer.objects.filter(slug="assureur-a").exists()

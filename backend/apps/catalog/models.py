@@ -10,7 +10,8 @@ class Insurer(models.Model):
         FILE = "file", "Export fichier"
         API = "api", "API temps réel"
 
-    name = models.CharField(max_length=120, unique=True)
+    name = models.CharField(max_length=120, unique=True, help_text="Nom court affiché, ex. NASR.")
+    legal_name = models.CharField(max_length=200, blank=True, help_text="Raison sociale complète.")
     slug = models.SlugField(unique=True)
     contact_email = models.EmailField(blank=True)
     integration = models.CharField(max_length=10, choices=Integration.choices, default=Integration.PORTAL)
@@ -42,6 +43,9 @@ class Product(models.Model):
     base_premium = models.PositiveIntegerField(help_text="Prime annuelle de base en MRU.")
     duration_months = models.PositiveSmallIntegerField(default=12)
     tariff_version = models.CharField(max_length=20, default="v1")
+    is_indicative = models.BooleanField(
+        default=False, help_text="Tarif indicatif (démo) : pas encore la grille officielle de l'assureur."
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:

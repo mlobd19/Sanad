@@ -83,9 +83,12 @@ export type Asset = { id: number; kind: string; reference: string; attributes: R
 export type Quote = {
   id: number;
   insurer: string;
+  insurer_legal_name: string;
+  insurer_slug: string;
   product: string;
   product_code: string;
   coverages: string[];
+  indicative: boolean;
   premium: number;
   expires_at: string;
 };

@@ -31,6 +31,15 @@ def demo(db):
 
 
 @pytest.fixture
+def auto_insurer(demo):
+    """CAR passe en validation automatique, comme un assureur intégré par API."""
+    car = demo["car"]
+    car.auto_validate = True
+    car.save()
+    return car
+
+
+@pytest.fixture
 def outbox():
     return MemoryBackend.outbox
 
@@ -71,14 +80,14 @@ def simulate_callback(client, reference, amount, status="success", tamper=False)
     )
 
 
-def buy(client, plate="1234AB00", fiscal_power=8, usage="personal", product_code="tiers-etendu"):
+def buy(client, plate="1234AB00", fiscal_power=8, usage="personal", product_code="tiers-etendu", insurer="damane"):
     """Parcours client jusqu'au paiement initié. Renvoie (police, paiement)."""
     asset = client.post(
         "/api/assets", {"reference": plate, "attributes": {"fiscal_power": fiscal_power, "usage": usage}},
         format="json",
     ).data
     quotes = client.post(f"/api/assets/{asset['id']}/quotes").data
-    quote = next(q for q in quotes if q["product_code"] == product_code)
+    quote = next(q for q in quotes if q["product_code"] == product_code and q["insurer_slug"] == insurer)
     policy = client.post("/api/policies", {"quote_id": quote["id"]}, format="json")
     assert policy.status_code == 201, policy.data
     payment = client.post(f"/api/policies/{policy.data['id']}/pay", {"provider": "simulated"}, format="json")
