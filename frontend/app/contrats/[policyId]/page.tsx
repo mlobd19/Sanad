@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { Icon } from "@/components/Icon";
+import { InsurerLogo } from "@/components/InsurerLogo";
 import { KhaimaMark } from "@/components/Logo";
 import { App, ErrorBox, Loading, StatusPill, TopBar, useUser } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
@@ -75,7 +76,13 @@ export default function ContractPage() {
                 <div className="kv">
                   <div><span>{t("plate")}</span><strong><bdi>{policy.plate}</bdi></strong></div>
                   <div><span>{t("validUntil")}</span><strong>{date(policy.ends_on, lang)}</strong></div>
-                  <div><span>{t("insurer")}</span><strong style={{ fontSize: 14 }}>{policy.insurer} · {policy.product}</strong></div>
+                  <div>
+                    <span>{t("insurer")}</span>
+                    <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                      {policy.insurer_logo && <InsurerLogo name={policy.insurer} logo={policy.insurer_logo} size={32} />}
+                      <strong style={{ fontSize: 14 }}>{policy.insurer} · {policy.product}</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>

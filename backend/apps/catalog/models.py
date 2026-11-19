@@ -1,7 +1,15 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.db import models
+
+LOGO_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]  # pas de SVG : il peut embarquer du script
+
+
+def logo_upload_path(instance, filename):
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return f"insurers/{instance.slug}.{ext}"
 
 
 class Insurer(models.Model):
@@ -13,6 +21,11 @@ class Insurer(models.Model):
     name = models.CharField(max_length=120, unique=True, help_text="Nom court affiché, ex. NASR.")
     legal_name = models.CharField(max_length=200, blank=True, help_text="Raison sociale complète.")
     slug = models.SlugField(unique=True)
+    logo = models.ImageField(
+        upload_to=logo_upload_path, blank=True,
+        validators=[FileExtensionValidator(LOGO_EXTENSIONS)],
+        help_text="Logo officiel fourni par la compagnie (PNG, JPG ou WebP, fond clair de préférence).",
+    )
     contact_email = models.EmailField(blank=True)
     integration = models.CharField(max_length=10, choices=Integration.choices, default=Integration.PORTAL)
     commission_rate = models.DecimalField(

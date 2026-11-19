@@ -8,6 +8,7 @@ const config: NextConfig = {
     return [
       { source: "/api/:path*", destination: `${backend}/api/:path*` },
       { source: "/v/:token", destination: `${backend}/v/:token` },
+      { source: "/media/:path*", destination: `${backend}/media/:path*` },
     ];
   },
   skipTrailingSlashRedirect: true,

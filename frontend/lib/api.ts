@@ -85,6 +85,7 @@ export type Quote = {
   insurer: string;
   insurer_legal_name: string;
   insurer_slug: string;
+  insurer_logo: string | null;
   product: string;
   product_code: string;
   coverages: string[];
@@ -100,6 +101,7 @@ export type PolicyStatus = "draft" | "paid" | "active" | "refused" | "cancelled"
 export type Policy = {
   id: number;
   insurer: string;
+  insurer_logo: string | null;
   product: string;
   plate: string;
   premium: number;

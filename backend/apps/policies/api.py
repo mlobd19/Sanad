@@ -42,6 +42,10 @@ class AssetSerializer(serializers.ModelSerializer):
         return value
 
 
+def logo_url(insurer):
+    return insurer.logo.url if insurer.logo else None
+
+
 class QuoteSerializer(serializers.ModelSerializer):
     insurer = serializers.CharField(source="product.insurer.name")
     insurer_legal_name = serializers.CharField(source="product.insurer.legal_name")
@@ -50,13 +54,17 @@ class QuoteSerializer(serializers.ModelSerializer):
     product_code = serializers.CharField(source="product.code")
     coverages = serializers.JSONField(source="product.coverages")
     indicative = serializers.BooleanField(source="product.is_indicative")
+    insurer_logo = serializers.SerializerMethodField()
 
     class Meta:
         model = Quote
         fields = [
-            "id", "insurer", "insurer_legal_name", "insurer_slug", "product", "product_code",
+            "id", "insurer", "insurer_legal_name", "insurer_slug", "insurer_logo", "product", "product_code",
             "coverages", "indicative", "premium", "expires_at",
         ]
+
+    def get_insurer_logo(self, quote):
+        return logo_url(quote.product.insurer)
 
 
 class AttestationSerializer(serializers.ModelSerializer):
@@ -74,13 +82,17 @@ class PolicySerializer(serializers.ModelSerializer):
     status_label = serializers.CharField(source="get_status_display", read_only=True)
     attestation = serializers.SerializerMethodField()
     renewed = serializers.SerializerMethodField()
+    insurer_logo = serializers.SerializerMethodField()
 
     class Meta:
         model = Policy
         fields = [
-            "id", "insurer", "product", "plate", "premium", "status", "status_label",
+            "id", "insurer", "insurer_logo", "product", "plate", "premium", "status", "status_label",
             "starts_on", "ends_on", "refusal_reason", "attestation", "asset_id", "renewed", "created_at",
         ]
+
+    def get_insurer_logo(self, policy):
+        return logo_url(policy.product.insurer)
 
     def get_renewed(self, policy):
         return policy.renewals.exclude(status__in=["refused", "cancelled"]).exists()

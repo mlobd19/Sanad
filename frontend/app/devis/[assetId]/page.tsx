@@ -4,16 +4,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { InsurerLogo } from "@/components/InsurerLogo";
 import { App, ErrorBox, Loading, Stepper, TopBar, useUser } from "@/components/Shell";
 import { api, ApiError, type Asset, type Policy, type Quote } from "@/lib/api";
 import { date, money } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
-
-/** Contenu de l'avatar : le sigle s'il est court (NASR, CNA), sinon l'initiale du premier mot. */
-function initial(name: string) {
-  const first = name.replace(/\(.*?\)/g, "").trim().split(/\s+/)[0] ?? name;
-  return /^[A-Z]{2,4}$/.test(first) ? first : first.charAt(0).toUpperCase();
-}
 
 const FORMULA_ORDER = ["rc", "tiers-etendu", "tous-risques"];
 
@@ -141,9 +136,7 @@ function QuotesScreen() {
                     onClick={() => setPicked(q.id)}
                   >
                     <div className="row">
-                      <span className={`avatar${on ? " on" : ""}`} aria-hidden="true" style={{ fontSize: initial(q.insurer).length > 2 ? 11 : 15 }}>
-                        {on ? <Icon name="check" size={20} strokeWidth={3} /> : initial(q.insurer)}
-                      </span>
+                      <InsurerLogo name={q.insurer} logo={q.insurer_logo} size={48} selected={on} />
                       <div className="grow stack" style={{ gap: 2 }}>
                         <strong style={{ fontSize: 16 }}>{q.insurer}</strong>
                         <span className="ink2" style={{ fontSize: 13 }}>

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect } from "react";
 
 import { Icon } from "@/components/Icon";
+import { InsurerLogo } from "@/components/InsurerLogo";
 import { Loading, ErrorBox, useUser } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
 import { date } from "@/lib/format";
@@ -51,7 +52,11 @@ export default function ControlPage() {
 
       <div className="facts">
         <div><span>{t("validUntil")}</span><strong>{date(policy.ends_on, lang)}</strong></div>
-        <div><span>{t("insurer")}</span><strong>{policy.insurer}</strong></div>
+        <div style={{ alignItems: "center" }}>
+          <span>{t("insurer")}</span>
+          {policy.insurer_logo && <InsurerLogo name={policy.insurer} logo={policy.insurer_logo} size={40} />}
+          <strong>{policy.insurer}</strong>
+        </div>
       </div>
       {att && <strong style={{ fontSize: 15 }}>N° <bdi>{att.number}</bdi></strong>}
       <div className="grow" />

@@ -8,3 +8,7 @@ backend/staticfiles/
 node_modules/
 .next/
 *.tsbuildinfo
+
+# Logos des compagnies : fichiers fournis par les assureurs, hors dépôt
+backend/logos/*
+!backend/logos/LISEZMOI.md

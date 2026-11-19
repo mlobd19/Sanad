@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
+import { InsurerLogo } from "@/components/InsurerLogo";
 import { Wordmark } from "@/components/Logo";
 import { App, BottomNav, ErrorBox, Loading, StatusPill, useUser } from "@/components/Shell";
 import { api, type Policy } from "@/lib/api";
@@ -26,7 +27,11 @@ function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
   return (
     <div className={`card${raised ? " raised" : ""}`}>
       <div className="row">
-        <div className="iconbox"><Icon name="car" size={24} strokeWidth={2} /></div>
+        {p.insurer_logo ? (
+          <InsurerLogo name={p.insurer} logo={p.insurer_logo} size={48} />
+        ) : (
+          <div className="iconbox"><Icon name="car" size={24} strokeWidth={2} /></div>
+        )}
         <div className="grow stack" style={{ gap: 2 }}>
           <span className="plate"><bdi>{p.plate}</bdi></span>
           <span className="ink2" style={{ fontSize: 14 }}>{p.insurer} · {p.product}</span>

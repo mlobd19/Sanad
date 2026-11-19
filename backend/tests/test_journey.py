@@ -291,3 +291,24 @@ def test_seed_retires_old_demo_insurers(db):
         "car", "cna", "damane", "mar", "nasr"
     ]
     assert not Insurer.objects.filter(slug="assureur-a").exists()
+
+
+def test_import_logos_and_expose_in_api(customer_client, tmp_path):
+    from django.core.management import call_command
+    from PIL import Image
+
+    folder = tmp_path / "logos"
+    folder.mkdir()
+    Image.new("RGB", (64, 32), "white").save(folder / "nasr.png")
+    (folder / "inconnu.png").write_bytes((folder / "nasr.png").read_bytes())
+    (folder / "damane.png").write_bytes(b"pas une image")
+    (folder / "car.svg").write_text("<svg/>")  # SVG ignoré
+    call_command("import_logos", str(folder), verbosity=0)
+
+    asset = customer_client.post(
+        "/api/assets", {"reference": "4321AB00", "attributes": {"fiscal_power": 5, "usage": "personal"}}, format="json"
+    ).data
+    quotes = customer_client.post(f"/api/assets/{asset['id']}/quotes").data
+    logos = {q["insurer_slug"]: q["insurer_logo"] for q in quotes}
+    assert logos["nasr"] == "/media/insurers/nasr.png"
+    assert logos["damane"] is None and logos["car"] is None

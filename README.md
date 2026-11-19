@@ -63,6 +63,19 @@ partout. Aucun partenariat n'est signé à ce stade : ne pas publier ces noms
 hors d'un cadre de démonstration. Relancer `seed_demo` retire les anciens
 assureurs fictifs A, B et C (ou les désactive s'ils ont déjà des contrats).
 
+### Logos des compagnies
+
+Les logos sont des marques : n'utiliser que les fichiers **officiels fournis par
+chaque compagnie**, avec son accord. Ils ne sont pas versionnés dans ce dépôt.
+
+1. Déposer les fichiers dans `backend/logos/`, nommés d'après le code de la
+   compagnie : `nasr.png`, `damane.png`, `cna.png`, `mar.png`, `car.png`
+   (PNG, JPG ou WebP ; fond transparent ou blanc ; 256 px de large ou plus).
+2. `python manage.py import_logos logos/`
+
+Ou un par un dans le back-office : Catalog › Insurers › la compagnie › Logo.
+Sans logo, l'application affiche le sigle de la compagnie.
+
 ## Démarrer avec Docker
 
 ```bash
