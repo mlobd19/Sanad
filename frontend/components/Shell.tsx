@@ -23,16 +23,19 @@ export function useUser() {
   return { user, setUser };
 }
 
-export function TopBar({ title, back }: { title: string; back?: string }) {
+export function TopBar({ title, back, children }: { title: string; back?: string; children?: ReactNode }) {
   const { t } = useI18n();
   return (
     <header className="topbar">
-      {back && (
-        <Link href={back} className="iconbtn" aria-label={t("back")}>
-          <Icon name="back" strokeWidth={2} />
-        </Link>
-      )}
-      <h1>{title}</h1>
+      <div className="head">
+        {back && (
+          <Link href={back} className="iconbtn" aria-label={t("back")}>
+            <Icon name="back" size={24} strokeWidth={2.2} />
+          </Link>
+        )}
+        <h1>{title}</h1>
+      </div>
+      {children}
     </header>
   );
 }
@@ -51,7 +54,7 @@ export function BottomNav() {
         const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
         return (
           <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>
-            <Icon name={item.icon} />
+            <Icon name={item.icon} strokeWidth={2} />
             {item.label}
           </Link>
         );
@@ -84,17 +87,22 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
   );
 }
 
-export function Steps({ n, total = 5 }: { n: number; total?: number }) {
+/** Étapes nommées du parcours de souscription : 0 véhicule, 1 offre, 2 paiement, 3 attestation. */
+export function Stepper({ current }: { current: number }) {
   const { t } = useI18n();
+  const labels = [t("stepVehicle"), t("stepOffer"), t("stepPay"), t("stepAttestation")];
   return (
-    <div className="stack" style={{ gap: 6 }}>
-      <span className="small muted">{t("step", { n, total })}</span>
-      <div className="progress" aria-hidden="true">
-        {Array.from({ length: total }, (_, i) => (
-          <div key={i} className={i < n ? "done" : ""} />
-        ))}
-      </div>
-    </div>
+    <ol className="stepper" aria-label="Étapes">
+      {labels.map((label, i) => {
+        const state = i < current ? "done" : i === current ? "current" : "";
+        return (
+          <li key={label} className={state} aria-current={i === current ? "step" : undefined}>
+            <span className="dot">{i < current ? <Icon name="check" size={16} strokeWidth={3} /> : i + 1}</span>
+            {label}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

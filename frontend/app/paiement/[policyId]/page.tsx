@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { App, ErrorBox, Loading, Steps, TopBar, useUser } from "@/components/Shell";
+import { Icon } from "@/components/Icon";
+import { App, ErrorBox, Loading, Stepper, TopBar, useUser } from "@/components/Shell";
 import { api, ApiError, type PaymentStart, type Policy, type Provider } from "@/lib/api";
-import { money } from "@/lib/format";
+import { date, money } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
 export default function PaymentPage() {
@@ -35,17 +36,19 @@ export default function PaymentPage() {
       .catch((e) => setError(e.message));
   }, [user, policyId]);
 
+  const stopPolling = () => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = null;
+  };
+
   const poll = useCallback(async () => {
     const p = await api<Policy>(`policies/${policyId}`);
     setPolicy(p);
     if (p.status === "active") router.replace(`/contrats/${p.id}`);
-    if (p.status !== "draft" && timer.current) {
-      clearInterval(timer.current);
-      timer.current = null;
-    }
+    if (p.status !== "draft") stopPolling();
   }, [policyId, router]);
 
-  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
+  useEffect(() => stopPolling, []);
 
   async function pay() {
     setBusy(true);
@@ -53,7 +56,7 @@ export default function PaymentPage() {
     try {
       const started = await api<PaymentStart>(`policies/${policyId}/pay`, { body: { provider, payer_phone: payer } });
       setPayment(started);
-      if (timer.current) clearInterval(timer.current);
+      stopPolling();
       timer.current = setInterval(() => poll().catch(() => undefined), 3000);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("error"));
@@ -75,54 +78,72 @@ export default function PaymentPage() {
     }
   }
 
-  if (!policy && !error) return <App><TopBar title={t("payTitle")} back="/" /><Loading /></App>;
+  function changeMethod() {
+    stopPolling();
+    setPayment(null);
+  }
 
+  const header = (
+    <TopBar title={t("payTitle")} back="/">
+      <Stepper current={2} />
+    </TopBar>
+  );
+
+  if (!policy && !error) return <App>{header}<Loading /></App>;
+
+  const providerLabel = providers.find((p) => p.code === provider)?.label ?? "";
   const waitingInsurer = policy?.status === "paid";
 
   return (
     <App>
-      <TopBar title={t("payTitle")} back="/" />
+      {header}
       <main className="content">
-        <Steps n={4} />
         {error && <ErrorBox message={error} />}
         {policy && (
-          <section className="card">
-            <h2 className="eyebrow">{t("summary")}</h2>
-            <div className="between"><span className="muted">{t("offer")}</span><strong>{policy.insurer} · {policy.product}</strong></div>
-            <div className="between"><span className="muted">{t("vehicle")}</span><strong><bdi>{policy.plate}</bdi></strong></div>
-            <div className="between"><span className="muted">{t("period")}</span><strong>{t("twelveMonths")}</strong></div>
-            <hr style={{ border: 0, borderTop: "1px solid var(--line)", margin: 0, width: "100%" }} />
-            <div className="between">
-              <strong>{t("total")}</strong>
-              <span className="price" style={{ fontSize: 22 }}>{money(policy.premium, lang)}</span>
-            </div>
+          <section className="amount-card" aria-label={t("summary")}>
+            <span className="sub">{policy.insurer} · {policy.product} · <bdi>{policy.plate}</bdi></span>
+            <span className="big">{money(policy.premium, lang)}</span>
+            <span className="sub">{date(policy.starts_on, lang)} → {date(policy.ends_on, lang)}</span>
           </section>
         )}
 
         {waitingInsurer ? (
-          <div className="banner green" role="status">
-            <span className="grow">{t("waitingInsurer")}</span>
-            <Link className="btn outline" href={`/contrats/${policyId}`}>{t("seeDetails")}</Link>
+          <div className="banner green" role="status" style={{ flexDirection: "column", alignItems: "stretch", gap: 12 }}>
+            <strong style={{ fontSize: 16 }}>{t("waitingInsurer")}</strong>
+            <Link className="btn outline block" href={`/contrats/${policyId}`}>{t("seeDetails")}</Link>
           </div>
         ) : payment ? (
-          <div className="stack">
-            <div className="banner sand" role="status">
-              <div className="spinner" style={{ width: 22, height: 22 }} />
-              <span className="grow">{t("waitingConfirm")}</span>
+          <section className="wait-card" role="status">
+            <div className="row" style={{ gap: 14 }}>
+              <span className="avatar" style={{ width: 52, height: 52, borderRadius: 26, background: "var(--sand-tint)", color: "var(--sand-text)" }}>
+                <Icon name="phone" size={26} strokeWidth={2} />
+              </span>
+              <div className="stack" style={{ gap: 2 }}>
+                <strong style={{ fontSize: 17 }}>{t("confirmOnPhone")}</strong>
+                <span className="ink2" style={{ fontSize: 14 }}>{providerLabel} · <bdi>{payer}</bdi></span>
+              </div>
             </div>
-            <span className="small muted">Réf. <bdi>{payment.reference}</bdi></span>
+            <ol className="steps-num">
+              <li><span>1</span>{t("payStep1", { provider: providerLabel })}</li>
+              <li><span>2</span>{t("payStep2", { amount: money(payment.amount, lang) })}</li>
+              <li><span>3</span>{t("payStep3")}</li>
+            </ol>
+            <div className="row" style={{ gap: 10, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+              <span className="spinner sm" aria-hidden="true" />
+              <span className="ink2" style={{ fontSize: 14 }}>
+                {t("pendingRef")} <strong style={{ color: "var(--ink)" }}><bdi>{payment.reference}</bdi></strong>
+              </span>
+            </div>
             {provider === "simulated" && (
-              <button type="button" className="btn outline block" onClick={simulate} disabled={busy}>
-                {t("simulate")}
-              </button>
+              <button type="button" className="btn outline block" onClick={simulate} disabled={busy}>{t("simulate")}</button>
             )}
-          </div>
+          </section>
         ) : (
           policy?.status === "draft" && (
             <>
               <section className="stack">
                 <h2 className="eyebrow">{t("method")}</h2>
-                <div className="stack" role="radiogroup">
+                <div className="stack" role="radiogroup" aria-label={t("method")}>
                   {providers.map((p) => (
                     <button
                       key={p.code}
@@ -132,7 +153,10 @@ export default function PaymentPage() {
                       className="radio"
                       onClick={() => setProvider(p.code)}
                     >
-                      <strong>{p.label}</strong>
+                      <span className="row" style={{ gap: 12 }}>
+                        <span className="avatar" aria-hidden="true">{p.label.charAt(0)}</span>
+                        {p.label}
+                      </span>
                       <span className="dot" />
                     </button>
                   ))}
@@ -141,17 +165,26 @@ export default function PaymentPage() {
               <div className="field">
                 <label htmlFor="payer">{t("payerPhone")}</label>
                 <input id="payer" className="input" type="tel" value={payer} onChange={(e) => setPayer(e.target.value)} dir="ltr" />
-                <span className="small muted">{t("payHint")}</span>
+                <span className="small ink2">{t("payHint")}</span>
               </div>
             </>
           )
         )}
       </main>
-      {policy?.status === "draft" && !payment && (
+      {policy?.status === "draft" && (
         <div className="footer-cta">
-          <button type="button" className="btn primary block" onClick={pay} disabled={busy || !provider}>
-            {t("pay", { amount: money(policy.premium, lang) })}
-          </button>
+          {payment ? (
+            <>
+              <button type="button" className="btn outline block" onClick={() => poll().catch(() => undefined)} disabled={busy}>
+                {t("iPaid")}
+              </button>
+              <button type="button" className="btn link" onClick={changeMethod}>{t("changeMethod")}</button>
+            </>
+          ) : (
+            <button type="button" className="btn primary block tall" onClick={pay} disabled={busy || !provider}>
+              {t("pay", { amount: money(policy.premium, lang) })}
+            </button>
+          )}
         </div>
       )}
     </App>

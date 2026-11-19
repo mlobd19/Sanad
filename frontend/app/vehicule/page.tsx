@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
-import { App, Steps, TopBar, useUser } from "@/components/Shell";
+import { App, Stepper, TopBar, useUser } from "@/components/Shell";
 import { api, ApiError, type Asset } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
@@ -48,9 +48,10 @@ export default function VehiclePage() {
 
   return (
     <App>
-      <TopBar title={t("vehicleTitle")} back="/" />
+      <TopBar title={t("vehicleTitle")} back="/">
+        <Stepper current={0} />
+      </TopBar>
       <main className="content">
-        <Steps n={2} />
 
         {assets.length > 0 && (
           <section className="stack">
@@ -58,12 +59,12 @@ export default function VehiclePage() {
             {assets.map((a) => (
               <Link key={a.id} href={`/devis/${a.id}`} className="card" style={{ textDecoration: "none", color: "inherit" }}>
                 <div className="row">
-                  <div className="iconbox"><Icon name="car" /></div>
+                  <div className="iconbox"><Icon name="car" size={24} strokeWidth={2} /></div>
                   <div className="grow stack" style={{ gap: 2 }}>
-                    <strong><bdi>{a.reference}</bdi></strong>
+                    <span className="plate"><bdi>{a.reference}</bdi></span>
                     <span className="small muted">{String(a.attributes.make || "")} {a.attributes.fiscal_power} CV</span>
                   </div>
-                  <span className="small" style={{ color: "var(--green)", fontWeight: 600 }}>{t("seeQuotes")}</span>
+                  <span style={{ color: "var(--green)", fontWeight: 700, fontSize: 14 }}>{t("seeQuotes")}</span>
                 </div>
               </Link>
             ))}
@@ -95,7 +96,7 @@ export default function VehiclePage() {
                   role="radio"
                   aria-checked={usage === u.value}
                   className="radio"
-                  style={{ justifyContent: "center", minHeight: 48 }}
+                  style={{ justifyContent: "center", minHeight: 52 }}
                   onClick={() => setUsage(u.value)}
                 >
                   {t(u.key)}
@@ -104,7 +105,7 @@ export default function VehiclePage() {
             </div>
           </fieldset>
           {error && <p className="error" role="alert">{error}</p>}
-          <button className="btn primary block" disabled={busy}>{t("seeQuotes")}</button>
+          <button className="btn primary block tall" disabled={busy}>{t("seeQuotes")}</button>
         </form>
       </main>
     </App>

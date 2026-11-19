@@ -27,10 +27,11 @@ export function KhaimaMark({ size = 32, color = "var(--green)", sun = "var(--san
   );
 }
 
-export function Wordmark({ name, size = 18 }: { name: string; size?: number }) {
+/** Logo + nom. `onDark` : version blanche pour les fonds vert foncé. */
+export function Wordmark({ name, size = 18, onDark = false }: { name: string; size?: number; onDark?: boolean }) {
   return (
-    <span className="wordmark" style={{ fontSize: size }}>
-      <KhaimaMark size={size * 1.5} />
+    <span className="wordmark" style={{ fontSize: size, color: onDark ? "#fff" : "var(--ink)" }}>
+      <KhaimaMark size={size * 1.55} color={onDark ? "#fff" : "var(--green)"} />
       {name}
     </span>
   );

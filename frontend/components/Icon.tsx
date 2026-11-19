@@ -15,6 +15,10 @@ const paths: Record<string, string> = {
   share: "M12 4v12 M7 9l5-5 5 5 M5 14v6h14v-6",
   plus: "M12 5v14 M5 12h14",
   clock: "M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3 2",
+  qr: "M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2 M18 14h2v2 M14 18v2h6",
+  expand: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5",
+  close: "M6 6l12 12 M18 6L6 18",
+  phone: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2",
 };
 
 export function Icon({ name, size = 22, strokeWidth = 1.8 }: { name: keyof typeof paths | string; size?: number; strokeWidth?: number }) {
