@@ -139,9 +139,9 @@ function QuotesScreen() {
                       <InsurerLogo name={q.insurer} logo={q.insurer_logo} size={48} selected={on} />
                       <div className="grow stack" style={{ gap: 2 }}>
                         <strong style={{ fontSize: 16 }}>{q.insurer}</strong>
-                        <span className="ink2" style={{ fontSize: 13 }}>
-                          {q.insurer_legal_name && q.insurer_legal_name !== q.insurer ? q.insurer_legal_name : q.product}
-                        </span>
+                        {q.insurer_legal_name && q.insurer_legal_name !== q.insurer && (
+                          <span className="ink2" style={{ fontSize: 13 }}>{q.insurer_legal_name}</span>
+                        )}
                       </div>
                       <div className="stack" style={{ gap: 4, alignItems: "flex-end" }}>
                         <span className="price">{money(q.premium, lang)}</span>
