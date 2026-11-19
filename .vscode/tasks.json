@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Backend (Django)",
+      "type": "shell",
+      "command": "source .venv/bin/activate && python manage.py migrate && python manage.py runserver",
+      "windows": { "command": ".venv\\Scripts\\activate; python manage.py migrate; python manage.py runserver" },
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "group": "sanad", "panel": "dedicated" }
+    },
+    {
+      "label": "Application (Next.js)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "group": "sanad", "panel": "dedicated" }
+    },
+    {
+      "label": "Lancer Sanad",
+      "dependsOn": ["Backend (Django)", "Application (Next.js)"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Tests backend",
+      "type": "shell",
+      "command": "source .venv/bin/activate && pytest",
+      "windows": { "command": ".venv\\Scripts\\activate; pytest" },
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}
