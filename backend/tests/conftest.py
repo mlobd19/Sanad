@@ -32,11 +32,11 @@ def demo(db):
 
 @pytest.fixture
 def auto_insurer(demo):
-    """CAR passe en validation automatique, comme un assureur intégré par API."""
-    car = demo["car"]
-    car.auto_validate = True
-    car.save()
-    return car
+    """IMAN passe en validation automatique, comme un assureur intégré par API."""
+    iman = demo["iman"]
+    iman.auto_validate = True
+    iman.save()
+    return iman
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ def simulate_callback(client, reference, amount, status="success", tamper=False)
     )
 
 
-def buy(client, plate="1234AB00", fiscal_power=8, usage="personal", product_code="tiers-etendu", insurer="damane"):
+def buy(client, plate="1234AB00", fiscal_power=8, usage="personal", product_code="tiers-etendu", insurer="mar"):
     """Parcours client jusqu'au paiement initié. Renvoie (police, paiement)."""
     asset = client.post(
         "/api/assets", {"reference": plate, "attributes": {"fiscal_power": fiscal_power, "usage": usage}},

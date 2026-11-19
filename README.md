@@ -13,7 +13,7 @@ signée vérifiable par QR code.
 cd backend
 pip install -r requirements-dev.txt
 python manage.py migrate
-python manage.py seed_demo          # 5 compagnies auto (tarifs fictifs) + un agent démo chacune
+python manage.py seed_demo          # 4 compagnies auto (tarifs fictifs) + un agent démo chacune
 python manage.py createsuperuser    # numéro +222XXXXXXXX
 python manage.py runserver
 ```
@@ -46,22 +46,22 @@ compte de démo de la compagnie.
 
 ## Catalogue auto de démonstration
 
-`seed_demo` crée les 5 premières compagnies du marché (classement du rapport
-du ministère des Finances sur l'exercice 2022) et un agent démo par compagnie :
+`seed_demo` crée le catalogue auto de démonstration : quatre compagnies agréées
+(liste du rapport du ministère des Finances sur l'exercice 2022) et un agent
+démo par compagnie :
 
 | Compagnie | Raison sociale | Formules | Agent démo |
 | --- | --- | --- | --- |
 | NASR | Nationale d'Assurance et de Réassurance | RC, Tiers étendu, Tous risques | `+22220000001` |
-| DAMANE Assurances | DAMANE Assurances | RC, Tiers étendu, Tous risques | `+22220000002` |
-| CNA | Compagnie Nouvelle des Assurances | RC, Tiers étendu | `+22220000003` |
-| MAR | Mauritanienne d'Assurance et de Réassurance | RC, Tiers étendu | `+22220000004` |
-| CAR | Compagnie d'Assurance et de Réassurance | RC, Tiers étendu | `+22220000005` |
+| MAR | Mauritanienne d'Assurance et de Réassurance | RC, Tiers étendu, Tous risques | `+22220000002` |
+| MEDINA Assurances | MEDINA Assurances | RC, Tiers étendu | `+22220000003` |
+| IMAN Assurance | IMAN Assurance | RC, Tiers étendu | `+22220000004` |
 
 **Les primes sont fictives.** Chaque produit est marqué « indicatif » et l'app
 l'affiche. La RC automobile, seule branche à tarif homologué, a le même prix
 partout. Aucun partenariat n'est signé à ce stade : ne pas publier ces noms
-hors d'un cadre de démonstration. Relancer `seed_demo` retire les anciens
-assureurs fictifs A, B et C (ou les désactive s'ils ont déjà des contrats).
+hors d'un cadre de démonstration. Relancer `seed_demo` retire les compagnies
+des catalogues précédents (ou les désactive si elles ont déjà des contrats).
 
 ### Logos des compagnies
 
@@ -69,7 +69,7 @@ Les logos sont des marques : n'utiliser que les fichiers **officiels fournis par
 chaque compagnie**, avec son accord. Ils ne sont pas versionnés dans ce dépôt.
 
 1. Déposer les fichiers dans `backend/logos/`, nommés d'après le code de la
-   compagnie : `nasr.png`, `damane.png`, `cna.png`, `mar.png`, `car.png`
+   compagnie : `nasr.png`, `mar.png`, `medina.png`, `iman.png`
    (PNG, JPG ou WebP ; fond transparent ou blanc ; 256 px de large ou plus).
 2. `python manage.py import_logos logos/`
 

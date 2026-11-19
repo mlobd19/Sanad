@@ -1,7 +1,7 @@
 # Logos des compagnies
 
 Déposez ici les logos **officiels** fournis par chaque compagnie (avec son accord),
-nommés d'après son code : `nasr.png`, `damane.png`, `cna.png`, `mar.png`, `car.png`.
+nommés d'après son code : `nasr.png`, `mar.png`, `medina.png`, `iman.png`.
 
 Formats acceptés : PNG, JPG ou WebP. Idéalement un fond transparent ou blanc,
 au moins 256 px de large. Puis :

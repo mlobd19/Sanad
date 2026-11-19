@@ -1,7 +1,8 @@
-"""Catalogue auto de démonstration : les 5 premières compagnies du marché.
+"""Catalogue auto de démonstration : NASR, MAR, MEDINA Assurances, IMAN Assurance.
 
-Compagnies : liste et classement du « Rapport sur le marché des assurances
-en Mauritanie » (ministère des Finances, exercice 2022, publié en déc. 2023).
+Compagnies choisies par l'équipe Sanad parmi les sociétés agréées listées dans
+le « Rapport sur le marché des assurances en Mauritanie » (ministère des
+Finances, exercice 2022, publié en déc. 2023).
 
 ATTENTION : les primes ci-dessous sont FICTIVES. Chaque produit est marqué
 `is_indicative` et l'application affiche « tarif indicatif ». Elles seront
@@ -31,14 +32,12 @@ RC_DEMO_PREMIUM = 10000  # identique partout : tarif RC homologué (montant fict
 COMPANIES = [
     ("nasr", "NASR", "Nationale d'Assurance et de Réassurance", "+22220000001",
      {TIERS: 19000, TOUS: 34000}),
-    ("damane", "DAMANE Assurances", "DAMANE Assurances", "+22220000002",
+    ("mar", "MAR", "Mauritanienne d'Assurance et de Réassurance", "+22220000002",
      {TIERS: 18000, TOUS: 33000}),
-    ("cna", "CNA", "Compagnie Nouvelle des Assurances", "+22220000003",
+    ("medina", "MEDINA Assurances", "MEDINA Assurances", "+22220000003",
      {TIERS: 17500}),
-    ("mar", "MAR", "Mauritanienne d'Assurance et de Réassurance", "+22220000004",
+    ("iman", "IMAN Assurance", "IMAN Assurance", "+22220000004",
      {TIERS: 18500}),
-    ("car", "CAR", "Compagnie d'Assurance et de Réassurance", "+22220000005",
-     {TIERS: 17000}),
 ]
 
 FACTORS = [
@@ -49,11 +48,12 @@ FACTORS = [
     ("usage", "taxi", None, None, Decimal("1.8000")),
 ]
 
-OLD_DEMO_SLUGS = ["assureur-a", "assureur-b", "assureur-c"]
+# Compagnies des catalogues de démo précédents, à retirer
+OLD_DEMO_SLUGS = ["assureur-a", "assureur-b", "assureur-c", "damane", "cna", "car"]
 
 
 class Command(BaseCommand):
-    help = "Crée le catalogue auto de démonstration (5 compagnies, tarifs fictifs) et un agent démo par compagnie."
+    help = "Crée le catalogue auto de démonstration (4 compagnies, tarifs fictifs) et un agent démo par compagnie."
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -84,12 +84,12 @@ class Command(BaseCommand):
                 agent.insurer, agent.role, agent.full_name = insurer, User.Role.INSURER_AGENT, f"Agent {name} (démo)"
                 agent.save()
         self.stdout.write(self.style.SUCCESS(
-            "Catalogue auto prêt : NASR, DAMANE, CNA, MAR, CAR (tarifs fictifs). "
-            "Agents démo : +22220000001 à +22220000005."
+            "Catalogue auto prêt : NASR, MAR, MEDINA, IMAN (tarifs fictifs). "
+            "Agents démo : +22220000001 à +22220000004."
         ))
 
     def _retire_old_demo(self):
-        """Retire les assureurs fictifs A, B, C ; les désactive s'ils ont déjà des contrats."""
+        """Retire les compagnies des anciens catalogues ; les désactive si elles ont déjà des contrats."""
         for insurer in Insurer.objects.filter(slug__in=OLD_DEMO_SLUGS):
             try:
                 with transaction.atomic():
@@ -100,3 +100,4 @@ class Command(BaseCommand):
                 insurer.is_active = False
                 insurer.save(update_fields=["is_active"])
                 insurer.products.update(is_active=False)
+                insurer.agents.update(is_active=False)  # plus d'accès au portail pour une compagnie retirée

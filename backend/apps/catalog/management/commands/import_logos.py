@@ -1,7 +1,7 @@
 """Importe les logos officiels des compagnies depuis un dossier.
 
-Nommer chaque fichier d'après le code de la compagnie : nasr.png, damane.jpg,
-cna.webp, mar.png, car.png… puis :
+Nommer chaque fichier d'après le code de la compagnie : nasr.png, mar.jpg,
+medina.webp, iman.png… puis :
 
     python manage.py import_logos logos/
 """

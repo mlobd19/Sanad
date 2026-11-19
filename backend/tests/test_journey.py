@@ -54,9 +54,9 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     assert quotes_asset["reference"] == "5678 AB 00"
     quotes = customer_client.post(f"/api/assets/{quotes_asset['id']}/quotes").data
     assert [q["premium"] for q in quotes] == sorted(q["premium"] for q in quotes)
-    b = next(q for q in quotes if q["product_code"] == "tiers-etendu" and q["insurer_slug"] == "damane")
+    b = next(q for q in quotes if q["product_code"] == "tiers-etendu" and q["insurer_slug"] == "mar")
     assert b["premium"] == 22500  # 18 000 × 1,25 (puissance 7–10 CV)
-    assert b["indicative"] is True and b["insurer_legal_name"] == "DAMANE Assurances"
+    assert b["indicative"] is True and b["insurer_legal_name"] == "Mauritanienne d'Assurance et de Réassurance"
     rc_prices = {q["premium"] for q in quotes if q["product_code"] == "rc"}
     assert len(rc_prices) == 1  # RC à tarif homologué : identique chez tous les assureurs
 
@@ -101,7 +101,7 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
 
 
 def test_auto_validating_insurer_activates_on_payment(customer_client, auto_insurer):
-    policy, pay = buy(customer_client, insurer="car")
+    policy, pay = buy(customer_client, insurer="iman")
     simulate_callback(APIClient(), pay["reference"], pay["amount"])
     assert Policy.objects.get(pk=policy["id"]).status == Policy.Status.ACTIVE
     assert Attestation.objects.filter(policy_id=policy["id"]).exists()
@@ -158,7 +158,7 @@ def test_refusal_refunds_and_notifies(customer_client, agent_client, outbox, dja
 
 
 def test_agent_cannot_decide_for_another_insurer(customer_client, demo):
-    policy, pay = buy(customer_client, product_code="rc", insurer="nasr")  # produit de NASR, agent de DAMANE
+    policy, pay = buy(customer_client, product_code="rc", insurer="nasr")  # produit de NASR, agent de MAR
     simulate_callback(APIClient(), pay["reference"], pay["amount"])
     agent_b = APIClient()
     agent_b.force_authenticate(User.objects.get(phone="+22220000002"))
@@ -264,7 +264,7 @@ def test_payment_simulator_only_when_enabled(customer_client, settings):
 def test_renewal_starts_after_current_cover(customer_client, auto_insurer):
     from datetime import timedelta
 
-    policy, pay = buy(customer_client, insurer="car")  # CAR : activation automatique
+    policy, pay = buy(customer_client, insurer="iman")  # IMAN : activation automatique
     simulate_callback(APIClient(), pay["reference"], pay["amount"])
     current = Policy.objects.get(pk=policy["id"])
     current.ends_on = current.starts_on + timedelta(days=10)
@@ -285,12 +285,13 @@ def test_seed_retires_old_demo_insurers(db):
     from apps.catalog.models import Insurer
 
     Insurer.objects.create(name="Assureur A (démo)", slug="assureur-a", commission_rate="0.1500")
+    Insurer.objects.create(name="DAMANE Assurances", slug="damane", commission_rate="0.1500")
     call_command("seed_demo", verbosity=0)
     call_command("seed_demo", verbosity=0)  # relançable sans doublon
     assert sorted(Insurer.objects.filter(is_active=True).values_list("slug", flat=True)) == [
-        "car", "cna", "damane", "mar", "nasr"
+        "iman", "mar", "medina", "nasr"
     ]
-    assert not Insurer.objects.filter(slug="assureur-a").exists()
+    assert not Insurer.objects.filter(slug__in=["assureur-a", "damane"]).exists()
 
 
 def test_import_logos_and_expose_in_api(customer_client, tmp_path):
@@ -301,8 +302,8 @@ def test_import_logos_and_expose_in_api(customer_client, tmp_path):
     folder.mkdir()
     Image.new("RGB", (64, 32), "white").save(folder / "nasr.png")
     (folder / "inconnu.png").write_bytes((folder / "nasr.png").read_bytes())
-    (folder / "damane.png").write_bytes(b"pas une image")
-    (folder / "car.svg").write_text("<svg/>")  # SVG ignoré
+    (folder / "mar.png").write_bytes(b"pas une image")
+    (folder / "iman.svg").write_text("<svg/>")  # SVG ignoré
     call_command("import_logos", str(folder), verbosity=0)
 
     asset = customer_client.post(
@@ -311,4 +312,4 @@ def test_import_logos_and_expose_in_api(customer_client, tmp_path):
     quotes = customer_client.post(f"/api/assets/{asset['id']}/quotes").data
     logos = {q["insurer_slug"]: q["insurer_logo"] for q in quotes}
     assert logos["nasr"] == "/media/insurers/nasr.png"
-    assert logos["damane"] is None and logos["car"] is None
+    assert logos["mar"] is None and logos["iman"] is None
