@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Vérification d'attestation</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #12211C; color: #fff; }
+  main { max-width: 440px; margin: 0 auto; padding: 24px 20px; }
+  .result { border-radius: 20px; padding: 24px; text-align: center; margin: 16px 0; }
+  .valid { background: #0B6E4F; }
+  .warn { background: #8A5A12; }
+  .bad { background: #9B2C2C; }
+  h1 { font-size: 26px; margin: 8px 0; }
+  dl { background: #1C2F28; border-radius: 16px; padding: 16px; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; }
+  dt { color: #B9C8C2; } dd { margin: 0; font-weight: 600; text-align: right; }
+  p.note { color: #B9C8C2; font-size: 13px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<main>
+  <p style="margin:0;color:#B9C8C2">Contrôle d'attestation d'assurance</p>
+  {% if result.status == "valid" %}
+    <div class="result valid"><h1>Attestation valide</h1><div>{{ result.message }}</div></div>
+  {% elif result.status == "expired" or result.status == "not_yet_valid" %}
+    <div class="result warn"><h1>Non valable aujourd'hui</h1><div>{{ result.message }}</div></div>
+  {% else %}
+    <div class="result bad"><h1>Attestation non valable</h1><div>{{ result.message }}</div></div>
+  {% endif %}
+  {% if result.number %}
+  <dl>
+    <dt>N°</dt><dd>{{ result.number }}</dd>
+    <dt>Immatriculation</dt><dd>{{ result.plate }}</dd>
+    <dt>Assureur</dt><dd>{{ result.insurer }}</dd>
+    <dt>Garantie</dt><dd>{{ result.cover }}</dd>
+    <dt>Du</dt><dd>{{ result.valid_from }}</dd>
+    <dt>Au</dt><dd>{{ result.valid_to }}</dd>
+    <dt>Assuré</dt><dd>{{ result.holder }}</dd>
+  </dl>
+  {% endif %}
+  <p class="note">Les données personnelles sont masquées. En cas de doute, comparez l'immatriculation avec celle du véhicule.</p>
+</main>
+</body>
+</html>
