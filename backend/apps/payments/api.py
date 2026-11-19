@@ -1,3 +1,7 @@
+import json
+
+from django.conf import settings
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -8,7 +12,8 @@ from rest_framework.views import APIView
 from apps.policies.api import django_errors
 from apps.policies.models import Policy
 
-from .providers import InvalidCallback, available_providers
+from .models import Payment
+from .providers import InvalidCallback, SimulatedProvider, available_providers
 from .services import handle_callback, initiate_payment
 
 
@@ -42,3 +47,15 @@ def callback(request, provider):
     except (KeyError, InvalidCallback):
         return Response({"detail": "Callback refusé."}, status=400)
     return Response({"outcome": outcome})
+
+
+class SimulateConfirmView(APIView):
+    """Développement : joue le rôle de l'opérateur et confirme un paiement simulé."""
+
+    def post(self, request, payment_id):
+        if not settings.ENABLE_PAYMENT_SIMULATOR:
+            raise Http404
+        payment = get_object_or_404(Payment, pk=payment_id, provider="simulated", policy__customer=request.user)
+        body = json.dumps({"reference": payment.external_ref, "status": "success", "amount": payment.amount}).encode()
+        outcome = handle_callback("simulated", body, {"X-Signature": SimulatedProvider.sign(body)})
+        return Response({"outcome": outcome})

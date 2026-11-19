@@ -126,6 +126,9 @@ PAYMENT_CALLBACK_SECRETS = {
     "sedad": env("SEDAD_CALLBACK_SECRET", ""),
 }
 
+# Bouton « simuler la confirmation » de l'app client : développement uniquement.
+ENABLE_PAYMENT_SIMULATOR = DEBUG and "simulated" in PAYMENT_PROVIDERS
+
 NOTIFICATION_BACKEND = env("NOTIFICATION_BACKEND", "apps.notifications.backends.ConsoleBackend")
 
 RENEWAL_REMINDER_DAYS = [30, 7, 1]

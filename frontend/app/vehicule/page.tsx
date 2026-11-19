@@ -1,0 +1,112 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+
+import { Icon } from "@/components/Icon";
+import { App, Steps, TopBar, useUser } from "@/components/Shell";
+import { api, ApiError, type Asset } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+
+const USAGES = [
+  { value: "personal", key: "usagePersonal" },
+  { value: "commercial", key: "usageCommercial" },
+  { value: "taxi", key: "usageTaxi" },
+] as const;
+
+export default function VehiclePage() {
+  const { t } = useI18n();
+  const router = useRouter();
+  const { user } = useUser();
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [plate, setPlate] = useState("");
+  const [make, setMake] = useState("");
+  const [power, setPower] = useState("");
+  const [usage, setUsage] = useState<string>("personal");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user) api<Asset[]>("assets").then(setAssets).catch(() => setAssets([]));
+  }, [user]);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const asset = await api<Asset>("assets", {
+        body: { kind: "vehicle", reference: plate, attributes: { fiscal_power: Number(power), usage, make } },
+      });
+      router.push(`/devis/${asset.id}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("error"));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <App>
+      <TopBar title={t("vehicleTitle")} back="/" />
+      <main className="content">
+        <Steps n={2} />
+
+        {assets.length > 0 && (
+          <section className="stack">
+            <h2 className="eyebrow">{t("myVehicles")}</h2>
+            {assets.map((a) => (
+              <Link key={a.id} href={`/devis/${a.id}`} className="card" style={{ textDecoration: "none", color: "inherit" }}>
+                <div className="row">
+                  <div className="iconbox"><Icon name="car" /></div>
+                  <div className="grow stack" style={{ gap: 2 }}>
+                    <strong><bdi>{a.reference}</bdi></strong>
+                    <span className="small muted">{String(a.attributes.make || "")} {a.attributes.fiscal_power} CV</span>
+                  </div>
+                  <span className="small" style={{ color: "var(--green)", fontWeight: 600 }}>{t("seeQuotes")}</span>
+                </div>
+              </Link>
+            ))}
+            <h2 className="eyebrow" style={{ marginTop: 8 }}>{t("addVehicle")}</h2>
+          </section>
+        )}
+
+        <form className="stack" style={{ gap: 16 }} onSubmit={submit}>
+          <div className="field">
+            <label htmlFor="plate">{t("plate")}</label>
+            <input id="plate" className="input" value={plate} onChange={(e) => setPlate(e.target.value)} required dir="ltr" autoCapitalize="characters" />
+            <span className="small muted">{t("plateHint")}</span>
+          </div>
+          <div className="field">
+            <label htmlFor="make">{t("make")}</label>
+            <input id="make" className="input" value={make} onChange={(e) => setMake(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="power">{t("fiscalPower")}</label>
+            <input id="power" className="input" type="number" inputMode="numeric" min={1} max={60} value={power} onChange={(e) => setPower(e.target.value)} required />
+          </div>
+          <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
+            <legend style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{t("usage")}</legend>
+            <div className="segmented" role="radiogroup">
+              {USAGES.map((u) => (
+                <button
+                  key={u.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={usage === u.value}
+                  className="radio"
+                  style={{ justifyContent: "center", minHeight: 48 }}
+                  onClick={() => setUsage(u.value)}
+                >
+                  {t(u.key)}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          {error && <p className="error" role="alert">{error}</p>}
+          <button className="btn primary block" disabled={busy}>{t("seeQuotes")}</button>
+        </form>
+      </main>
+    </App>
+  );
+}

@@ -243,3 +243,34 @@ def test_audit_events_are_immutable(customer_client):
         event.save()
     with pytest.raises(ValueError):
         event.delete()
+
+
+def test_payment_simulator_only_when_enabled(customer_client, settings):
+    policy, pay = buy(customer_client)
+    url = f"/api/payments/{pay['payment_id']}/simulate-confirm"
+    settings.ENABLE_PAYMENT_SIMULATOR = False
+    assert customer_client.post(url).status_code == 404
+    settings.ENABLE_PAYMENT_SIMULATOR = True
+    other = APIClient()
+    login(other, "+22236000088")
+    assert other.post(url).status_code == 404  # pas le paiement d'un autre client
+    assert customer_client.post(url).data["outcome"] == "succeeded"
+    assert Policy.objects.get(pk=policy["id"]).status == Policy.Status.PAID
+
+
+def test_renewal_starts_after_current_cover(customer_client):
+    from datetime import timedelta
+
+    policy, pay = buy(customer_client, product_code="tous-risques")  # assureur C : activation automatique
+    simulate_callback(APIClient(), pay["reference"], pay["amount"])
+    current = Policy.objects.get(pk=policy["id"])
+    current.ends_on = current.starts_on + timedelta(days=10)
+    current.save()
+    quote = customer_client.post(f"/api/assets/{current.asset_id}/quotes").data[0]
+    resp = customer_client.post(
+        "/api/policies",
+        {"quote_id": quote["id"], "starts_on": str(current.ends_on + timedelta(days=1)), "renewal_of": current.pk},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.data
+    assert customer_client.get(f"/api/policies/{current.pk}").data["renewed"] is True

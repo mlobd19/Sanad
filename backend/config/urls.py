@@ -25,6 +25,7 @@ api = [
     path("payments/providers", payments.ProviderListView.as_view()),
     path("policies/<int:policy_id>/pay", payments.PayPolicyView.as_view()),
     path("payments/callback/<str:provider>", payments.callback),
+    path("payments/<uuid:payment_id>/simulate-confirm", payments.SimulateConfirmView.as_view()),
     # Attestations
     path("attestations/<int:attestation_id>/qr.png", attestations.QrCodeView.as_view()),
     path("verify/public-key", attestations.PublicKeyView.as_view()),

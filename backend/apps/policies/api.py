@@ -67,13 +67,17 @@ class PolicySerializer(serializers.ModelSerializer):
     plate = serializers.CharField(source="asset.reference", read_only=True)
     status_label = serializers.CharField(source="get_status_display", read_only=True)
     attestation = serializers.SerializerMethodField()
+    renewed = serializers.SerializerMethodField()
 
     class Meta:
         model = Policy
         fields = [
             "id", "insurer", "product", "plate", "premium", "status", "status_label",
-            "starts_on", "ends_on", "refusal_reason", "attestation", "created_at",
+            "starts_on", "ends_on", "refusal_reason", "attestation", "asset_id", "renewed", "created_at",
         ]
+
+    def get_renewed(self, policy):
+        return policy.renewals.exclude(status__in=["refused", "cancelled"]).exists()
 
     def get_attestation(self, policy):
         att = policy.attestations.filter(status=Attestation.Status.VALID).first()
@@ -110,7 +114,10 @@ class PolicyListView(APIView):
         starts_on = serializers.DateField(required=False, allow_null=True).run_validation(
             request.data.get("starts_on")
         ) if request.data.get("starts_on") else None
-        policy = services.create_policy(request.user, quote, starts_on=starts_on)
+        renewal_of = None
+        if request.data.get("renewal_of"):
+            renewal_of = get_object_or_404(Policy, pk=request.data["renewal_of"], customer=request.user)
+        policy = services.create_policy(request.user, quote, starts_on=starts_on, renewal_of=renewal_of)
         return Response(PolicySerializer(policy).data, status=status.HTTP_201_CREATED)
 
 

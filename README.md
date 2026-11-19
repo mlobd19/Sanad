@@ -1,8 +1,11 @@
 # Taamine — plateforme d'assurance digitale (Mauritanie)
 
-« Taamine » est un nom de travail. Ce dépôt contient le backend du MVP :
-le parcours **assurance auto** de bout en bout, de la connexion par SMS à
-l'attestation signée vérifiable par QR code.
+« Taamine » est un nom de travail. Ce dépôt contient le MVP : le parcours
+**assurance auto** de bout en bout, de la connexion par SMS à l'attestation
+signée vérifiable par QR code.
+
+- `backend/` : API Django, back-office, paiements, attestations.
+- `frontend/` : application client Next.js (mobile d'abord, français et arabe).
 
 ## Démarrer en local (sans Docker)
 
@@ -19,6 +22,28 @@ python manage.py runserver
 - Les codes SMS s'affichent dans la console (backend de notification `Console`).
 - Tests : `cd backend && pytest`
 
+## Lancer l'application client
+
+Le backend doit tourner sur le port 8000 (voir ci-dessus).
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:3000
+```
+
+L'app appelle `/api/...` sur son propre domaine ; Next.js relaie vers le
+backend (`BACKEND_URL`, par défaut `http://localhost:8000`). Pour que les QR
+codes pointent vers l'app, lancez le backend avec
+`ATTESTATION_VERIFY_BASE_URL=http://localhost:3000/v/`.
+
+En développement, l'écran de paiement propose « Simuler la confirmation » :
+le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
+
+Pour valider une police comme le ferait l'assureur B : back-office Django,
+action « Valider les polices payées », ou API du portail assureur avec le
+compte de démo `+22220000002`.
+
 ## Démarrer avec Docker
 
 ```bash
@@ -26,6 +51,8 @@ cp .env.example .env
 docker compose up --build
 docker compose exec web python manage.py seed_demo
 ```
+
+App client : http://localhost:3000 · back-office : http://localhost:8000/admin/
 
 ## Organisation
 
@@ -83,6 +110,8 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 - **SMS et WhatsApp** : écrire un backend dans `apps/notifications/backends.py`
   (agrégateur SMS local, fournisseur WhatsApp Business).
 - **Stockage des pièces** : stockage objet chiffré en production.
-- **PDF de l'attestation** et **frontend** (PWA Next.js FR/AR).
+- **PDF de l'attestation**, dépôt des pièces KYC et déclaration de sinistre dans l'app client.
+- **Portail assureur** (écran web ; l'API existe déjà).
+- **Mode hors ligne** de l'app (service worker).
 - **Grilles tarifaires réelles** des assureurs partenaires (les données de
   `seed_demo` sont fictives).

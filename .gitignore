@@ -6,3 +6,5 @@ backend/media/
 backend/staticfiles/
 .pytest_cache/
 node_modules/
+.next/
+*.tsbuildinfo
