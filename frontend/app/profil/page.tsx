@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
+import { IdentityDocument } from "@/components/IdentityDocument";
 import { App, BottomNav, Loading, TopBar, useUser } from "@/components/Shell";
 import { api, ApiError, setToken, type User } from "@/lib/api";
 import { useI18n, type Key, type Lang } from "@/lib/i18n";
@@ -137,6 +138,10 @@ export default function ProfilePage() {
           )}
           {returnTo && user.kyc_status === "verified" && (
             <Link className="btn primary block" href={returnTo}>{t("continueToPay")}</Link>
+          )}
+          {(user.kyc_status === "none" || user.kyc_status === "pending") && (
+            <IdentityDocument user={user} onUploaded={setUser}
+              open={!registry || (idResult !== null && idResult.key !== "idMatch")} />
           )}
           <div aria-live="polite">
             {idResult && (

@@ -1,18 +1,16 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers, status
+from rest_framework.parsers import MultiPartParser
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.audit.models import record
 
 from .models import KycDocument, User
 from . import identity, services
 from .services import LoginError, OtpError, request_otp, verify_otp
 
-MAX_UPLOAD_BYTES = 8 * 1024 * 1024
-ALLOWED_TYPES = {"image/jpeg", "image/png", "application/pdf"}
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -20,6 +18,15 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "phone", "email", "full_name", "nni", "language", "kyc_status", "role"]
         read_only_fields = ["id", "phone", "email", "kyc_status", "role"]
+
+
+class CustomerOnly:
+    """Mixin : vues réservées aux comptes particuliers."""
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if request.user.is_pro:
+            self.permission_denied(request, message="Réservé aux comptes particuliers.")
 
 
 class OtpRequestView(APIView):
@@ -117,7 +124,7 @@ class MeView(APIView):
         return Response(UserSerializer(user).data)
 
 
-class IdentityCheckView(APIView):
+class IdentityCheckView(CustomerOnly, APIView):
     """Vérification d'identité auprès du registre national (ANRPTS), particuliers uniquement.
 
     GET : la vérification automatique est-elle disponible ? POST : lance la vérification
@@ -129,11 +136,6 @@ class IdentityCheckView(APIView):
     def get_throttles(self):
         # Seule l'interrogation du registre est limitée (évite de tester des NNI en série).
         return super().get_throttles() if self.request.method == "POST" else []
-
-    def check_permissions(self, request):
-        super().check_permissions(request)
-        if request.user.is_pro:
-            self.permission_denied(request, message="Réservé aux comptes particuliers.")
 
     def get(self, request):
         return Response({"available": services.identity_check_available()})
@@ -152,28 +154,20 @@ class IdentityCheckView(APIView):
 class KycDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = KycDocument
-        fields = ["id", "kind", "file", "status", "uploaded_at"]
-        read_only_fields = ["id", "status", "uploaded_at"]
-        extra_kwargs = {"file": {"write_only": True}}
-
-    def validate_file(self, f):
-        if f.size > MAX_UPLOAD_BYTES:
-            raise serializers.ValidationError("Fichier trop lourd (8 Mo maximum).")
-        if getattr(f, "content_type", None) not in ALLOWED_TYPES:
-            raise serializers.ValidationError("Formats acceptés : JPEG, PNG, PDF.")
-        return f
+        fields = ["id", "kind", "status", "uploaded_at"]  # jamais le fichier : il reste privé
 
 
-class KycDocumentView(APIView):
+class KycDocumentView(CustomerOnly, APIView):
+    """Pièces d'identité déposées : solution de secours de la vérification au registre."""
+
+    parser_classes = [MultiPartParser]
+
     def get(self, request):
         return Response(KycDocumentSerializer(request.user.documents.all(), many=True).data)
 
     def post(self, request):
-        serializer = KycDocumentSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        doc = serializer.save(user=request.user)
-        if request.user.kyc_status == User.KycStatus.NONE:
-            request.user.kyc_status = User.KycStatus.PENDING
-            request.user.save(update_fields=["kyc_status"])
-        record("kyc.document_uploaded", doc, actor=request.user, kind=doc.kind)
+        try:
+            doc = services.upload_kyc_document(request.user, request.data.get("kind", ""), request.FILES.get("file"))
+        except DjangoValidationError as exc:
+            return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
         return Response(KycDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)

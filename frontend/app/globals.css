@@ -294,3 +294,7 @@ table.mini .sub, .doc-row .sub { display: block; color: var(--muted); font-size:
   .two-cols, .form-grid { grid-template-columns: minmax(0, 1fr); }
   .facts div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
+
+/* Dépôt de pièce d'identité (profil) */
+.doc-upload { border-top: 1px solid var(--line); padding-top: 10px; }
+.doc-upload summary { cursor: pointer; font-weight: 600; font-size: 15px; min-height: 44px; display: flex; align-items: center; color: var(--green); }

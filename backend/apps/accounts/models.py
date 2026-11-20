@@ -8,6 +8,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from .storage import PrivateStorage
+
 PHONE_RE = re.compile(r"^\+222\d{8}$")
 
 
@@ -161,7 +163,7 @@ class KycDocument(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="documents", verbose_name=_("compte"))
     kind = models.CharField(max_length=24, choices=Kind.choices, verbose_name=_("type de pièce"))
-    file = models.FileField(upload_to=kyc_upload_path, verbose_name=_("fichier"))
+    file = models.FileField(upload_to=kyc_upload_path, storage=PrivateStorage(), verbose_name=_("fichier"))
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, verbose_name=_("statut"))
     reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name=_("vérifiée par"))
     review_note = models.CharField(max_length=255, blank=True, verbose_name=_("note de vérification"))

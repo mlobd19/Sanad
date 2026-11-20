@@ -1,6 +1,11 @@
+import mimetypes
+
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
@@ -26,7 +31,9 @@ class KycDocumentInline(admin.TabularInline):
 
     @admin.display(description=_("fichier"))
     def open_file(self, doc):
-        return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', doc.file.url, gettext("Ouvrir"))
+        # Fichier privé : ouvert par une vue réservée à l'équipe, jamais par une URL publique.
+        url = reverse("admin:accounts_kycdocument_file", args=[doc.pk])
+        return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', url, gettext("Ouvrir"))
 
     @admin.display(description=_("statut"))
     def status_display(self, doc):
@@ -98,6 +105,29 @@ class UserAdmin(BaseUserAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("insurer", "membership__company")
+
+    def get_urls(self):
+        return [
+            path("piece/<int:doc_id>/", self.admin_site.admin_view(self.document_file_view),
+                 name="accounts_kycdocument_file"),
+            *super().get_urls(),
+        ]
+
+    def document_file_view(self, request, doc_id):
+        """Affiche une pièce d'identité à l'équipe ; chaque consultation est journalisée."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        doc = get_object_or_404(KycDocument, pk=doc_id)
+        try:
+            handle = doc.file.open("rb")
+        except FileNotFoundError:
+            raise Http404 from None
+        record("kyc.document_viewed", doc, actor=request.user, user_id=doc.user_id)
+        content_type = mimetypes.guess_type(doc.file.name)[0] or "application/octet-stream"
+        response = FileResponse(handle, content_type=content_type)
+        response["Content-Disposition"] = "inline"
+        response["Cache-Control"] = "private, no-store"
+        return response
 
     @admin.display(description=_("téléphone"), ordering="phone")
     def phone_display(self, user):

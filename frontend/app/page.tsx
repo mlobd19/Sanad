@@ -16,8 +16,6 @@ const SERVICES: { key: Key; icon: string; on: boolean }[] = [
   { key: "health", icon: "heart", on: false },
   { key: "home", icon: "home", on: false },
   { key: "travel", icon: "plane", on: false },
-  { key: "takaful", icon: "shield", on: false },
-  { key: "pro", icon: "briefcase", on: false },
 ];
 
 function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
@@ -115,7 +113,7 @@ export default function HomePage() {
 
         <section className="stack">
           <h2 className="eyebrow">{t("subscribe")}</h2>
-          <div className="grid3">
+          <div className="grid2">
             {SERVICES.map((s) =>
               s.on ? (
                 <Link key={s.key} href="/vehicule" className="tile on">

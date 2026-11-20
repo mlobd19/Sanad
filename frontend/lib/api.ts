@@ -238,6 +238,11 @@ export type GroupOffer = {
 
 export type CompanyOrder = { id: number; total: number; created_at: string; policies: Policy[] };
 
+/** Pièce d'identité déposée (le fichier reste privé : jamais d'URL). */
+export type KycDocument = {
+  id: number; kind: "id_card" | "passport"; status: "pending" | "accepted" | "rejected"; uploaded_at: string;
+};
+
 /** Champs lus sur une carte grise ; vides (ou null) quand illisibles. */
 export type RegistrationScan = { reference: string; make: string; fiscal_power: number | null };
 

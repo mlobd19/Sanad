@@ -26,7 +26,7 @@ from apps.audit.models import record
 from apps.notifications.service import notify
 
 from . import identity
-from .models import IdentityCheck, OtpCode, User, normalize_phone
+from .models import IdentityCheck, KycDocument, OtpCode, User, normalize_phone
 
 PRO_CHALLENGE_SALT = "sanad.pro-login"
 BAD_CREDENTIALS = "Email ou mot de passe incorrect."
@@ -287,3 +287,58 @@ def verify_identity(user: User) -> IdentityCheck:
         record("kyc.registry_no_match", user, actor=user, method=provider.name, outcome=result.outcome,
                reference=result.reference)
     return check
+
+
+# --- Pièce d'identité : solution de secours du registre --------------------------
+
+KYC_MAX_BYTES = 8 * 1024 * 1024
+KYC_IDENTITY_KINDS = (KycDocument.Kind.ID_CARD, KycDocument.Kind.PASSPORT)
+KYC_MAX_PENDING = 3
+
+
+def _document_type(upload) -> str:
+    """Extension sûre déduite du contenu (pas du nom ni du type annoncé par le client)."""
+    from PIL import Image, UnidentifiedImageError
+
+    head = upload.read(5)
+    upload.seek(0)
+    if head == b"%PDF-":
+        return "pdf"
+    try:
+        with Image.open(upload) as img:
+            fmt = img.format
+            img.verify()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        fmt = None
+    finally:
+        upload.seek(0)
+    return {"JPEG": "jpg", "PNG": "png"}.get(fmt, "")
+
+
+def upload_kyc_document(user: User, kind: str, upload) -> KycDocument:
+    """Dépôt d'une pièce d'identité, vérifiée ensuite à la main au back-office.
+
+    Le compte passe « En vérification » (pastille « À traiter » du tableau de bord).
+    """
+    if user.kyc_status == User.KycStatus.VERIFIED:
+        raise ValidationError("Votre identité est déjà vérifiée.", code="already_verified")
+    if user.kyc_status == User.KycStatus.REJECTED:
+        raise ValidationError("Votre identité a été refusée : contactez le support.", code="rejected")
+    if kind not in KYC_IDENTITY_KINDS:
+        raise ValidationError("Choisissez une carte d'identité ou un passeport.", code="invalid_kind")
+    if upload is None:
+        raise ValidationError("Ajoutez la photo ou le PDF de la pièce.", code="missing")
+    if upload.size > KYC_MAX_BYTES:
+        raise ValidationError("Fichier trop lourd (8 Mo maximum).", code="too_large")
+    ext = _document_type(upload)
+    if not ext:
+        raise ValidationError("Formats acceptés : JPEG, PNG, PDF.", code="invalid_type")
+    if user.documents.filter(status=KycDocument.Status.PENDING).count() >= KYC_MAX_PENDING:
+        raise ValidationError("Des pièces attendent déjà d'être vérifiées.", code="too_many")
+    upload.name = f"piece.{ext}"
+    doc = KycDocument.objects.create(user=user, kind=kind, file=upload)
+    if user.kyc_status == User.KycStatus.NONE:
+        user.kyc_status = User.KycStatus.PENDING
+        user.save(update_fields=["kyc_status"])
+    record("kyc.document_uploaded", doc, actor=user, kind=kind)
+    return doc

@@ -122,6 +122,8 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(env("MEDIA_ROOT", BASE_DIR / "media"))
+# Pièces d'identité : hors de MEDIA_ROOT, jamais servies publiquement (voir accounts/storage.py).
+PRIVATE_MEDIA_ROOT = Path(env("PRIVATE_MEDIA_ROOT") or BASE_DIR / "private_media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

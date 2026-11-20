@@ -100,6 +100,8 @@ compile_translations` ; sinon le test des traductions échoue.
 - Paiements : ne jamais activer une police sans callback valide (signature,
   montant exact). Le fournisseur `simulated` est interdit en production.
 - Aucune donnée de compte mobile money stockée ; seules les références.
+- Pièces d'identité : stockage privé (`PRIVATE_MEDIA_ROOT`, `accounts/storage.py`),
+  jamais d'URL publique ; ouvertes seulement au back-office, consultation journalisée.
 - Vérification publique : données personnelles **masquées**.
 - Attestation PDF : jamais de prime dessus ; mention « SPÉCIMEN » obligatoire
   tant qu'aucun partenariat n'est signé avec la compagnie.
@@ -136,8 +138,8 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 1. Espace entreprise, suite : **voyage**, puis **santé de groupe** (l'auto de la
    flotte est faite ; un plan par produit)
-2. Déclaration de sinistre (photos) dans l'app ; dépôt de pièce d'identité
-   seulement en secours de la vérification ANRPTS (adaptateur réel à écrire)
+2. Déclaration de sinistre (photos) dans l'app ; adaptateur ANRPTS réel
+   (le dépôt de pièce d'identité en secours est fait)
 3. Mise en ligne (Render : Django + PostgreSQL, Next.js) ; avant : code SMS
    pour la connexion au back-office `/admin/`
 4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
