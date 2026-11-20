@@ -18,7 +18,13 @@ export function useUser() {
       router.replace("/connexion");
       return;
     }
-    api<User>("me").then(setUser).catch(() => router.replace("/connexion"));
+    api<User>("me")
+      .then((me) => {
+        // Un agent assureur n'a rien à faire dans l'espace client : direction son portail.
+        if (me.role === "insurer_agent") router.replace("/assureur");
+        else setUser(me);
+      })
+      .catch(() => router.replace("/connexion"));
   }, [router]);
   return { user, setUser };
 }

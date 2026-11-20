@@ -12,3 +12,6 @@ node_modules/
 # Logos des compagnies : fichiers fournis par les assureurs, hors dépôt
 backend/logos/*
 !backend/logos/LISEZMOI.md
+
+# Fichiers système macOS
+.DS_Store
