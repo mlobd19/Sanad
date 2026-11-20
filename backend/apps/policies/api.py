@@ -144,6 +144,14 @@ class RegistrationScanView(APIView):
     parser_classes = [MultiPartParser]
     throttle_scope = "scan"
 
+    def get_throttles(self):
+        # Seule la lecture (payante) est limitée ; la question « disponible ? » est gratuite.
+        return super().get_throttles() if self.request.method == "POST" else []
+
+    def get(self, request):
+        """L'app n'affiche le bouton que si la lecture est configurée (clé API présente)."""
+        return Response({"available": registration_scan.is_available()})
+
     def post(self, request):
         try:
             fields = services.scan_registration_card(request.user, request.FILES.get("image"))

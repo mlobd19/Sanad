@@ -127,3 +127,24 @@ def test_company_member_can_scan_but_not_insurer_agent(db, demo, agent_client, c
 
 def test_scan_requires_login(db, claude):
     assert scan(APIClient(), photo()).status_code == 401
+
+
+def test_app_is_told_whether_scan_is_available(customer_client, settings):
+    assert customer_client.get("/api/assets/scan").data == {"available": False}
+    settings.ANTHROPIC_API_KEY = "test-key"
+    assert customer_client.get("/api/assets/scan").data == {"available": True}
+
+
+def test_availability_check_does_not_use_scan_quota():
+    from rest_framework.test import APIRequestFactory
+    from rest_framework.throttling import ScopedRateThrottle
+
+    from apps.policies.api import RegistrationScanView
+
+    factory = APIRequestFactory()
+    for method, throttled in (("get", False), ("post", True)):
+        view = RegistrationScanView()
+        view.throttle_classes = [ScopedRateThrottle]  # les tests désactivent les limites par défaut
+        view.request = getattr(factory, method)("/api/assets/scan")
+        throttles = view.get_throttles()
+        assert any(isinstance(t, ScopedRateThrottle) for t in throttles) is throttled

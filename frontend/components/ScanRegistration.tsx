@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { Icon } from "@/components/Icon";
-import { ApiError, apiUpload, type RegistrationScan } from "@/lib/api";
+import { api, ApiError, apiUpload, type RegistrationScan } from "@/lib/api";
 import { useI18n, type Key } from "@/lib/i18n";
 
 const ERRORS: Record<string, Key> = {
@@ -19,12 +19,20 @@ const ERRORS: Record<string, Key> = {
  * Bouton « Scanner la carte grise » : ouvre l'appareil photo (ou la galerie),
  * envoie la photo à l'API qui renvoie les champs lus, puis les passe au formulaire.
  * Le client vérifie toujours les champs avant de valider.
+ * Rien n'est affiché tant que la lecture n'est pas configurée côté serveur (clé API).
  */
 export function ScanRegistration({ onRead }: { onRead: (fields: RegistrationScan) => void }) {
   const { t } = useI18n();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ tone: "green" | "sand" | "red"; key: Key } | null>(null);
+  const [available, setAvailable] = useState(false);
+
+  useEffect(() => {
+    api<{ available: boolean }>("assets/scan")
+      .then((r) => setAvailable(r.available))
+      .catch(() => setAvailable(false));
+  }, []);
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -46,6 +54,8 @@ export function ScanRegistration({ onRead }: { onRead: (fields: RegistrationScan
       setBusy(false);
     }
   }
+
+  if (!available) return null;
 
   return (
     <div className="stack" style={{ gap: 8 }}>

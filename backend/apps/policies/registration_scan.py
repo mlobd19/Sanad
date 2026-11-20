@@ -51,6 +51,11 @@ class ScanFailed(Exception):
     """L'API n'a pas pu lire la photo (erreur réseau, refus, réponse inexploitable)."""
 
 
+def is_available() -> bool:
+    """Vrai si une clé API est configurée (ANTHROPIC_API_KEY)."""
+    return bool(settings.ANTHROPIC_API_KEY)
+
+
 def prepare_image(raw: bytes) -> bytes:
     """Photo redressée (EXIF), réduite et réencodée en JPEG. ValueError si ce n'est pas une image."""
     try:
@@ -66,7 +71,7 @@ def prepare_image(raw: bytes) -> bytes:
 
 def read_card(jpeg: bytes) -> dict:
     """Champs lus sur la carte grise, au format de SCHEMA."""
-    if not settings.ANTHROPIC_API_KEY:
+    if not is_available():
         raise ScanUnavailable("ANTHROPIC_API_KEY absente")
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=60, max_retries=1)
     try:
