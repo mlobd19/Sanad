@@ -180,7 +180,7 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 
 .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .chips button { min-height: 44px; padding: 0 16px; border-radius: 22px; border: 2px solid var(--line-strong); background: var(--card); font-weight: 600; font-size: 14px; white-space: nowrap; cursor: pointer; color: var(--ink); }
-.chips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chips button[aria-pressed="true"], .chips button[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 .note { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink-2); line-height: 1.4; }
 
 .insurer-logo { position: relative; flex-shrink: 0; border-radius: 12px; background: var(--bg); color: var(--ink); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0.02em; }

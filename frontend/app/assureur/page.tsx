@@ -7,9 +7,12 @@ import { InsurerLogo } from "@/components/InsurerLogo";
 import {
   api,
   ApiError,
+  apiBlobUrl,
   downloadFile,
   getToken,
   setToken,
+  type ClaimStatus,
+  type InsurerClaim,
   type InsurerCommissions,
   type InsurerMe,
   type InsurerPolicy,
@@ -18,13 +21,14 @@ import { date, money, month, num, percent } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useLoad } from "@/lib/useLoad";
 
-type Tab = "pending" | "issued" | "commissions";
+type Tab = "pending" | "issued" | "claims" | "commissions";
 type DecisionKind = "validate" | "refuse";
 type Decision = { policy: InsurerPolicy; kind: DecisionKind };
 
 const TABS: { id: Tab; label: Key }[] = [
   { id: "pending", label: "tabPending" },
   { id: "issued", label: "tabIssued" },
+  { id: "claims", label: "tabClaims" },
   { id: "commissions", label: "tabCommissions" },
 ];
 
@@ -104,7 +108,10 @@ function Portal({ me }: { me: InsurerMe }) {
   // Clé + variables (et non le texte traduit) : le message suit le changement de langue.
   const [toast, setToast] = useState<{ key: Key; vars: Record<string, string> } | null>(null);
   const pending = useLoad<InsurerPolicy[]>("insurer/policies?status=paid");
-  const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ pending: null, issued: null, commissions: null });
+  const newClaims = useLoad<InsurerClaim[]>("insurer/claims?status=submitted");
+  const [closing, setClosing] = useState<InsurerClaim | null>(null);
+  const [claimsVersion, setClaimsVersion] = useState(0);
+  const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ pending: null, issued: null, claims: null, commissions: null });
 
   function logout() {
     setToken(null);
@@ -132,7 +139,15 @@ function Portal({ me }: { me: InsurerMe }) {
     pending.reload();
   }
 
+  function onClaimUpdated(claim: InsurerClaim, key: Key) {
+    setClosing(null);
+    setToast({ key, vars: { number: claim.number } });
+    newClaims.reload();
+    setClaimsVersion((v) => v + 1);
+  }
+
   const pendingCount = pending.data?.length ?? 0;
+  const newClaimsCount = newClaims.data?.length ?? 0;
   const agentName = me.agent.full_name || intlPhone(me.agent.phone);
 
   return (
@@ -174,6 +189,7 @@ function Portal({ me }: { me: InsurerMe }) {
             >
               {t(label)}
               {id === "pending" && pendingCount > 0 && <span className="count">{num(pendingCount, lang)}</span>}
+              {id === "claims" && newClaimsCount > 0 && <span className="count">{num(newClaimsCount, lang)}</span>}
             </button>
           ))}
         </div>
@@ -195,10 +211,16 @@ function Portal({ me }: { me: InsurerMe }) {
           />
         )}
         {tab === "issued" && <IssuedTab />}
+        {tab === "claims" && (
+          <ClaimsTab key={claimsVersion} onTaken={(c) => onClaimUpdated(c, "takenToast")} onClose={setClosing} />
+        )}
         {tab === "commissions" && <CommissionsTab />}
       </main>
 
       {decision && <DecisionDialog decision={decision} onClose={() => setDecision(null)} onDone={onDecided} />}
+      {closing && (
+        <CloseClaimDialog claim={closing} onClose={() => setClosing(null)} onDone={(c) => onClaimUpdated(c, "closedToast")} />
+      )}
     </div>
   );
 }
@@ -644,6 +666,200 @@ function DecisionDialog({ decision, onClose, onDone }: {
           </button>
           <button className={`btn ${validate ? "primary" : "danger-solid"}`} disabled={busy}>
             {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t(validate ? "confirmValidate" : "confirmRefuse")}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
+// --- Onglet « Sinistres » -------------------------------------------------------------------
+
+const CLAIM_FILTERS: { id: ClaimStatus; label: Key }[] = [
+  { id: "submitted", label: "filterNewClaims" },
+  { id: "in_review", label: "filterInReview" },
+  { id: "closed", label: "filterClosed" },
+];
+
+function ClaimsTab({ onTaken, onClose }: { onTaken: (claim: InsurerClaim) => void; onClose: (claim: InsurerClaim) => void }) {
+  const { t, lang } = useI18n();
+  const [filter, setFilter] = useState<ClaimStatus>("submitted");
+  const { data, error, reload } = useLoad<InsurerClaim[]>(`insurer/claims?status=${filter}`);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [actionError, setActionError] = useState("");
+
+  async function take(claim: InsurerClaim) {
+    setBusy(claim.id);
+    setActionError("");
+    try {
+      onTaken(await api<InsurerClaim>(`insurer/claims/${claim.id}/take`, { method: "POST" }));
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : t("error"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function openPhoto(claim: InsurerClaim, photoId: number) {
+    // Fenêtre ouverte tout de suite (sinon bloquée), puis remplie avec la photo chargée avec le jeton.
+    const win = window.open("", "_blank");
+    try {
+      const url = await apiBlobUrl(`insurer/claims/${claim.id}/photos/${photoId}`);
+      if (win) win.location.href = url;
+    } catch {
+      win?.close();
+      setActionError(t("error"));
+    }
+  }
+
+  return (
+    <>
+      <SectionHead title={t("tabClaims")} reload={reload}>
+        <div className="chips" role="group" aria-label={t("tabClaims")}>
+          {CLAIM_FILTERS.map((f) => (
+            <button key={f.id} type="button" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{t(f.label)}</button>
+          ))}
+        </div>
+      </SectionHead>
+      {actionError && <div className="banner red" role="alert">{actionError}</div>}
+      <Loadable data={data} error={error} reload={reload} empty={t(`noClaims_${filter}` as Key)}>
+        {(rows) => (
+          <table className="ptable">
+            <thead>
+              <tr>
+                <th scope="col">{t("colClaim")}</th>
+                <th scope="col">{t("colCustomer")}</th>
+                <th scope="col">{t("vehicle")}</th>
+                <th scope="col">{t("colOccurred")}</th>
+                <th scope="col">{t("colCircumstances")}</th>
+                <th scope="col">{t("claimPhotos")}</th>
+                <th scope="col">{filter === "closed" ? t("claimInsurerNote") : <span className="sr-only">{t("colActions")}</span>}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c) => (
+                <tr key={c.id}>
+                  <td data-label={t("colClaim")}>
+                    <strong><bdi dir="ltr">{c.number}</bdi></strong>
+                    <span className="sub">{t(`claimKind_${c.kind}` as Key)} · {t("colReceived")} {date(c.created_at, lang)}</span>
+                  </td>
+                  <td data-label={t("colCustomer")}>
+                    <strong>{c.customer.full_name || <span className="muted">{t("noName")}</span>}</strong>
+                    <span className="sub"><bdi dir="ltr">{intlPhone(c.customer.phone)}</bdi></span>
+                  </td>
+                  <td data-label={t("vehicle")}>
+                    <bdi className="plate" dir="ltr">{c.policy.plate}</bdi>
+                    <span className="sub">{[c.policy.make, c.policy.product].filter(Boolean).join(" · ")}</span>
+                  </td>
+                  <td data-label={t("colOccurred")} className="num">
+                    {date(c.occurred_on, lang)}
+                    <span className="sub">{c.place}</span>
+                  </td>
+                  <td data-label={t("colCircumstances")} style={{ maxWidth: 320 }}>
+                    {c.injuries && <span className="pill bad" style={{ marginBottom: 4 }}>{t("injuriesFlag")}</span>}
+                    <span style={{ whiteSpace: "pre-line" }}>{c.description}</span>
+                    {c.third_party_plate && (
+                      <span className="sub"><bdi dir="ltr">{t("thirdPartyShort", { plate: c.third_party_plate })}</bdi></span>
+                    )}
+                  </td>
+                  <td data-label={t("claimPhotos")}>
+                    {c.photo_ids.length === 0 && <span className="muted">{t("noPhotos")}</span>}
+                    <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                      {c.photo_ids.map((pid, i) => (
+                        <button key={pid} type="button" className="btn link" onClick={() => openPhoto(c, pid)}
+                          aria-label={`${t("photoN", { n: num(i + 1, lang) })} · ${c.number}`}>
+                          {t("photoN", { n: num(i + 1, lang) })}
+                        </button>
+                      ))}
+                    </div>
+                  </td>
+                  {c.status === "closed" ? (
+                    <td data-label={t("claimInsurerNote")}>
+                      {c.closing_note}
+                      {c.handled_by && <span className="sub">{t("handledBy", { name: c.handled_by })}</span>}
+                    </td>
+                  ) : (
+                    <td className="act wide">
+                      <div className="actions">
+                        {c.status === "submitted" && (
+                          <button type="button" className="btn primary" disabled={busy === c.id} onClick={() => take(c)}
+                            aria-label={`${t("takeClaim")} · ${c.number}`}>
+                            {t("takeClaim")}
+                          </button>
+                        )}
+                        <button type="button" className="btn outline" onClick={() => onClose(c)}
+                          aria-label={`${t("closeClaim")} · ${c.number}`}>
+                          {t("closeClaim")}
+                        </button>
+                      </div>
+                      {c.handled_by && <span className="sub">{t("handledBy", { name: c.handled_by })}</span>}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Loadable>
+    </>
+  );
+}
+
+function CloseClaimDialog({ claim, onClose, onDone }: {
+  claim: InsurerClaim;
+  onClose: () => void;
+  onDone: (claim: InsurerClaim) => void;
+}) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!note.trim()) {
+      setError(t("noteRequired"));
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      onDone(await api<InsurerClaim>(`insurer/claims/${claim.id}/close`, { body: { note: note.trim() } }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("error"));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <dialog ref={ref} className="pdialog" aria-labelledby="close-claim-title" onClose={onClose}>
+      <form onSubmit={submit} noValidate>
+        <h2 id="close-claim-title">{t("closeClaimTitle")} <bdi dir="ltr">{claim.number}</bdi></h2>
+        <p className="ink2" style={{ margin: 0 }}>{t("closeClaimText")}</p>
+        <div className="card" style={{ background: "var(--bg)", border: "none", gap: 4 }}>
+          <strong>{claim.customer.full_name || t("noName")}</strong>
+          <span className="ink2 small"><bdi dir="ltr">{claim.policy.plate}</bdi> · {t(`claimKind_${claim.kind}` as Key)}</span>
+        </div>
+        <div className="field">
+          <label htmlFor="close-note">{t("closeNoteLabel")}</label>
+          <textarea id="close-note" className="input" value={note} maxLength={500} required aria-required="true"
+            aria-invalid={Boolean(error)} aria-describedby={error ? "close-error" : undefined} autoFocus
+            onChange={(e) => {
+              setNote(e.target.value);
+              if (e.target.value.trim()) setError("");
+            }} />
+        </div>
+        {error && <p className="error" id="close-error" role="alert">{error}</p>}
+        <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <button type="button" className="btn outline" onClick={() => ref.current?.close()} disabled={busy}>{t("cancel")}</button>
+          <button className="btn primary" disabled={busy}>
+            {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("confirmClose")}
           </button>
         </div>
       </form>

@@ -9,7 +9,9 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.storage import private_file_response
 from apps.attestations.models import Attestation
+from apps.audit.models import record
 
 from . import registration_scan, services
 from .models import Claim, Commission, InsuredAsset, Policy, Quote
@@ -209,26 +211,43 @@ class PolicyDetailView(APIView):
 
 
 class ClaimSerializer(serializers.ModelSerializer):
+    number = serializers.CharField(read_only=True)
+    photos = serializers.SerializerMethodField()
+
     class Meta:
         model = Claim
-        fields = ["id", "occurred_on", "description", "status", "created_at"]
-        read_only_fields = ["id", "status", "created_at"]
+        fields = ["id", "number", "kind", "occurred_on", "place", "description", "third_party_plate", "injuries",
+                  "status", "closing_note", "photos", "created_at", "updated_at"]
+
+    def get_photos(self, claim):
+        return len(claim.photos.all())  # nombre seulement : les fichiers restent privés
+
+
+def claim_error(exc: DjangoValidationError) -> Response:
+    return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
+
+
+def truthy(value) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "on", "oui"}
 
 
 class ClaimView(APIView):
+    """Sinistres d'un contrat du client : liste et déclaration (multipart, champ « photos » répété)."""
+
     permission_classes = [IsCustomer]
 
     def get(self, request, policy_id):
         policy = get_object_or_404(Policy, pk=policy_id, customer=request.user)
-        return Response(ClaimSerializer(policy.claims.all(), many=True).data)
+        return Response(ClaimSerializer(policy.claims.prefetch_related("photos"), many=True).data)
 
     def post(self, request, policy_id):
         policy = get_object_or_404(Policy, pk=policy_id, customer=request.user)
-        if policy.status != Policy.Status.ACTIVE:
-            return Response({"detail": "Un sinistre se déclare sur une police active."}, status=400)
-        serializer = ClaimSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        claim = serializer.save(policy=policy)
+        data = {key: request.data.get(key) for key in ("kind", "occurred_on", "place", "description", "third_party_plate")}
+        data["injuries"] = truthy(request.data.get("injuries"))
+        try:
+            claim = services.declare_claim(request.user, policy, data, request.FILES.getlist("photos"))
+        except DjangoValidationError as exc:
+            return claim_error(exc)
         return Response(ClaimSerializer(claim).data, status=status.HTTP_201_CREATED)
 
 
@@ -351,3 +370,71 @@ class InsurerCommissionView(APIView):
             "months": data["months"],
             "items": CommissionSerializer(data["items"], many=True).data,
         })
+
+
+class InsurerClaimSerializer(ClaimSerializer):
+    policy = serializers.SerializerMethodField()
+    customer = serializers.SerializerMethodField()
+    photo_ids = serializers.SerializerMethodField()
+    handled_by = serializers.CharField(source="handled_by.full_name", default=None, read_only=True)
+
+    class Meta(ClaimSerializer.Meta):
+        fields = ClaimSerializer.Meta.fields + ["policy", "customer", "photo_ids", "handled_by"]
+
+    def get_policy(self, claim):
+        policy = claim.policy
+        return {"id": policy.pk, "plate": policy.asset.reference, "product": policy.product.name,
+                "make": policy.asset.attributes.get("make", ""), "starts_on": policy.starts_on,
+                "ends_on": policy.ends_on, "insurer_reference": policy.insurer_reference}
+
+    def get_customer(self, claim):
+        customer = claim.policy.customer
+        return {"full_name": customer.full_name, "phone": customer.phone}
+
+    def get_photo_ids(self, claim):
+        return [photo.pk for photo in claim.photos.all()]
+
+
+class InsurerClaimListView(APIView):
+    permission_classes = [IsInsurerAgent]
+
+    @django_errors
+    def get(self, request):
+        statuses = services.parse_claim_statuses(request.query_params.get("status"))
+        return Response(InsurerClaimSerializer(services.insurer_claims(request.user, statuses), many=True).data)
+
+
+class InsurerClaimActionView(APIView):
+    """Prise en charge (« take ») ou clôture avec note (« close ») d'un sinistre de la compagnie."""
+
+    permission_classes = [IsInsurerAgent]
+
+    @django_errors
+    def post(self, request, claim_id, action):
+        if action not in ("take", "close"):
+            return Response({"detail": "Action inconnue."}, status=404)
+        try:
+            claim = services.insurer_claim(request.user, claim_id)
+        except Claim.DoesNotExist:
+            raise Http404 from None
+        if action == "take":
+            services.take_claim(claim, request.user)
+        else:
+            services.close_claim(claim, request.user, str(request.data.get("note") or ""))
+        return Response(InsurerClaimSerializer(services.insurer_claim(request.user, claim_id)).data)
+
+
+class InsurerClaimPhotoView(APIView):
+    """Photo d'un sinistre de la compagnie de l'agent (fichier privé) ; consultation journalisée."""
+
+    permission_classes = [IsInsurerAgent]
+
+    def get(self, request, claim_id, photo_id):
+        try:
+            claim = services.insurer_claim(request.user, claim_id)
+        except Claim.DoesNotExist:
+            raise Http404 from None
+        photo = get_object_or_404(claim.photos, pk=photo_id)
+        response = private_file_response(photo.file)
+        record("claim.photo_viewed", claim, actor=request.user, photo_id=photo.pk)
+        return response

@@ -58,6 +58,9 @@ api = [
     path("insurer/policies", policies.InsurerPolicyListView.as_view()),
     path("insurer/commissions", policies.InsurerCommissionView.as_view()),
     path("insurer/policies/<int:policy_id>/<str:decision>", policies.InsurerDecisionView.as_view()),
+    path("insurer/claims", policies.InsurerClaimListView.as_view()),
+    path("insurer/claims/<int:claim_id>/photos/<int:photo_id>", policies.InsurerClaimPhotoView.as_view()),
+    path("insurer/claims/<int:claim_id>/<str:action>", policies.InsurerClaimActionView.as_view()),
 ]
 
 urlpatterns = [

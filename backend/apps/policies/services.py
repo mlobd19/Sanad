@@ -12,11 +12,12 @@ from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
+from apps.accounts.storage import detect_document_type
 from apps.audit.models import record
 from apps.catalog.models import DEFAULT_DURATION, DURATIONS, Product
 from apps.notifications.service import notify
 
-from .models import Commission, InsuredAsset, Policy, Quote
+from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Policy, Quote
 
 QUOTE_VALIDITY = timedelta(hours=48)
 REQUIRED_VEHICLE_ATTRIBUTES = {"fiscal_power", "usage"}
@@ -332,3 +333,121 @@ def insurer_commissions(agent) -> dict:
         ],
         "items": items,
     }
+
+
+# --- Sinistres ------------------------------------------------------------------------
+# Le client déclare ; l'assureur (portail) ou l'équipe Sanad (back-office) prend en charge
+# puis clôt. Le client est prévenu à chaque étape.
+
+CLAIM_MAX_PHOTOS = 6
+CLAIM_MAX_PHOTO_BYTES = 8 * 1024 * 1024
+CLAIM_MAX_DESCRIPTION = 2000
+
+
+def _notify_claim(claim: Claim, template: str, **context):
+    customer = claim.policy.customer
+    context = {"number": claim.number, "insurer": claim.policy.product.insurer.name, **context}
+    transaction.on_commit(lambda: notify("whatsapp", customer.phone, template, context, language=customer.language))
+
+
+def declare_claim(customer, policy: Policy, data: dict, photos: list) -> Claim:
+    """Déclaration d'un sinistre survenu pendant la période couverte, avec photos ou constat (6 au plus)."""
+    if policy.customer_id != customer.pk:
+        raise PermissionDenied("Cette police n'appartient pas à ce client.")
+    if policy.status not in (Policy.Status.ACTIVE, Policy.Status.EXPIRED):
+        raise ValidationError("Un sinistre se déclare sur un contrat en cours ou échu.", code="policy_inactive")
+
+    kind = str(data.get("kind") or "")
+    if kind not in Claim.Kind.values:
+        raise ValidationError("Choisissez le type de sinistre.", code="invalid_kind")
+    try:
+        occurred_on = date.fromisoformat(str(data.get("occurred_on") or ""))
+    except ValueError:
+        raise ValidationError("Indiquez la date du sinistre.", code="invalid_date") from None
+    if occurred_on > timezone.localdate():
+        raise ValidationError("La date du sinistre ne peut pas être dans le futur.", code="future_date")
+    if not policy.starts_on <= occurred_on <= policy.ends_on:
+        raise ValidationError("Cette date n'est pas couverte par le contrat.", code="outside_cover")
+    place = " ".join(str(data.get("place") or "").split())[:200]
+    description = str(data.get("description") or "").strip()
+    if not place or not description:
+        raise ValidationError("Indiquez le lieu et décrivez ce qui s'est passé.", code="missing_fields")
+    if len(description) > CLAIM_MAX_DESCRIPTION:
+        raise ValidationError("Description trop longue (2 000 caractères au plus).", code="too_long")
+
+    if len(photos) > CLAIM_MAX_PHOTOS:
+        raise ValidationError("6 photos au plus.", code="too_many_photos")
+    checked = []
+    for upload in photos:
+        if upload.size > CLAIM_MAX_PHOTO_BYTES:
+            raise ValidationError("Photo trop lourde (8 Mo maximum).", code="too_large")
+        ext = detect_document_type(upload)
+        if not ext:
+            raise ValidationError("Formats acceptés : JPEG, PNG, PDF.", code="invalid_type")
+        checked.append((upload, ext))
+
+    with transaction.atomic():
+        claim = Claim.objects.create(
+            policy=policy, declared_by=customer, kind=kind, occurred_on=occurred_on, place=place,
+            description=description, third_party_plate=" ".join(str(data.get("third_party_plate") or "").upper().split())[:40],
+            injuries=bool(data.get("injuries")),
+        )
+        for i, (upload, ext) in enumerate(checked, start=1):
+            upload.name = f"photo-{i}.{ext}"
+            ClaimPhoto.objects.create(claim=claim, file=upload)
+        record("claim.declared", claim, actor=customer, kind=kind, photos=len(checked))
+        _notify_claim(claim, "claim_received")
+    return claim
+
+
+def parse_claim_statuses(raw: str | None) -> list[str]:
+    statuses = [s.strip() for s in (raw or "").split(",") if s.strip()]
+    unknown = set(statuses) - set(Claim.Status.values)
+    if unknown:
+        raise ValidationError(f"Statut inconnu : {', '.join(sorted(unknown))}.")
+    return statuses
+
+
+def insurer_claims(agent, statuses: list[str] | None = None):
+    """Sinistres de la compagnie de l'agent, les plus récents d'abord."""
+    insurer = agent_insurer(agent)
+    qs = Claim.objects.filter(policy__product__insurer=insurer).select_related(
+        "policy__product__insurer", "policy__asset", "policy__customer", "handled_by"
+    ).prefetch_related("photos")
+    return qs.filter(status__in=statuses) if statuses else qs
+
+
+def insurer_claim(agent, claim_id: int) -> Claim:
+    """Sinistre de la compagnie de l'agent ; Claim.DoesNotExist pour toute autre compagnie."""
+    return insurer_claims(agent).get(pk=claim_id)
+
+
+@transaction.atomic
+def take_claim(claim: Claim, actor) -> Claim:
+    """L'assureur (ou l'équipe Sanad) prend le dossier en charge."""
+    claim = Claim.objects.select_for_update().select_related("policy__product__insurer", "policy__customer").get(pk=claim.pk)
+    _check_agent(actor, claim.policy)
+    if claim.status != Claim.Status.SUBMITTED:
+        raise ValidationError("Ce sinistre est déjà pris en charge ou clos.")
+    claim.status, claim.handled_by = Claim.Status.IN_REVIEW, actor
+    claim.save(update_fields=["status", "handled_by", "updated_at"])
+    record("claim.taken", claim, actor=actor)
+    _notify_claim(claim, "claim_in_review")
+    return claim
+
+
+@transaction.atomic
+def close_claim(claim: Claim, actor, note: str) -> Claim:
+    """Clôture avec une note pour le client (issue, indemnisation, pièces manquantes…)."""
+    claim = Claim.objects.select_for_update().select_related("policy__product__insurer", "policy__customer").get(pk=claim.pk)
+    _check_agent(actor, claim.policy)
+    if claim.status == Claim.Status.CLOSED:
+        raise ValidationError("Ce sinistre est déjà clos.")
+    note = " ".join(note.split())
+    if not note:
+        raise ValidationError("La note de clôture est obligatoire : elle est envoyée au client.")
+    claim.status, claim.handled_by, claim.closing_note = Claim.Status.CLOSED, actor, note[:500]
+    claim.save(update_fields=["status", "handled_by", "closing_note", "updated_at"])
+    record("claim.closed", claim, actor=actor, note=claim.closing_note)
+    _notify_claim(claim, "claim_closed", note=claim.closing_note)
+    return claim

@@ -24,6 +24,18 @@ TEMPLATES = {
         "fr": "Votre assurance auto ({plate}) expire dans {days} jour(s). Renouvelez-la sur {platform}.",
         "ar": "ينتهي تأمين سيارتك ({plate}) خلال {days} يوم. جدده على {platform}.",
     },
+    "claim_received": {
+        "fr": "Sinistre {number} reçu et transmis à {insurer}, qui va vous contacter. Suivez-le dans l'app {platform}.",
+        "ar": "تم استلام الحادث {number} وإحالته إلى {insurer} التي ستتصل بك. تابعه في تطبيق {platform}.",
+    },
+    "claim_in_review": {
+        "fr": "Votre sinistre {number} est pris en charge par {insurer}.",
+        "ar": "حادثك {number} قيد المعالجة لدى {insurer}.",
+    },
+    "claim_closed": {
+        "fr": "Votre sinistre {number} est clos. Message de {insurer} : {note}",
+        "ar": "تم إغلاق الحادث {number}. رسالة من {insurer}: {note}",
+    },
     # E-mails (comptes professionnels)
     "password_invite": {
         "fr": (

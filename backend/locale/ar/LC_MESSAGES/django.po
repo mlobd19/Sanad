@@ -1030,3 +1030,58 @@ msgstr "المصدر"
 
 msgid "référence du registre"
 msgstr "مرجع السجل"
+
+# Sinistres
+msgid "Accident"
+msgstr "حادث سير"
+
+msgid "Vol"
+msgstr "سرقة"
+
+msgid "Incendie"
+msgstr "حريق"
+
+msgid "Bris de glace"
+msgstr "كسر الزجاج"
+
+msgid "Autre"
+msgstr "آخر"
+
+msgid "lieu"
+msgstr "المكان"
+
+msgid "immatriculation du tiers"
+msgstr "لوحة ترقيم الطرف الآخر"
+
+msgid "blessés"
+msgstr "جرحى"
+
+msgid "note de clôture"
+msgstr "ملاحظة الإغلاق"
+
+msgid "traité par"
+msgstr "عالجه"
+
+msgid "mis à jour le"
+msgstr "حُدّث في"
+
+msgid "Prendre en charge (à la place de l'assureur)"
+msgstr "التكفل بالملف (بدلا من شركة التأمين)"
+
+msgid "Clore le sinistre…"
+msgstr "إغلاق الحادث…"
+
+msgid "Clore le sinistre"
+msgstr "إغلاق الحادث"
+
+msgid "La note est envoyée au client par message : issue du dossier, indemnisation, pièces manquantes…"
+msgstr "تُرسل الملاحظة إلى العميل برسالة: نتيجة الملف، التعويض، الوثائق الناقصة…"
+
+msgid "Note pour le client (obligatoire)"
+msgstr "ملاحظة للعميل (إلزامية)"
+
+msgid "%(n)s sinistre(s) clos."
+msgstr "تم إغلاق %(n)s حادث(ة)."
+
+msgid "%(n)s sinistre(s) pris en charge."
+msgstr "تم التكفل بـ %(n)s حادث(ة)."

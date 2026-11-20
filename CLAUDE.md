@@ -90,6 +90,10 @@ compile_translations` ; sinon le test des traductions échoue.
   `paid → refused` (remboursement automatique), `active → cancelled`
   (attestation révoquée). Toute transition passe par `policies/services.py`.
 - Un véhicule ne peut pas être couvert deux fois sur la même période.
+- Sinistre : déclaré par le client sur un contrat actif ou échu, date dans la
+  période couverte ; `submitted → in_review → closed` (note de clôture
+  obligatoire, envoyée au client). Traité par l'assureur dans son portail,
+  ou par l'équipe au back-office en renfort. Photos en stockage privé.
 - Particulier : **identité vérifiée avant tout paiement** (registre national ou
   pièce validée au back-office) ; devis et police brouillon restent possibles.
 - Espace entreprise : une entreprise ne voit jamais les données d'une autre ;
@@ -139,8 +143,8 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 1. Espace entreprise, suite : **voyage**, puis **santé de groupe** (l'auto de la
    flotte est faite ; un plan par produit)
-2. Déclaration de sinistre (photos) dans l'app ; adaptateur ANRPTS réel
-   (le dépôt de pièce d'identité en secours est fait)
+2. Adaptateur ANRPTS réel (dépôt de pièce en secours et déclaration de
+   sinistre faits) ; sinistres des véhicules de flotte (espace entreprise)
 3. Mise en ligne (Render : Django + PostgreSQL, Next.js) ; avant : code SMS
    pour la connexion au back-office `/admin/`
 4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),

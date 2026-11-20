@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { ClaimsSection } from "@/components/ClaimsSection";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { KhaimaMark } from "@/components/Logo";
@@ -141,6 +142,7 @@ export default function ContractPage() {
             </section>
           )
         )}
+        {policy && (policy.status === "active" || policy.status === "expired") && <ClaimsSection policy={policy} />}
       </main>
     </App>
   );

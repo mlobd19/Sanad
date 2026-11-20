@@ -1,9 +1,13 @@
 from django.contrib import admin, messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.shortcuts import get_object_or_404
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
+from apps.accounts.storage import private_file_response
+from apps.audit.models import record
 from apps.backoffice.actions import reason_page
 from apps.backoffice.ui import mru, pill, status_pill
 
@@ -186,24 +190,86 @@ class ClaimPhotoInline(admin.TabularInline):
 
     @admin.display(description=_("photo"))
     def open_file(self, photo):
-        return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', photo.file.url, gettext("Ouvrir"))
+        # Fichier privé : ouvert par une vue réservée à l'équipe, jamais par une URL publique.
+        url = reverse("admin:policies_claimphoto_file", args=[photo.pk])
+        return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', url, gettext("Ouvrir"))
 
 
 @admin.register(Claim)
 class ClaimAdmin(admin.ModelAdmin):
-    list_display = ("id", "policy", "occurred_on", "status_display", "created_at")
-    list_filter = ("status",)
-    search_fields = ("policy__asset__reference", "description")
-    fields = ("policy", "occurred_on", "description", "status", "created_at")
-    readonly_fields = ("policy", "occurred_on", "description", "created_at")
+    """Vue d'ensemble des sinistres. L'assureur les traite dans son portail ; l'équipe peut le faire ici en renfort."""
+
+    list_display = ("number_display", "plate", "insurer", "kind", "occurred_on", "injuries", "status_display",
+                    "created_at")
+    list_filter = ("status", "kind", "policy__product__insurer", "injuries")
+    search_fields = ("policy__asset__reference", "description", "place", "policy__customer__phone")
+    fields = ("policy", "declared_by", "kind", "occurred_on", "place", "description", "third_party_plate", "injuries",
+              "status", "closing_note", "handled_by", "created_at", "updated_at")
+    readonly_fields = fields
     inlines = [ClaimPhotoInline]
+    actions = ["take", "close"]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("policy__asset", "policy__product__insurer")
 
     def has_add_permission(self, request):
         return False
 
+    def get_urls(self):
+        return [
+            path("photo/<int:photo_id>/", self.admin_site.admin_view(self.photo_file_view),
+                 name="policies_claimphoto_file"),
+            *super().get_urls(),
+        ]
+
+    def photo_file_view(self, request, photo_id):
+        """Affiche une photo de sinistre à l'équipe ; chaque consultation est journalisée."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        photo = get_object_or_404(ClaimPhoto, pk=photo_id)
+        response = private_file_response(photo.file)
+        record("claim.photo_viewed", photo.claim, actor=request.user, photo_id=photo.pk)
+        return response
+
+    @admin.display(description=_("numéro"), ordering="pk")
+    def number_display(self, claim):
+        return format_html('<span class="sn-mono">{}</span>', claim.number)
+
+    @admin.display(description=_("immatriculation"), ordering="policy__asset__reference")
+    def plate(self, claim):
+        return claim.policy.asset.reference
+
+    @admin.display(description=_("compagnie"), ordering="policy__product__insurer__name")
+    def insurer(self, claim):
+        return claim.policy.product.insurer.name
+
     @admin.display(description=_("statut"), ordering="status")
     def status_display(self, claim):
         return status_pill(claim)
+
+    @admin.action(description=_("Prendre en charge (à la place de l'assureur)"))
+    def take(self, request, queryset):
+        done = 0
+        for claim in queryset:
+            try:
+                services.take_claim(claim, request.user)
+                done += 1
+            except ValidationError as exc:
+                self.message_user(request, f"{claim} : {exc.messages[0]}", messages.ERROR)
+        if done:
+            self.message_user(request, gettext("%(n)s sinistre(s) pris en charge.") % {"n": done}, messages.SUCCESS)
+
+    @admin.action(description=_("Clore le sinistre…"))
+    def close(self, request, queryset):
+        return reason_page(
+            request, self, objects=list(queryset), action="close",
+            title=gettext("Clore le sinistre"),
+            intro=gettext("La note est envoyée au client par message : issue du dossier, indemnisation, "
+                          "pièces manquantes…"),
+            label=gettext("Note pour le client (obligatoire)"), submit=gettext("Clore le sinistre"),
+            apply=lambda claim, note: services.close_claim(claim, request.user, note), danger=False,
+            done_message=gettext("%(n)s sinistre(s) clos."),
+        )
 
 
 @admin.register(Commission)

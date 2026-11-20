@@ -238,6 +238,23 @@ export type GroupOffer = {
 
 export type CompanyOrder = { id: number; total: number; created_at: string; policies: Policy[] };
 
+export type ClaimKind = "accident" | "theft" | "fire" | "glass" | "other";
+export type ClaimStatus = "submitted" | "in_review" | "closed";
+
+/** Sinistre ; « photos » = nombre de fichiers (privés, jamais d'URL côté client). */
+export type Claim = {
+  id: number; number: string; kind: ClaimKind; occurred_on: string; place: string; description: string;
+  third_party_plate: string; injuries: boolean; status: ClaimStatus; closing_note: string; photos: number;
+  created_at: string; updated_at: string;
+};
+
+export type InsurerClaim = Claim & {
+  policy: { id: number; plate: string; product: string; make: string; starts_on: string; ends_on: string; insurer_reference: string };
+  customer: { full_name: string; phone: string };
+  photo_ids: number[];
+  handled_by: string | null;
+};
+
 /** Pièce d'identité déposée (le fichier reste privé : jamais d'URL). */
 export type KycDocument = {
   id: number; kind: "id_card" | "passport"; status: "pending" | "accepted" | "rejected"; uploaded_at: string;

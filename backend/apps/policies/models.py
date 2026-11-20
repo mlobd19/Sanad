@@ -5,6 +5,8 @@ from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.accounts.storage import PrivateStorage
+
 
 def add_months(start: date, months: int) -> date:
     month_index = start.month - 1 + months
@@ -124,21 +126,49 @@ class Policy(models.Model):
 
 
 class Claim(models.Model):
+    """Sinistre déclaré par le client, traité par l'assureur dans son portail (ou par l'équipe Sanad)."""
+
+    class Kind(models.TextChoices):
+        ACCIDENT = "accident", _("Accident")
+        THEFT = "theft", _("Vol")
+        FIRE = "fire", _("Incendie")
+        GLASS = "glass", _("Bris de glace")
+        OTHER = "other", _("Autre")
+
     class Status(models.TextChoices):
         SUBMITTED = "submitted", _("Déclaré")
-        SENT = "sent", _("Transmis à l'assureur")
         IN_REVIEW = "in_review", _("En cours chez l'assureur")
         CLOSED = "closed", _("Clos")
 
     policy = models.ForeignKey(Policy, on_delete=models.PROTECT, related_name="claims", verbose_name=_("police"))
+    declared_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+",
+                                    verbose_name=_("déclaré par"))
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.ACCIDENT, verbose_name=_("type"))
     occurred_on = models.DateField(verbose_name=_("date du sinistre"))
+    place = models.CharField(max_length=200, default="", verbose_name=_("lieu"))
     description = models.TextField(verbose_name=_("description"))
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.SUBMITTED, verbose_name=_("statut"))
+    third_party_plate = models.CharField(max_length=40, blank=True, verbose_name=_("immatriculation du tiers"))
+    injuries = models.BooleanField(default=False, verbose_name=_("blessés"))
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.SUBMITTED, db_index=True,
+                              verbose_name=_("statut"))
+    closing_note = models.CharField(max_length=500, blank=True, verbose_name=_("note de clôture"))
+    handled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name="+", verbose_name=_("traité par"))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("déclaré le"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("mis à jour le"))
 
     class Meta:
         verbose_name = _("sinistre")
         verbose_name_plural = _("sinistres")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.number
+
+    @property
+    def number(self) -> str:
+        """Numéro communiqué au client et à l'assureur : SIN-AAAA-NNNNNN."""
+        return f"SIN-{self.created_at:%Y}-{self.pk:06d}" if self.pk and self.created_at else "SIN-?"
 
 
 def claim_upload_path(instance, filename):
@@ -149,13 +179,16 @@ def claim_upload_path(instance, filename):
 
 
 class ClaimPhoto(models.Model):
+    """Photo des dégâts ou constat amiable. Fichier privé : jamais d'URL publique."""
+
     claim = models.ForeignKey(Claim, on_delete=models.CASCADE, related_name="photos", verbose_name=_("sinistre"))
-    file = models.FileField(upload_to=claim_upload_path, verbose_name=_("photo"))
+    file = models.FileField(upload_to=claim_upload_path, storage=PrivateStorage(), verbose_name=_("photo"))
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_("ajoutée le"))
 
     class Meta:
         verbose_name = _("photo de sinistre")
         verbose_name_plural = _("photos de sinistre")
+        ordering = ["pk"]
 
 
 class Commission(models.Model):
