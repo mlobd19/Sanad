@@ -15,6 +15,7 @@ en français). Les utilisateurs finaux lisent **français et arabe**.
 cd backend && source .venv/bin/activate
 python manage.py migrate && python manage.py seed_demo
 python manage.py runserver            # API sur :8000 (ne pas ouvrir directement)
+python manage.py reset_demo           # remise à zéro de la démo (DEBUG seulement)
 
 # Application client
 cd frontend && npm run dev            # http://localhost:3000 : app, /assureur, /entreprise, /admin
