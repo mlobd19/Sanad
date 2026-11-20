@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.audit",
     "apps.accounts",
     "apps.catalog",
+    "apps.companies",
     "apps.policies",
     "apps.payments",
     "apps.attestations",
@@ -77,6 +78,10 @@ DATABASES = {
 }
 
 AUTH_USER_MODEL = "accounts.User"
+
+AUTHENTICATION_BACKENDS = ["apps.accounts.backends.PhonePasswordBackend"]
+# Le téléphone (USERNAME_FIELD) n'est unique que pour les comptes particuliers : voir accounts/backends.py.
+SILENCED_SYSTEM_CHECKS = ["auth.W004"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
@@ -149,6 +154,8 @@ PAYMENT_CALLBACK_SECRETS = {
 }
 
 # Bouton « simuler la confirmation » de l'app client : développement uniquement.
+# Plafond d'une transaction mobile money (MRU) ; 0 = pas de plafond. À renseigner avec les opérateurs.
+PAYMENT_MAX_AMOUNT = int(env("PAYMENT_MAX_AMOUNT", 0))
 ENABLE_PAYMENT_SIMULATOR = DEBUG and "simulated" in PAYMENT_PROVIDERS
 
 NOTIFICATION_BACKEND = env("NOTIFICATION_BACKEND", "apps.notifications.backends.ConsoleBackend")

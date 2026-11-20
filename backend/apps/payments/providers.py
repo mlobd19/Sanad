@@ -41,7 +41,7 @@ class PaymentProvider:
     def parse_callback(self, body: bytes, headers) -> CallbackData:
         raise NotImplementedError
 
-    def refund(self, payment) -> str:
+    def refund(self, payment, amount: int) -> str:
         raise NotImplementedError
 
     def _check_hmac(self, body: bytes, signature: str):
@@ -78,7 +78,7 @@ class SimulatedProvider(PaymentProvider):
         except (KeyError, ValueError, TypeError) as exc:
             raise InvalidCallback(f"Corps de callback illisible : {exc}") from exc
 
-    def refund(self, payment) -> str:
+    def refund(self, payment, amount: int) -> str:
         return f"SIMREF-{uuid.uuid4().hex[:10].upper()}"
 
     @staticmethod
@@ -94,7 +94,7 @@ class _PendingOperatorAPI(PaymentProvider):
     def parse_callback(self, body, headers):
         raise InvalidCallback(f"API marchande {self.label} non encore intégrée.")
 
-    def refund(self, payment):
+    def refund(self, payment, amount):
         raise NotImplementedError(f"Remboursement {self.label} non encore intégré.")
 
 

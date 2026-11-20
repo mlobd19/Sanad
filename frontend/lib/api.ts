@@ -52,7 +52,9 @@ export async function api<T = unknown>(path: string, options: { method?: string;
     setToken(null);
     if (typeof window !== "undefined") {
       const path = window.location.pathname;
-      const login = path.startsWith("/assureur") ? "/assureur/connexion" : "/connexion";
+      const login = path.startsWith("/assureur")
+        ? "/assureur/connexion"
+        : path.startsWith("/entreprise") ? "/entreprise/connexion" : "/connexion";
       if (path !== login) window.location.href = login;
     }
   }
@@ -66,6 +68,19 @@ export async function apiBlobUrl(path: string): Promise<string> {
   const response = await fetch(`/api/${path}`, { headers: token ? { Authorization: `Token ${token}` } : {} });
   if (!response.ok) throw new ApiError(response.status, `Erreur ${response.status}`);
   return URL.createObjectURL(await response.blob());
+}
+
+/** Envoi multipart (pièces justificatives, import CSV). */
+export async function apiUpload<T = unknown>(path: string, form: FormData): Promise<T> {
+  const token = getToken();
+  const response = await fetch(`/api/${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Token ${token}` } : {},
+    body: form,
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`);
+  return data as T;
 }
 
 /** Télécharge un fichier protégé (PDF…) avec le jeton de session, sous le nom donné. */
@@ -150,6 +165,7 @@ export type InsurerMe = {
 
 export type InsurerPolicy = Policy & {
   customer: { full_name: string; phone: string; nni: string };
+  company: { legal_name: string; nif: string; rc_number: string; status: string } | null;
   vehicle: { make: string; fiscal_power: number | null; usage: string };
   payment_provider: string | null;
   kyc_status: User["kyc_status"];
@@ -174,3 +190,38 @@ export type CommissionItem = {
 };
 
 export type InsurerCommissions = { indicative: boolean; months: CommissionMonth[]; items: CommissionItem[] };
+
+// --- Espace entreprise ------------------------------------------------------------------
+
+export type CompanyStatus = "pending" | "verified" | "rejected";
+
+export type CompanyMe = {
+  company: {
+    legal_name: string; nif: string; rc_number: string; address: string; status: CompanyStatus;
+    rejection_reason: string; missing_documents: ("nif" | "rc")[];
+    documents: { id: number; kind: "nif" | "rc"; kind_label: string; uploaded_at: string }[];
+  };
+  member: { full_name: string; email: string; phone: string; role: "admin" | "manager" };
+};
+
+export type CompanyMember = {
+  id: number; full_name: string; email: string; phone: string; role: "admin" | "manager"; active: boolean;
+  created_at: string;
+};
+
+export type Vehicle = {
+  id: number;
+  reference: string;
+  attributes: { fiscal_power?: number; usage?: string; make?: string };
+  policy: { id: number; status: PolicyStatus; insurer: string; product: string; ends_on: string } | null;
+};
+
+export type GroupOffer = {
+  insurer: string; insurer_legal_name: string; insurer_logo: string | null; product: string; product_code: string;
+  coverages: string[]; indicative: boolean; total: number;
+  lines: { asset_id: number; plate: string; quote_id: number; premium: number }[];
+};
+
+export type CompanyOrder = { id: number; total: number; created_at: string; policies: Policy[] };
+
+export type FleetImport = { created: string[]; errors: { line: number; plate?: string; message: string }[] };

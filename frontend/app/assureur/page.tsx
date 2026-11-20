@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { InsurerLogo } from "@/components/InsurerLogo";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { date, money, month, num, percent } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
+import { useLoad } from "@/lib/useLoad";
 
 type Tab = "pending" | "issued" | "commissions";
 type DecisionKind = "validate" | "refuse";
@@ -47,25 +48,6 @@ const PROVIDERS: Record<string, Key> = {
 
 function intlPhone(phone: string) {
   return phone.replace(/^\+222(\d{2})(\d{2})(\d{2})(\d{2})$/, "+222 $1 $2 $3 $4");
-}
-
-/** Charge `path` et le recharge à la demande ; les données d'un autre chemin ne sont jamais affichées. */
-function useLoad<T>(path: string) {
-  const [loaded, setLoaded] = useState<{ path: string; data: T } | null>(null);
-  const [error, setError] = useState("");
-  const reload = useCallback(async () => {
-    setError("");
-    try {
-      const data = await api<T>(path);
-      setLoaded({ path, data });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "error");
-    }
-  }, [path]);
-  useEffect(() => {
-    reload();
-  }, [reload]);
-  return { data: loaded?.path === path ? loaded.data : null, error, reload };
 }
 
 // --- Page ---------------------------------------------------------------------------
@@ -271,7 +253,14 @@ function CustomerCell({ p }: { p: InsurerPolicy }) {
   const { t } = useI18n();
   return (
     <td data-label={t("colCustomer")}>
-      <strong>{p.customer.full_name || <span className="muted">{t("noName")}</span>}</strong>
+      {p.company && (
+        <>
+          <strong>{p.company.legal_name}</strong>
+          <span className="sub"><bdi dir="ltr">{t("nifShort", { nif: p.company.nif })}</bdi></span>
+          <span className="sub">{t("subscribedBy", { name: p.customer.full_name || p.customer.phone })}</span>
+        </>
+      )}
+      {!p.company && <strong>{p.customer.full_name || <span className="muted">{t("noName")}</span>}</strong>}
       <span className="sub"><bdi dir="ltr">{intlPhone(p.customer.phone)}</bdi></span>
       {p.customer.nni && <span className="sub">{t("nniShort", { nni: p.customer.nni })}</span>}
     </td>

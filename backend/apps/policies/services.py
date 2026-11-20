@@ -23,8 +23,13 @@ REQUIRED_VEHICLE_ATTRIBUTES = {"fiscal_power", "usage"}
 
 
 def compute_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO) -> list[Quote]:
-    if asset.owner_id != customer.pk:
+    if asset.owner_id != customer.pk or asset.company_id:
         raise PermissionDenied("Ce bien n'appartient pas à ce client.")
+    return build_quotes(customer, asset, branch)
+
+
+def build_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO) -> list[Quote]:
+    """Devis de tous les assureurs actifs pour ce bien (droits vérifiés par l'appelant)."""
     missing = REQUIRED_VEHICLE_ATTRIBUTES - set(asset.attributes)
     if asset.kind == InsuredAsset.Kind.VEHICLE and missing:
         raise ValidationError(f"Attributs manquants : {', '.join(sorted(missing))}.")
@@ -61,7 +66,8 @@ def _has_overlapping_cover(asset, starts_on, ends_on, exclude=None):
 
 
 @transaction.atomic
-def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal_of: Policy | None = None) -> Policy:
+def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal_of: Policy | None = None,
+                  company=None, order=None) -> Policy:
     if quote.customer_id != customer.pk:
         raise PermissionDenied("Ce devis n'appartient pas à ce client.")
     if quote.expires_at <= timezone.now():
@@ -86,6 +92,8 @@ def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal
         starts_on=starts_on,
         ends_on=ends_on,
         renewal_of=renewal_of,
+        company=company,
+        order=order,
     )
     record("policy.created", policy, actor=customer, premium=policy.premium)
     return policy
@@ -237,8 +245,8 @@ def parse_statuses(raw: str | None) -> list[str]:
 def insurer_policies(agent, statuses: list[str] | None = None):
     insurer = agent_insurer(agent)
     qs = Policy.objects.filter(product__insurer=insurer).select_related(
-        "product__insurer", "asset", "customer"
-    ).prefetch_related("attestations", "payments", "renewals")
+        "product__insurer", "asset", "customer", "company"
+    ).prefetch_related("attestations", "payments", "renewals", "order__payments")
     if statuses:
         qs = qs.filter(status__in=statuses)
     return qs

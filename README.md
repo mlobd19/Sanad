@@ -47,7 +47,8 @@ http://localhost:3000/assureur : l'espace web des agents des compagnies
 
 **Connexion en deux facteurs** : email professionnel + mot de passe, puis code
 reçu par SMS sur le téléphone du compte. Un agent ne peut **pas** se connecter
-par SMS seul (l'app client refuse son numéro). En démo : `agent@mar.test`, mot de
+par SMS seul : avec son numéro, l'app client n'ouvre qu'un compte particulier,
+distinct. En démo : `agent@mar.test`, mot de
 passe `demo-sanad-2026` (posé par `seed_demo` **uniquement si DEBUG**), code SMS
 dans la console du backend.
 
@@ -76,6 +77,36 @@ Un agent ne voit et ne décide que sur les polices de **sa** compagnie.
 
 On peut aussi valider une police depuis le back-office Django (action « Valider
 les polices payées »).
+
+## Espace entreprise
+
+http://localhost:3000/entreprise : l'espace web des entreprises (bureau d'abord,
+tablette, français et arabe). Assurance **auto de la flotte** ; santé et voyage
+viendront ensuite.
+
+1. **Inscription libre** sur `/entreprise/inscription` : raison sociale, NIF, n°
+   de Registre du Commerce, administrateur (nom, email, téléphone, mot de passe).
+   Un code SMS confirme le numéro. Le même numéro peut porter aussi un compte
+   particulier : les deux comptes restent séparés.
+2. **Pièces** : attestation NIF et extrait du Registre du Commerce, à déposer
+   dans l'onglet « Entreprise ».
+3. **Vérification par l'équipe Sanad** dans le back-office (Entreprises ›
+   action « Vérifier » ou « Refuser », motif saisi dans la fiche). L'administrateur
+   est prévenu par email. **Avant vérification, pas de paiement** (flotte et
+   devis restent possibles).
+4. **Flotte** : ajout à la main ou import CSV
+   (`immatriculation;marque;cv;usage`, usage `personnel`, `commercial` ou `taxi`) ;
+   les lignes en erreur sont listées.
+5. **Offres groupées** : une compagnie et une formule pour toute la sélection,
+   prix par véhicule et total ; **un seul paiement mobile money** par commande.
+   L'assureur valide ou refuse chaque contrat : un refus ne rembourse que sa ligne.
+6. **Contrats** : attestation PDF par véhicule, ou toutes en un ZIP.
+7. **Membres** : l'administrateur invite des gestionnaires (email d'invitation,
+   lien 72 h). Connexion : email + mot de passe + code SMS, comme les assureurs.
+
+Plafond d'une transaction mobile money : `PAYMENT_MAX_AMOUNT` (0 = aucun ; à
+renseigner avec les opérateurs). Au-delà, la commande est refusée et doit être
+découpée.
 
 ## Catalogue auto de démonstration
 
@@ -126,10 +157,11 @@ services ; les vues API ne contiennent pas de logique métier.
 
 | Module | Rôle |
 | --- | --- |
-| `accounts` | Compte par téléphone, OTP, pièces KYC, rôles (client, agent assureur, équipe) |
+| `accounts` | Comptes, OTP, pièces KYC, rôles (client, agent assureur, membre d'entreprise, équipe) |
+| `companies` | Entreprises : inscription, NIF / RC, vérification, membres, flotte, commandes groupées |
 | `catalog` | Assureurs, produits, grilles tarifaires (facteurs multiplicatifs) |
 | `policies` | Biens assurés, devis, polices et leur cycle de vie, sinistres, commissions |
-| `payments` | Adaptateurs de paiement, callbacks signés et idempotents, remboursements |
+| `payments` | Adaptateurs de paiement, callbacks signés et idempotents, remboursements (partiels pour une commande) |
 | `attestations` | Numérotation, signature Ed25519, QR code, vérification publique, révocation |
 | `notifications` | SMS / WhatsApp derrière une interface unique, modèles FR et AR |
 | `audit` | Journal non modifiable de chaque action sensible |
@@ -186,6 +218,17 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 | GET | `/api/insurer/policies?status=paid` | Polices de la compagnie de l'agent ; plusieurs statuts possibles (`status=active,expired,cancelled`) |
 | POST | `/api/insurer/policies/{id}/validate` ou `/refuse` | Décision de l'assureur (`{insurer_reference?}` ou `{reason}` obligatoire) |
 | GET | `/api/insurer/commissions` | Commissions par mois et détail par police (`indicative` tant que le taux est provisoire) |
+| POST | `/api/company/signup` puis `/signup/verify` | Inscription d'une entreprise, puis code SMS → `{token, user}` |
+| GET | `/api/company/me` | Entreprise (statut, pièces manquantes) et membre connecté |
+| POST | `/api/company/documents` | Pièce `nif` ou `rc` (multipart ; administrateur) |
+| GET/POST | `/api/company/members` | Membres ; inviter : `{full_name, email, phone, role}` (administrateur) |
+| GET/POST | `/api/company/fleet` | Flotte ; ajouter : `{reference, attributes: {fiscal_power, usage, make?}}` |
+| POST | `/api/company/fleet/import` | Import CSV (multipart) → `{created, errors}` |
+| POST | `/api/company/quotes` | `{asset_ids}` → offres par compagnie et formule, prix par véhicule et total |
+| POST | `/api/company/orders` | `{quote_ids, starts_on?}` → commande (polices en brouillon) |
+| POST | `/api/company/orders/{id}/pay` | Un seul paiement pour la commande (entreprise vérifiée uniquement) |
+| GET | `/api/company/policies` | Contrats de l'entreprise |
+| GET | `/api/company/attestations.zip` | Toutes les attestations valides, en PDF |
 
 ## Ce qui reste à brancher
 

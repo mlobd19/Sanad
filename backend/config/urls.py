@@ -5,6 +5,7 @@ from django.urls import include, path
 
 from apps.accounts import api as accounts
 from apps.attestations import api as attestations
+from apps.companies import api as companies
 from apps.payments import api as payments
 from apps.policies import api as policies
 
@@ -37,6 +38,21 @@ api = [
     path("attestations/<int:attestation_id>/pdf", attestations.AttestationPdfView.as_view()),
     path("verify/public-key", attestations.PublicKeyView.as_view()),
     path("verify/<str:token>", attestations.VerifyView.as_view()),
+    # Portail assureur
+    # Espace entreprise
+    path("company/signup", companies.SignupView.as_view()),
+    path("company/signup/verify", companies.SignupVerifyView.as_view()),
+    path("company/me", companies.CompanyMeView.as_view()),
+    path("company/documents", companies.DocumentView.as_view()),
+    path("company/members", companies.MemberView.as_view()),
+    path("company/fleet", companies.FleetView.as_view()),
+    path("company/fleet/import", companies.FleetImportView.as_view()),
+    path("company/quotes", companies.QuoteSelectionView.as_view()),
+    path("company/orders", companies.OrderView.as_view()),
+    path("company/orders/<int:order_id>", companies.OrderDetailView.as_view()),
+    path("company/orders/<int:order_id>/pay", companies.OrderPayView.as_view()),
+    path("company/policies", companies.CompanyPolicyView.as_view()),
+    path("company/attestations.zip", companies.AttestationZipView.as_view()),
     # Portail assureur
     path("insurer/me", policies.InsurerMeView.as_view()),
     path("insurer/policies", policies.InsurerPolicyListView.as_view()),

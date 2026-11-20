@@ -36,6 +36,10 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+    def get_by_natural_key(self, phone):
+        # Le numéro n'identifie qu'un compte particulier (ou d'équipe), jamais un compte pro.
+        return self.exclude(role__in=User.PRO_ROLES).get(phone=normalize_phone(phone))
+
     def create_superuser(self, phone, password, **extra):
         extra.update(is_staff=True, is_superuser=True, role=User.Role.STAFF)
         return self.create_user(phone, password, **extra)
@@ -45,6 +49,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
         CUSTOMER = "customer", "Client"
         INSURER_AGENT = "insurer_agent", "Agent assureur"
+        COMPANY_MEMBER = "company_member", "Membre d'une entreprise"
         STAFF = "staff", "Équipe interne"
 
     class KycStatus(models.TextChoices):
@@ -53,7 +58,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         VERIFIED = "verified", "Vérifié"
         REJECTED = "rejected", "Refusé"
 
-    phone = models.CharField(max_length=16, unique=True)
+    # Un numéro = un seul compte particulier. Le même numéro peut aussi servir de second
+    # facteur (SMS) à des comptes professionnels, identifiés eux par leur email.
+    phone = models.CharField(max_length=16, db_index=True)
     email = models.EmailField(
         "email professionnel", null=True, blank=True, unique=True,
         help_text="Identifiant des comptes professionnels (agents assureurs), avec mot de passe et code SMS.",
@@ -80,7 +87,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     # Rôles qui se connectent par email + mot de passe + code SMS (jamais par SMS seul).
-    PRO_ROLES = (Role.INSURER_AGENT,)
+    PRO_ROLES = (Role.INSURER_AGENT, Role.COMPANY_MEMBER)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["phone"],
+                condition=~models.Q(role__in=["insurer_agent", "company_member"]),
+                name="unique_phone_personal_account",
+                violation_error_message="Un compte existe déjà avec ce numéro.",
+            )
+        ]
 
     @property
     def is_pro(self) -> bool:
@@ -102,7 +119,14 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class OtpCode(models.Model):
+    class Purpose(models.TextChoices):
+        CUSTOMER = "customer", "Connexion particulier"
+        PRO = "pro", "Connexion compte professionnel"
+        SIGNUP = "signup", "Inscription entreprise"
+
     phone = models.CharField(max_length=16, db_index=True)
+    # Un code ne sert qu'au parcours qui l'a demandé (le même numéro peut porter plusieurs comptes).
+    purpose = models.CharField(max_length=10, choices=Purpose.choices, default=Purpose.CUSTOMER)
     code_hash = models.CharField(max_length=64)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()

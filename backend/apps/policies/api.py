@@ -43,6 +43,14 @@ class AssetSerializer(serializers.ModelSerializer):
         return value
 
 
+class IsCustomer(BasePermission):
+    """Espace particulier : les comptes pro (agents, entreprises) ont leurs propres API."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and not user.is_pro)
+
+
 def logo_url(insurer):
     return insurer.logo.url if insurer.logo else None
 
@@ -104,6 +112,8 @@ class PolicySerializer(serializers.ModelSerializer):
 
 
 class AssetListView(APIView):
+    permission_classes = [IsCustomer]
+
     def get(self, request):
         return Response(AssetSerializer(request.user.assets.all(), many=True).data)
 
@@ -115,6 +125,8 @@ class AssetListView(APIView):
 
 
 class QuoteView(APIView):
+    permission_classes = [IsCustomer]
+
     @django_errors
     def post(self, request, asset_id):
         asset = get_object_or_404(InsuredAsset, pk=asset_id, owner=request.user)
@@ -123,6 +135,8 @@ class QuoteView(APIView):
 
 
 class PolicyListView(APIView):
+    permission_classes = [IsCustomer]
+
     def get(self, request):
         qs = request.user.policies.select_related("product__insurer", "asset").prefetch_related("attestations")
         return Response(PolicySerializer(qs, many=True).data)
@@ -141,6 +155,8 @@ class PolicyListView(APIView):
 
 
 class PolicyDetailView(APIView):
+    permission_classes = [IsCustomer]
+
     def get(self, request, policy_id):
         policy = get_object_or_404(Policy, pk=policy_id, customer=request.user)
         return Response(PolicySerializer(policy).data)
@@ -154,6 +170,8 @@ class ClaimSerializer(serializers.ModelSerializer):
 
 
 class ClaimView(APIView):
+    permission_classes = [IsCustomer]
+
     def get(self, request, policy_id):
         policy = get_object_or_404(Policy, pk=policy_id, customer=request.user)
         return Response(ClaimSerializer(policy.claims.all(), many=True).data)
@@ -181,6 +199,7 @@ class IsInsurerAgent(BasePermission):
 
 class InsurerPolicySerializer(PolicySerializer):
     customer = serializers.SerializerMethodField()
+    company = serializers.SerializerMethodField()
     vehicle = serializers.SerializerMethodField()
     payment_provider = serializers.SerializerMethodField()
     kyc_status = serializers.CharField(source="customer.kyc_status", read_only=True)
@@ -188,18 +207,26 @@ class InsurerPolicySerializer(PolicySerializer):
 
     class Meta(PolicySerializer.Meta):
         fields = PolicySerializer.Meta.fields + [
-            "customer", "vehicle", "payment_provider", "kyc_status", "indicative", "insurer_reference", "decided_at",
+            "customer", "company", "vehicle", "payment_provider", "kyc_status", "indicative", "insurer_reference", "decided_at",
         ]
 
     def get_customer(self, policy):
         return {"full_name": policy.customer.full_name, "phone": policy.customer.phone, "nni": policy.customer.nni}
+
+    def get_company(self, policy):
+        company = policy.company
+        if company is None:
+            return None
+        return {"legal_name": company.legal_name, "nif": company.nif, "rc_number": company.rc_number,
+                "status": company.status}
 
     def get_vehicle(self, policy):
         attrs = policy.asset.attributes
         return {"make": attrs.get("make", ""), "fiscal_power": attrs.get("fiscal_power"), "usage": attrs.get("usage", "")}
 
     def get_payment_provider(self, policy):
-        paid = next((p for p in policy.payments.all() if p.status == "succeeded"), None)
+        payments = list(policy.payments.all()) + (list(policy.order.payments.all()) if policy.order_id else [])
+        paid = next((p for p in payments if p.status in ("succeeded", "refunded")), None)
         return paid.provider if paid else None
 
     def get_renewed(self, policy):

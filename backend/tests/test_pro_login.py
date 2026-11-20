@@ -7,6 +7,7 @@ import pytest
 from django.apps import apps as django_apps
 from django.core import mail
 from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
@@ -120,19 +121,26 @@ def test_customer_account_cannot_use_pro_login(demo):
     assert step1(APIClient(), email="client@exemple.test").status_code == 400
 
 
-def test_agent_cannot_log_in_with_sms_only(mar_agent):
+def test_sms_only_never_opens_the_agent_account(mar_agent):
+    """Même numéro : le SMS seul ouvre (ou crée) le compte particulier, jamais le compte agent."""
     client = APIClient()
-    resp = client.post("/api/auth/otp/request", {"phone": mar_agent.phone}, format="json")
-    assert resp.status_code == 400
-    assert "compte professionnel" in resp.data["detail"]
-    assert sms_count(mar_agent.phone) == 0
+    step1(client)  # code « pro » envoyé au téléphone de l'agent
+    pro_code = sms_code(mar_agent.phone)
+    resp = client.post("/api/auth/otp/verify", {"phone": mar_agent.phone, "code": pro_code}, format="json")
+    assert resp.status_code == 400  # un code « pro » ne vaut rien dans le parcours particulier
 
-    # Même avec un code valide obtenu par le parcours pro, l'entrée « particulier » reste fermée.
-    step1(client)
-    resp = client.post("/api/auth/otp/verify", {"phone": mar_agent.phone, "code": sms_code(mar_agent.phone)},
-                       format="json")
-    assert resp.status_code == 400
+    data = login(client, mar_agent.phone)  # parcours particulier complet
+    assert data["user"]["role"] == "customer"
+    assert data["user"]["id"] != mar_agent.pk
+    assert User.objects.filter(phone=mar_agent.phone).count() == 2
+    assert client.get("/api/insurer/me").status_code == 403
     assert not Token.objects.filter(user=mar_agent).exists()
+
+
+def test_personal_phone_stays_unique(demo):
+    login(APIClient(), "+22236000060")
+    with pytest.raises(IntegrityError), transaction.atomic():
+        User.objects.create_user("+22236000060")
 
 
 # --- Mot de passe ----------------------------------------------------------------------------

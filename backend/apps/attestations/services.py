@@ -112,7 +112,7 @@ class AttestationRevoked(ValidationError):
 
 
 def attestation_for(user, attestation_id: int) -> Attestation:
-    """Attestation visible par ce compte : son propriétaire, ou un agent de la compagnie.
+    """Attestation visible par ce compte : son titulaire (client ou entreprise), ou un agent de la compagnie.
 
     Attestation.DoesNotExist pour tout autre compte (on ne révèle pas qu'elle existe).
     """
@@ -121,7 +121,12 @@ def attestation_for(user, attestation_id: int) -> Attestation:
     ).filter(pk=attestation_id)
     if user.role == user.Role.INSURER_AGENT and user.insurer_id:
         return qs.get(policy__product__insurer_id=user.insurer_id)
-    return qs.get(policy__customer=user)
+    if user.role == user.Role.COMPANY_MEMBER:
+        membership = getattr(user, "membership", None)
+        if membership is None:
+            raise Attestation.DoesNotExist
+        return qs.get(policy__company_id=membership.company_id)
+    return qs.get(policy__customer=user, policy__company__isnull=True)
 
 
 def attestation_pdf(attestation: Attestation, actor=None) -> bytes:

@@ -1,6 +1,7 @@
 import json
 
 from django.conf import settings
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -9,7 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.policies.api import django_errors
+from apps.policies.api import IsCustomer, django_errors
 from apps.policies.models import Policy
 
 from .models import Payment
@@ -23,6 +24,8 @@ class ProviderListView(APIView):
 
 
 class PayPolicyView(APIView):
+    permission_classes = [IsCustomer]
+
     @django_errors
     def post(self, request, policy_id):
         policy = get_object_or_404(Policy, pk=policy_id, customer=request.user)
@@ -55,7 +58,8 @@ class SimulateConfirmView(APIView):
     def post(self, request, payment_id):
         if not settings.ENABLE_PAYMENT_SIMULATOR:
             raise Http404
-        payment = get_object_or_404(Payment, pk=payment_id, provider="simulated", policy__customer=request.user)
+        mine = Q(policy__customer=request.user) | Q(order__company__memberships__user=request.user)
+        payment = get_object_or_404(Payment.objects.filter(mine).distinct(), pk=payment_id, provider="simulated")
         body = json.dumps({"reference": payment.external_ref, "status": "success", "amount": payment.amount}).encode()
         outcome = handle_callback("simulated", body, {"X-Signature": SimulatedProvider.sign(body)})
         return Response({"outcome": outcome})

@@ -1,11 +1,12 @@
 import logging
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.models import record
-from apps.policies.models import Policy
+from apps.policies.models import Order, Policy
 
 from .models import CallbackLog, Payment, Refund
 from .providers import InvalidCallback, get_provider
@@ -20,6 +21,7 @@ def initiate_payment(customer, policy: Policy, provider_name: str, payer_phone: 
         raise PermissionDenied("Cette police n'appartient pas à ce client.")
     if policy.status != Policy.Status.DRAFT:
         raise ValidationError("Cette police n'attend pas de paiement.")
+    _check_ceiling(policy.premium)
     try:
         provider = get_provider(provider_name)
     except KeyError as exc:
@@ -35,6 +37,39 @@ def initiate_payment(customer, policy: Policy, provider_name: str, payer_phone: 
     payment.external_ref = result.external_ref
     payment.save(update_fields=["external_ref"])
     record("payment.initiated", payment, actor=customer, provider=provider.name, amount=payment.amount)
+    return payment, result.instructions
+
+
+def _check_ceiling(amount: int):
+    ceiling = settings.PAYMENT_MAX_AMOUNT
+    if ceiling and amount > ceiling:
+        raise ValidationError(
+            f"Montant au-dessus du plafond d'une transaction mobile money ({ceiling} MRU) : "
+            "souscrivez en plusieurs commandes."
+        )
+
+
+@transaction.atomic
+def initiate_order_payment(member, order: Order, provider_name: str, payer_phone: str = "") -> tuple[Payment, str]:
+    """Un seul paiement mobile money pour toutes les polices d'une commande."""
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    policies = list(order.policies.select_for_update())
+    if not policies or any(p.status != Policy.Status.DRAFT for p in policies):
+        raise ValidationError("Cette commande n'attend pas de paiement.")
+    amount = sum(p.premium for p in policies)
+    _check_ceiling(amount)
+    try:
+        provider = get_provider(provider_name)
+    except KeyError as exc:
+        raise ValidationError(str(exc)) from exc
+    order.payments.filter(status=Payment.Status.PENDING).update(
+        status=Payment.Status.FAILED, failure_reason="Remplacé par une nouvelle tentative"
+    )
+    payment = Payment.objects.create(order=order, provider=provider.name, amount=amount, payer_phone=payer_phone)
+    result = provider.initiate(payment)
+    payment.external_ref = result.external_ref
+    payment.save(update_fields=["external_ref"])
+    record("payment.initiated", payment, actor=member, provider=provider.name, amount=amount, order=order.pk)
     return payment, result.instructions
 
 
@@ -86,31 +121,46 @@ def _apply(payment, data) -> str:
 
     from apps.policies.services import on_payment_confirmed
 
-    policy = Policy.objects.select_for_update().get(pk=payment.policy_id)
-    if policy.status != Policy.Status.DRAFT:
+    if payment.order_id:
+        policies = list(Policy.objects.select_for_update().filter(order_id=payment.order_id).order_by("pk"))
+    else:
+        policies = [Policy.objects.select_for_update().get(pk=payment.policy_id)]
+    if all(p.status != Policy.Status.DRAFT for p in policies):
         # Double paiement (ex. deux tentatives confirmées) : on rembourse le second.
         _refund(payment, note="Double paiement")
         return "duplicate_refunded"
-    on_payment_confirmed(policy)
+    for policy in policies:
+        if policy.status == Policy.Status.DRAFT:
+            on_payment_confirmed(policy)
     return "succeeded"
 
 
-def _refund(payment: Payment, note: str, actor=None) -> Refund:
-    refund = Refund.objects.create(payment=payment, amount=payment.amount, note=note)
+def _refund(payment: Payment, note: str, actor=None, amount: int | None = None, policy=None) -> Refund:
+    """Rembourse tout le paiement, ou seulement `amount` (une ligne d'une commande)."""
+    remaining = payment.amount - payment.refunded_amount
+    amount = remaining if amount is None else min(amount, remaining)
+    refund = Refund.objects.create(payment=payment, policy=policy, amount=amount, note=note)
     try:
-        refund.external_ref = get_provider(payment.provider).refund(payment)
+        refund.external_ref = get_provider(payment.provider).refund(payment, amount)
         refund.status = Refund.Status.DONE
     except Exception as exc:  # l'équipe reprend à la main depuis le back-office
         refund.status = Refund.Status.FAILED
         refund.note = f"{note} · {exc}"[:255]
         logger.exception("Remboursement en échec pour le paiement %s", payment.pk)
     refund.save()
-    payment.status = Payment.Status.REFUNDED
-    payment.save(update_fields=["status"])
-    record("payment.refunded", payment, actor=actor, refund_status=refund.status, note=note)
+    if payment.refunded_amount >= payment.amount:
+        payment.status = Payment.Status.REFUNDED
+        payment.save(update_fields=["status"])
+    record("payment.refunded", payment, actor=actor, refund_status=refund.status, note=note, amount=amount)
     return refund
 
 
 def refund_policy(policy: Policy, actor=None):
+    """Refus de l'assureur : rembourse la police, seule, même si elle a été payée dans une commande."""
     for payment in policy.payments.select_for_update().filter(status=Payment.Status.SUCCEEDED):
-        _refund(payment, note="Refus de l'assureur", actor=actor)
+        _refund(payment, note="Refus de l'assureur", actor=actor, policy=policy)
+    if policy.order_id:
+        for payment in Payment.objects.select_for_update().filter(order_id=policy.order_id,
+                                                                   status=Payment.Status.SUCCEEDED):
+            _refund(payment, note=f"Refus de l'assureur · police #{policy.pk}", actor=actor,
+                    amount=policy.premium, policy=policy)

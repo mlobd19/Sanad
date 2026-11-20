@@ -20,6 +20,9 @@ class InsuredAsset(models.Model):
         VEHICLE = "vehicle", "Véhicule"
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="assets")
+    # Flotte d'une entreprise : le bien appartient à l'entreprise ; owner = le membre qui l'a déclaré.
+    company = models.ForeignKey("companies.Company", null=True, blank=True, on_delete=models.PROTECT,
+                                related_name="assets")
     kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.VEHICLE)
     reference = models.CharField(max_length=40, db_index=True, help_text="Immatriculation pour un véhicule.")
     attributes = models.JSONField(default=dict, help_text="Marque, modèle, puissance fiscale, usage…")
@@ -41,6 +44,26 @@ class Quote(models.Model):
 
     class Meta:
         ordering = ["premium"]
+
+
+class Order(models.Model):
+    """Commande : plusieurs polices réglées par un seul paiement (flotte d'une entreprise)."""
+
+    company = models.ForeignKey("companies.Company", null=True, blank=True, on_delete=models.PROTECT,
+                                related_name="orders")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "commande"
+
+    def __str__(self):
+        return f"Commande #{self.pk}"
+
+    @property
+    def total(self) -> int:
+        return sum(p.premium for p in self.policies.all())
 
 
 class Policy(models.Model):
@@ -67,6 +90,10 @@ class Policy(models.Model):
     decided_at = models.DateTimeField(null=True, blank=True)
     refusal_reason = models.CharField(max_length=255, blank=True)
     renewal_of = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="renewals")
+    # Contrat d'entreprise : customer = le membre qui a souscrit, company = le titulaire.
+    company = models.ForeignKey("companies.Company", null=True, blank=True, on_delete=models.PROTECT,
+                                related_name="policies")
+    order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.PROTECT, related_name="policies")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

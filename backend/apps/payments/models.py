@@ -11,7 +11,11 @@ class Payment(models.Model):
         REFUNDED = "refunded", "Remboursé"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    policy = models.ForeignKey("policies.Policy", on_delete=models.PROTECT, related_name="payments")
+    # Soit une police (particulier), soit une commande de plusieurs polices (entreprise).
+    policy = models.ForeignKey("policies.Policy", null=True, blank=True, on_delete=models.PROTECT,
+                               related_name="payments")
+    order = models.ForeignKey("policies.Order", null=True, blank=True, on_delete=models.PROTECT,
+                              related_name="payments")
     provider = models.CharField(max_length=20)
     amount = models.PositiveIntegerField(help_text="MRU")
     payer_phone = models.CharField(max_length=16, blank=True)
@@ -28,8 +32,17 @@ class Payment(models.Model):
                 fields=["provider", "external_ref"],
                 condition=~models.Q(external_ref=""),
                 name="unique_external_ref_per_provider",
-            )
+            ),
+            models.CheckConstraint(
+                condition=(models.Q(policy__isnull=False, order__isnull=True)
+                           | models.Q(policy__isnull=True, order__isnull=False)),
+                name="payment_for_policy_xor_order",
+            ),
         ]
+
+    @property
+    def refunded_amount(self) -> int:
+        return sum(r.amount for r in self.refunds.all())
 
 
 class Refund(models.Model):
@@ -38,7 +51,10 @@ class Refund(models.Model):
         DONE = "done", "Effectué"
         FAILED = "failed", "Échoué, à traiter à la main"
 
-    payment = models.OneToOneField(Payment, on_delete=models.PROTECT, related_name="refund")
+    # Plusieurs remboursements possibles : une commande peut être remboursée ligne par ligne.
+    payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name="refunds")
+    policy = models.ForeignKey("policies.Policy", null=True, blank=True, on_delete=models.PROTECT,
+                               related_name="refunds")
     amount = models.PositiveIntegerField()
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
     external_ref = models.CharField(max_length=80, blank=True)

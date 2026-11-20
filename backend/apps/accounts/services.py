@@ -1,8 +1,9 @@
 """Connexion et comptes.
 
 - Particuliers : numéro de téléphone + code SMS (le compte se crée au premier code).
-- Comptes professionnels (agents assureurs) : email + mot de passe, puis code SMS
-  envoyé au téléphone du compte. Ils ne peuvent jamais se connecter par SMS seul.
+- Comptes professionnels (agents assureurs, membres d'entreprise) : email + mot de
+  passe, puis code SMS envoyé au téléphone du compte. Le même numéro peut porter un
+  compte particulier : la connexion par SMS seul n'ouvre jamais que celui-ci.
 """
 import hashlib
 import hmac
@@ -28,10 +29,6 @@ from .models import OtpCode, User, normalize_phone
 
 PRO_CHALLENGE_SALT = "sanad.pro-login"
 BAD_CREDENTIALS = "Email ou mot de passe incorrect."
-PRO_PHONE_MESSAGE = (
-    "Ce numéro est celui d'un compte professionnel : connectez-vous avec votre email "
-    "sur votre espace (portail assureur)."
-)
 
 
 class OtpError(Exception):
@@ -47,12 +44,13 @@ def _hash(phone: str, code: str) -> str:
     return hmac.new(key, f"{phone}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
-def _send_otp(phone: str) -> OtpCode:
+def send_code(phone: str, purpose: str) -> OtpCode:
     code = f"{secrets.randbelow(10**6):06d}"
     with transaction.atomic():
-        OtpCode.objects.filter(phone=phone, used=False).update(used=True)
+        OtpCode.objects.filter(phone=phone, purpose=purpose, used=False).update(used=True)
         otp = OtpCode.objects.create(
             phone=phone,
+            purpose=purpose,
             code_hash=_hash(phone, code),
             expires_at=timezone.now() + timedelta(seconds=settings.OTP_TTL_SECONDS),
         )
@@ -60,7 +58,7 @@ def _send_otp(phone: str) -> OtpCode:
     return otp
 
 
-def _consume_otp(phone: str, code: str) -> None:
+def check_code(phone: str, code: str, purpose: str) -> None:
     """Vérifie et consomme le code ; OtpError sinon."""
     # L'erreur est levée APRÈS la transaction : sinon le compteur de tentatives
     # serait annulé avec elle et les essais deviendraient illimités.
@@ -68,7 +66,7 @@ def _consume_otp(phone: str, code: str) -> None:
     with transaction.atomic():
         otp = (
             OtpCode.objects.select_for_update()
-            .filter(phone=phone, used=False, expires_at__gt=timezone.now())
+            .filter(phone=phone, purpose=purpose, used=False, expires_at__gt=timezone.now())
             .first()
         )
         if otp is None:
@@ -89,30 +87,22 @@ def _consume_otp(phone: str, code: str) -> None:
         raise OtpError(error)
 
 
-def _is_pro_phone(phone: str) -> bool:
-    return User.objects.filter(phone=phone, role__in=User.PRO_ROLES).exists()
-
-
 # --- Particuliers : téléphone + code SMS ----------------------------------------------
 
 
 def request_otp(raw_phone: str) -> OtpCode:
-    phone = normalize_phone(raw_phone)
-    if _is_pro_phone(phone):
-        raise ValidationError(PRO_PHONE_MESSAGE)
-    return _send_otp(phone)
+    return send_code(normalize_phone(raw_phone), OtpCode.Purpose.CUSTOMER)
 
 
 def verify_otp(raw_phone: str, code: str) -> tuple[User, bool]:
-    """Vérifie le code et renvoie (utilisateur, créé)."""
+    """Vérifie le code et renvoie (compte particulier de ce numéro, créé)."""
     phone = normalize_phone(raw_phone)
-    if _is_pro_phone(phone):
-        raise ValidationError(PRO_PHONE_MESSAGE)
-    _consume_otp(phone, code)
-    user, created = User.objects.get_or_create(phone=phone)
+    check_code(phone, code, OtpCode.Purpose.CUSTOMER)
+    # Jamais un compte pro, même s'il partage ce numéro.
+    user = User.objects.filter(phone=phone).exclude(role__in=User.PRO_ROLES).first()
+    created = user is None
     if created:
-        user.set_unusable_password()
-        user.save()
+        user = User.objects.create_user(phone)
     record("user.login", user, actor=user, created=created)
     return user, created
 
@@ -155,7 +145,7 @@ def pro_login(email: str, password: str) -> tuple[str, str]:
     if user.failed_logins or user.locked_until:
         user.failed_logins, user.locked_until = 0, None
         user.save(update_fields=["failed_logins", "locked_until"])
-    _send_otp(user.phone)
+    send_code(user.phone, OtpCode.Purpose.PRO)
     challenge = signing.dumps({"u": user.pk}, salt=PRO_CHALLENGE_SALT)
     return challenge, mask_phone(user.phone)
 
@@ -170,7 +160,7 @@ def pro_verify(challenge: str, code: str) -> User:
     if user is None:
         raise LoginError(BAD_CREDENTIALS)
     try:
-        _consume_otp(user.phone, code)
+        check_code(user.phone, code, OtpCode.Purpose.PRO)
     except OtpError as exc:
         raise LoginError(str(exc)) from None
     user.last_login = timezone.now()
@@ -183,7 +173,7 @@ def pro_verify(challenge: str, code: str) -> User:
 
 
 def portal_path(user: User) -> str:
-    return "/assureur" if user.role == User.Role.INSURER_AGENT else "/"
+    return {User.Role.INSURER_AGENT: "/assureur", User.Role.COMPANY_MEMBER: "/entreprise"}.get(user.role, "")
 
 
 def password_link(user: User) -> str:
@@ -196,11 +186,13 @@ def send_password_email(user: User, kind: str, actor=None) -> None:
     """kind = "invite" (nouveau compte) ou "reset" (mot de passe oublié)."""
     if not user.email:
         raise ValidationError("Ce compte n'a pas d'email.")
+    membership = getattr(user, "membership", None)
+    organisation = user.insurer.name if user.insurer_id else (membership.company.legal_name if membership else "")
     context = {
         "name": user.full_name or user.email,
         "link": password_link(user),
         "phone": mask_phone(user.phone),
-        "role": user.insurer.name if user.insurer_id else user.get_role_display(),
+        "role": organisation or user.get_role_display(),
     }
     notify("email", user.email, f"password_{kind}", context, language=user.language)
     record(f"user.password_{kind}_sent", user, actor=actor)

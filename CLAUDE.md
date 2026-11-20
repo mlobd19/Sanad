@@ -37,17 +37,23 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
 - `backend/` : Django 5.2 + DRF, **monolithe modulaire** (pas de microservices).
   Chaque app garde ses tables ; la logique métier vit dans `services.py`, jamais
   dans les vues (`api.py`).
-  - `accounts` : utilisateur par téléphone (+222XXXXXXXX), OTP, KYC, rôles
-    `customer` / `insurer_agent` / `staff`. Particuliers : téléphone + code SMS.
-    Comptes pro (`User.PRO_ROLES`) : email + mot de passe + code SMS, jamais
-    par SMS seul ; invitation / mot de passe oublié par email (lien 72 h)
+  - `accounts` : utilisateurs, OTP, KYC, rôles `customer` / `insurer_agent` /
+    `company_member` / `staff`. Particuliers : téléphone + code SMS ; le numéro
+    n'est unique que parmi eux. Comptes pro (`User.PRO_ROLES`) : email + mot de
+    passe + code SMS ; le SMS seul n'ouvre jamais qu'un compte particulier.
+    Codes SMS liés à un usage (`OtpCode.purpose`). Invitation / mot de passe
+    oublié par email (lien 72 h). Back-office : `backends.PhonePasswordBackend`
+  - `companies` : entreprises (NIF, RC, statut de vérification), pièces,
+    membres (administrateur / gestionnaire), flotte, devis groupés, commandes ;
+    tout part de `services.member_company(user)`
   - `catalog` : compagnies, produits, facteurs tarifaires, logos ;
     commandes `seed_demo` et `import_logos`
   - `policies` : véhicules, devis, polices (cycle de vie dans `services.py`),
     sinistres, commissions, portail assureur (API `/api/insurer/*`, toujours
     filtrée sur la compagnie de l'agent via `services.insurer_*`)
   - `payments` : un adaptateur par opérateur (`providers.py`), callbacks signés
-    HMAC et idempotents, remboursements
+    HMAC et idempotents, remboursements ; un paiement porte une police OU une
+    commande (`policies.Order`), remboursable ligne par ligne
   - `attestations` : numéro `SN-AAAA-NNNNNN`, signature Ed25519, QR, vérification
     publique `/v/<jeton>`, révocation, PDF bilingue (`pdf.py`, fpdf2 + HarfBuzz
     pour l'arabe ; mention « SPÉCIMEN » tant que `ATTESTATION_SPECIMEN` est vrai)
@@ -71,6 +77,9 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
   `paid → refused` (remboursement automatique), `active → cancelled`
   (attestation révoquée). Toute transition passe par `policies/services.py`.
 - Un véhicule ne peut pas être couvert deux fois sur la même période.
+- Espace entreprise : une entreprise ne voit jamais les données d'une autre ;
+  pas de paiement tant qu'elle n'est pas vérifiée (NIF + RC) ; mobile money
+  uniquement, plafond `PAYMENT_MAX_AMOUNT`.
 - **RC automobile : tarif homologué par l'État**, donc identique chez tous les
   assureurs. La comparaison joue sur les formules étendues et le service.
 - Paiements : ne jamais activer une police sans callback valide (signature,
@@ -108,7 +117,8 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 ## Pas encore fait (feuille de route)
 
-1. Espace entreprise (décisions du 20/11/2026, voir ci-dessous)
+1. Espace entreprise, suite : **voyage**, puis **santé de groupe** (l'auto de la
+   flotte est faite ; un plan par produit)
 2. Dépôt des pièces KYC et déclaration de sinistre dans l'app
 3. Mise en ligne (Render : Django + PostgreSQL, Next.js) ; avant : code SMS
    pour la connexion au back-office `/admin/`
@@ -121,5 +131,7 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 1. **Compte entreprise distinct** des comptes particuliers.
 2. Pièces à l'ouverture : **NIF et Registre du Commerce**.
 3. Paiement : **mobile money uniquement** (pas de virement sur facture).
-4. Produits : **Auto, Santé et Voyage**.
-Connexion prévue : email + mot de passe + code SMS (mécanisme des comptes pro).
+4. Produits : **Auto, Santé et Voyage** (dans cet ordre : auto faite).
+5. Un gérant peut utiliser le même numéro que son compte particulier.
+6. Inscription libre en ligne ; pas de paiement avant vérification NIF + RC.
+Connexion : email + mot de passe + code SMS (mécanisme des comptes pro).

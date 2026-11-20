@@ -20,8 +20,9 @@ export function useUser() {
     }
     api<User>("me")
       .then((me) => {
-        // Un agent assureur n'a rien à faire dans l'espace client : direction son portail.
+        // Un compte pro n'a rien à faire dans l'espace client : direction son propre espace.
         if (me.role === "insurer_agent") router.replace("/assureur");
+        else if (me.role === "company_member") router.replace("/entreprise");
         else setUser(me);
       })
       .catch(() => router.replace("/connexion"));

@@ -53,9 +53,29 @@ TEMPLATES = {
             "إذا لم تطلب ذلك، فتجاهل هذه الرسالة: كلمة المرور الحالية تبقى صالحة."
         ),
     },
+    "company_verified": {
+        "fr": (
+            "Bonjour,\n\nL'entreprise {company} est vérifiée sur {platform}. Vous pouvez désormais payer "
+            "vos contrats et recevoir vos attestations.\n"
+        ),
+        "ar": "مرحبا،\n\nتم التحقق من الشركة {company} على {platform}. يمكنكم الآن دفع عقودكم واستلام شهاداتكم.\n",
+    },
+    "company_rejected": {
+        "fr": (
+            "Bonjour,\n\nNous n'avons pas pu vérifier l'entreprise {company} sur {platform}.\n"
+            "Motif : {reason}\n\nDéposez une pièce corrigée depuis l'onglet « Entreprise » : "
+            "la vérification reprendra.\n"
+        ),
+        "ar": (
+            "مرحبا،\n\nلم نتمكن من التحقق من الشركة {company} على {platform}.\nالسبب: {reason}\n\n"
+            "أودعوا وثيقة مصححة من تبويب «الشركة» لاستئناف التحقق.\n"
+        ),
+    },
 }
 
 SUBJECTS = {
+    "company_verified": {"fr": "{platform} : entreprise vérifiée", "ar": "{platform}: تم التحقق من الشركة"},
+    "company_rejected": {"fr": "{platform} : vérification de l'entreprise refusée", "ar": "{platform}: رُفض التحقق من الشركة"},
     "password_invite": {"fr": "Votre compte {platform} : choisissez votre mot de passe", "ar": "حسابك في {platform}: اختر كلمة المرور"},
     "password_reset": {"fr": "{platform} : nouveau mot de passe", "ar": "{platform}: كلمة مرور جديدة"},
 }

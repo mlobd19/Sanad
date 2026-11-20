@@ -5,7 +5,7 @@ from .models import CallbackLog, Payment, Refund
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("id", "policy", "provider", "amount", "status", "external_ref", "created_at")
+    list_display = ("id", "policy", "order", "provider", "amount", "status", "external_ref", "created_at")
     list_filter = ("provider", "status")
     search_fields = ("external_ref", "payer_phone")
     readonly_fields = [f.name for f in Payment._meta.fields]
@@ -13,7 +13,7 @@ class PaymentAdmin(admin.ModelAdmin):
 
 @admin.register(Refund)
 class RefundAdmin(admin.ModelAdmin):
-    list_display = ("payment", "amount", "status", "external_ref", "created_at")
+    list_display = ("payment", "policy", "amount", "status", "external_ref", "created_at")
     list_filter = ("status",)
 
 

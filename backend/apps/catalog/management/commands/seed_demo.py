@@ -79,7 +79,9 @@ class Command(BaseCommand):
                     TariffFactor(product=product, attribute=a, equals=eq or "", min_value=lo, max_value=hi, multiplier=m)
                     for a, eq, lo, hi, m in FACTORS
                 )
-            agent = User.objects.filter(phone=agent_phone).first()
+            # Le numéro peut aussi porter un compte particulier : on cherche le compte agent.
+            agent = (User.objects.filter(email=f"agent@{slug}.test").first()
+                     or User.objects.filter(phone=agent_phone, role=User.Role.INSURER_AGENT).first())
             if agent is None:
                 agent = User.objects.create_user(agent_phone, role=User.Role.INSURER_AGENT, insurer=insurer,
                                                  full_name=f"Agent {name} (démo)")
