@@ -1,0 +1,31 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block object-tools %}
+{{ block.super }}
+{% if sn_company %}
+<section class="sn-decision{% if sn_company.status == 'verified' %} sn-ok-panel{% elif sn_company.status == 'rejected' %} sn-bad-panel{% endif %}" aria-label="{% translate 'Vérification' %}">
+  <div class="sn-grow">
+    <strong>
+      {% if sn_company.status == "verified" %}{% translate "Entreprise vérifiée : elle peut payer ses contrats." %}
+      {% elif sn_company.status == "rejected" %}{% blocktranslate with reason=sn_company.rejection_reason %}Vérification refusée : {{ reason }}{% endblocktranslate %}
+      {% else %}{% translate "Entreprise en attente de vérification : contrôlez le NIF et le Registre du Commerce." %}{% endif %}
+    </strong>
+    <ul class="sn-docs">
+      {% for doc in sn_documents %}
+        <li><a href="{{ doc.file.url }}" target="_blank" rel="noopener">{{ doc.get_kind_display }} · {{ doc.uploaded_at|date:"d/m/Y" }}</a></li>
+      {% endfor %}
+      {% for label in sn_missing %}<li class="sn-missing">{% blocktranslate %}{{ label }} manquante{% endblocktranslate %}</li>{% endfor %}
+    </ul>
+  </div>
+  {% if sn_can_decide and sn_company.status != "verified" %}
+    <form method="post" action="{% url 'admin:companies_company_verify' sn_company.pk %}">{% csrf_token %}
+      <input type="submit" class="default" value="{% translate 'Vérifier l’entreprise' %}"{% if sn_missing %} disabled title="{% translate 'Pièces manquantes' %}"{% endif %}>
+    </form>
+  {% endif %}
+  {% if sn_can_decide and sn_company.status == "pending" %}
+    <a class="button sn-btn-danger" href="{% url 'admin:companies_company_reject' sn_company.pk %}">{% translate "Refuser…" %}</a>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -9,8 +9,6 @@ from apps.companies import api as companies
 from apps.payments import api as payments
 from apps.policies import api as policies
 
-admin.site.site_header = "Sanad · back-office"
-admin.site.site_title = "Sanad"
 
 api = [
     # Compte et KYC
@@ -61,6 +59,7 @@ api = [
 ]
 
 urlpatterns = [
+    path("admin/i18n/", include("django.conf.urls.i18n")),  # choix de la langue (français / arabe)
     path("admin/", admin.site.urls),
     path("v/<str:token>", attestations.verify_page, name="verify-page"),
     path("api/", include(api)),

@@ -7,7 +7,8 @@ from .models import AuditEvent
 class AuditEventAdmin(admin.ModelAdmin):
     list_display = ("created_at", "action", "object_type", "object_id", "actor")
     list_filter = ("action", "object_type")
-    search_fields = ("object_id",)
+    search_fields = ("object_id", "action")
+    date_hierarchy = "created_at"
 
     def has_add_permission(self, request):
         return False

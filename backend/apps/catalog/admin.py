@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
+
+from apps.backoffice.ui import mru
 
 from .models import Insurer, Product, TariffFactor
 
@@ -17,23 +20,31 @@ def logo_preview(insurer, height=40):
 
 @admin.register(Insurer)
 class InsurerAdmin(admin.ModelAdmin):
-    list_display = ("name", "logo_thumb", "legal_name", "integration", "commission_rate", "auto_validate", "is_active")
+    list_display = ("name", "logo_thumb", "legal_name", "integration", "rate_display", "auto_validate", "is_active")
     prepopulated_fields = {"slug": ("name",)}
     readonly_fields = ("logo_large",)
     fields = ("name", "legal_name", "slug", "logo", "logo_large", "contact_email", "integration",
               "commission_rate", "auto_validate", "is_active")
 
-    @admin.display(description="Logo")
+    @admin.display(description=_("taux de commission"), ordering="commission_rate")
+    def rate_display(self, obj):
+        return f"{obj.commission_rate * 100:.2f}".rstrip("0").rstrip(".") + " %"
+
+    @admin.display(description=_("logo"))
     def logo_thumb(self, obj):
         return logo_preview(obj, 28)
 
-    @admin.display(description="Aperçu")
+    @admin.display(description=_("aperçu"))
     def logo_large(self, obj):
         return logo_preview(obj, 80)
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name", "insurer", "branch", "base_premium", "tariff_version", "is_indicative", "is_active")
+    list_display = ("name", "insurer", "branch", "premium_display", "tariff_version", "is_indicative", "is_active")
     list_filter = ("insurer", "branch", "is_indicative", "is_active")
     inlines = [TariffFactorInline]
+
+    @admin.display(description=_("prime de base"), ordering="base_premium")
+    def premium_display(self, obj):
+        return mru(obj.base_premium)

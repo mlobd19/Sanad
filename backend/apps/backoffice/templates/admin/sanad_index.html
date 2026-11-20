@@ -1,0 +1,51 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block coltype %}colM{% endblock %}
+{% block sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="sn-home">
+  <section aria-labelledby="sn-todo-title">
+    <h2 id="sn-todo-title" class="sn-h2">{% translate "À traiter" %}</h2>
+    <div class="sn-cards">
+      {% for item in todo %}
+        <a class="sn-card{% if item.count %} sn-card-{{ item.tone }}{% else %} sn-card-done{% endif %}" href="{{ item.url }}">
+          <span class="sn-count">{{ item.count }}</span>
+          <span class="sn-card-label">{{ item.label }}</span>
+          <span class="sn-card-hint">{% if item.count %}{{ item.hint }}{% else %}{% translate "Rien en attente" %}{% endif %}</span>
+          {% if item.extra %}<span class="sn-card-extra">{{ item.extra }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section aria-labelledby="sn-today-title">
+    <h2 id="sn-today-title" class="sn-h2">{% translate "Aujourd'hui" %}</h2>
+    <div class="sn-today">
+      {% for stat in today %}
+        <div><strong class="sn-mono">{{ stat.value }}</strong><span>{{ stat.label }}</span></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section aria-labelledby="sn-menu-title">
+    <h2 id="sn-menu-title" class="sn-h2">{% translate "Tout le back-office" %}</h2>
+    <div class="sn-sections">
+      {% for app in app_list %}
+        <div class="sn-section sn-section-{{ app.section }}">
+          <h3>{{ app.name }}</h3>
+          <ul>
+            {% for model in app.models %}
+              <li>
+                {% if model.admin_url %}<a href="{{ model.admin_url }}">{{ model.name }}</a>{% else %}{{ model.name }}{% endif %}
+                {% if model.add_url %}<a class="sn-add" href="{{ model.add_url }}" aria-label="{% translate 'Ajouter' %} · {{ model.name }}">+ {% translate "Ajouter" %}</a>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

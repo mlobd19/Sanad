@@ -1,0 +1,1007 @@
+#
+msgid ""
+msgstr ""
+"Language: ar\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+
+msgid "%(company)s : vérifiée."
+msgstr "%(company)s: تم التحقق منها."
+
+msgid "%(company)s est vérifiée : elle peut maintenant payer."
+msgstr "تم التحقق من %(company)s: يمكنها الآن الدفع."
+
+msgid "%(label)s manquante"
+msgstr "%(label)s ناقصة"
+
+msgid "%(n)s commission(s) marquée(s) comme payée(s)."
+msgstr "سُجلت %(n)s عمولة كمدفوعة."
+
+msgid "%(n)s depuis plus de 24 h"
+msgstr "%(n)s منذ أكثر من 24 ساعة"
+
+msgid "%(n)s en attente de pièces"
+msgstr "%(n)s في انتظار الوثائق"
+
+msgid "%(n)s police(s) refusée(s) et remboursée(s)."
+msgstr "رُفضت %(n)s وثيقة ورُدت مبالغها."
+
+msgid "%(n)s police(s) résiliée(s)."
+msgstr "أُلغيت %(n)s وثيقة."
+
+msgid "%(n)s police(s) validée(s)."
+msgstr "تمت المصادقة على %(n)s وثيقة."
+
+msgid "%(n)s remboursement(s) marqué(s) comme effectué(s)."
+msgstr "سُجل %(n)s استرداد كمنجز."
+
+msgid "%(user)s : pas un compte professionnel, ignoré."
+msgstr "%(user)s: ليس حسابا مهنيا، تم تجاهله."
+
+msgid "API temps réel"
+msgstr "واجهة برمجية فورية"
+
+msgid "Accepté"
+msgstr "مقبول"
+
+msgid "Accueil"
+msgstr "الرئيسية"
+
+msgid "Active"
+msgstr "سارية"
+
+msgid "Administrateur"
+msgstr "مدير"
+
+msgid "Agent assureur"
+msgstr "وكيل تأمين"
+
+msgid ""
+"Agent assureur : choisir la compagnie, renseigner l'email, puis envoyer "
+"l'invitation depuis la liste (action « Envoyer l'invitation »)."
+msgstr ""
+"وكيل التأمين: اختر الشركة، أدخل البريد الإلكتروني، ثم أرسل الدعوة من القائمة"
+" (إجراء «إرسال الدعوة»)."
+
+msgid "Ajouter"
+msgstr "إضافة"
+
+msgid "Annuler"
+msgstr "إلغاء"
+
+msgid "Attestation NIF"
+msgstr "شهادة الرقم الضريبي"
+
+msgid "Attribut du bien, ex. fiscal_power, usage, age_years."
+msgstr "خاصية المؤمَّن عليه، مثل fiscal_power أو usage أو age_years."
+
+msgid "Aujourd'hui"
+msgstr "اليوم"
+
+msgid "Automobile"
+msgstr "السيارات"
+
+msgid "Autres"
+msgstr "أخرى"
+
+msgid "Carte d'identité"
+msgstr "بطاقة التعريف"
+
+msgid "Carte grise"
+msgstr "البطاقة الرمادية"
+
+msgid "Catalogue"
+msgstr "الكتالوج"
+
+msgid "Client"
+msgstr "العميل"
+
+msgid "Clients"
+msgstr "العملاء"
+
+msgid "Clos"
+msgstr "مغلق"
+
+msgid "Commande n° %(id)s"
+msgstr "الطلب رقم %(id)s"
+
+msgid "Comptes professionnels"
+msgstr "الحسابات المهنية"
+
+msgid "Confirmé"
+msgstr "مؤكد"
+
+msgid "Connexion compte professionnel"
+msgstr "دخول حساب مهني"
+
+msgid "Connexion particulier"
+msgstr "دخول فرد"
+
+msgid "Contrat"
+msgstr "العقد"
+
+msgid "Contrats"
+msgstr "العقود"
+
+msgid "Demandé"
+msgstr "مطلوب"
+
+msgid "Décision de l'assureur"
+msgstr "قرار شركة التأمين"
+
+msgid "Déclaré"
+msgstr "مصرح به"
+
+msgid "Effectué"
+msgstr "منجز"
+
+msgid "En attente de confirmation"
+msgstr "في انتظار التأكيد"
+
+msgid "En attente de paiement"
+msgstr "في انتظار الدفع"
+
+msgid "En cours chez l'assureur"
+msgstr "قيد المعالجة لدى شركة التأمين"
+
+msgid "En vérification"
+msgstr "قيد التحقق"
+
+msgid "Encaissé aujourd'hui"
+msgstr "المحصّل اليوم"
+
+msgid "Entreprise"
+msgstr "الشركة"
+
+msgid ""
+"Entreprise en attente de vérification : contrôlez le NIF et le Registre du "
+"Commerce."
+msgstr "الشركة في انتظار التحقق: راجعوا الرقم الضريبي والسجل التجاري."
+
+msgid "Entreprise refusée."
+msgstr "رُفضت الشركة."
+
+msgid "Entreprise vérifiée : elle peut payer ses contrats."
+msgstr "تم التحقق من الشركة: يمكنها دفع عقودها."
+
+msgid "Entreprises"
+msgstr "الشركات"
+
+msgid "Entreprises inscrites aujourd'hui"
+msgstr "الشركات المسجلة اليوم"
+
+msgid "Entreprises à vérifier"
+msgstr "شركات للتحقق"
+
+msgid "Envoyer l'invitation par email (choix du mot de passe)"
+msgstr "إرسال الدعوة بالبريد الإلكتروني (اختيار كلمة المرور)"
+
+msgid "Ex. 0.1500 pour 15 % (selon le contrat de partenariat)."
+msgstr "مثال: 0.1500 لـ 15٪ (حسب عقد الشراكة)."
+
+msgid "Ex. RC seule, Tiers étendu, Tous risques."
+msgstr "مثال: المسؤولية المدنية فقط، الغير الموسع، كل المخاطر."
+
+msgid "Expirée"
+msgstr "منتهية"
+
+msgid "Export fichier"
+msgstr "تصدير ملف"
+
+msgid "Fait."
+msgstr "تم."
+
+msgid "Gestionnaire"
+msgstr "مسيّر"
+
+msgid "Habitation"
+msgstr "المسكن"
+
+msgid "Historique"
+msgstr "السجل"
+
+msgid ""
+"Identifiant des comptes professionnels (agents assureurs), avec mot de passe"
+" et code SMS."
+msgstr "معرّف الحسابات المهنية (وكلاء التأمين)، مع كلمة مرور ورمز نصي."
+
+msgid "Identité"
+msgstr "الهوية"
+
+msgid "Identité refusée pour %(n)s compte(s)."
+msgstr "رُفضت الهوية لـ %(n)s حساب."
+
+msgid "Identité validée pour %(n)s compte(s)."
+msgstr "تم التحقق من الهوية لـ %(n)s حساب."
+
+msgid "Identités (KYC) à vérifier"
+msgstr "هويات (KYC) للتحقق"
+
+msgid "Immatriculation pour un véhicule."
+msgstr "رقم اللوحة بالنسبة للسيارة."
+
+msgid "Inscription entreprise"
+msgstr "تسجيل شركة"
+
+msgid "Invitation envoyée à %(n)s compte(s)."
+msgstr "أُرسلت الدعوة إلى %(n)s حساب."
+
+msgid ""
+"L'administrateur de l'entreprise reçoit ce motif par email et peut déposer "
+"une pièce corrigée : la vérification reprendra alors."
+msgstr ""
+"يتلقى مدير الشركة هذا السبب بالبريد الإلكتروني ويمكنه إيداع وثيقة مصححة، "
+"فيُستأنف التحقق."
+
+msgid ""
+"L'attestation est révoquée : le QR code affichera « révoquée » lors d'un "
+"contrôle."
+msgstr "تُلغى الشهادة: سيظهر رمز QR «ملغاة» عند المراقبة."
+
+msgid ""
+"Le client est remboursé automatiquement et voit ce motif dans son "
+"application."
+msgstr "يُرد المبلغ إلى العميل تلقائيا ويرى هذا السبب في تطبيقه."
+
+msgid ""
+"Le client ne pourra plus souscrire tant qu'il n'aura pas déposé de pièce "
+"valable."
+msgstr "لن يتمكن العميل من الاكتتاب ما لم يودع وثيقة صالحة."
+
+msgid "Le motif est obligatoire."
+msgstr "السبب إلزامي."
+
+msgid "Les compagnies les valident depuis leur portail"
+msgstr "تصادق عليها الشركات من بوابتها"
+
+msgid "Liste des garanties affichées au client."
+msgstr "قائمة الضمانات المعروضة على العميل."
+
+msgid ""
+"Logo officiel fourni par la compagnie (PNG, JPG ou WebP, fond clair de "
+"préférence)."
+msgstr ""
+"الشعار الرسمي الذي قدمته الشركة (PNG أو JPG أو WebP، ويفضل بخلفية فاتحة)."
+
+msgid "MRU"
+msgstr "أوقية"
+
+msgid "Marque, modèle, puissance fiscale, usage…"
+msgstr "الماركة، الطراز، القوة الجبائية، الاستعمال…"
+
+msgid "Marquer comme payées"
+msgstr "تسجيلها كمدفوعة"
+
+msgid "Marquer comme remboursé"
+msgstr "تسجيله كمسترد"
+
+msgid "Marquer comme remboursé à la main…"
+msgstr "تسجيله كمسترد يدويا…"
+
+msgid "Membre d'une entreprise"
+msgstr "عضو في شركة"
+
+msgid "Mois du relevé, AAAA-MM."
+msgstr "شهر الكشف، بصيغة سنة-شهر."
+
+msgid "Motif de la résiliation (obligatoire)"
+msgstr "سبب الإلغاء (إلزامي)"
+
+msgid "Motif du refus (obligatoire)"
+msgstr "سبب الرفض (إلزامي)"
+
+msgid "NIF"
+msgstr "الرقم الضريبي"
+
+msgid "NIF et Registre du Commerce déposés"
+msgstr "تم إيداع الرقم الضريبي والسجل التجاري"
+
+msgid "NNI"
+msgstr "الرقم الوطني"
+
+msgid "Nom court affiché, ex. NASR."
+msgstr "الاسم المختصر المعروض، مثل NASR."
+
+msgid "Non"
+msgstr "لا"
+
+msgid "Non commencé"
+msgstr "لم يبدأ"
+
+msgid "Numéro d'identification fiscale."
+msgstr "رقم التعريف الضريبي."
+
+msgid "N° de police chez l'assureur."
+msgstr "رقم الوثيقة لدى شركة التأمين."
+
+msgid "Obligatoire pour refuser l'entreprise."
+msgstr "إلزامي لرفض الشركة."
+
+msgid "Oui"
+msgstr "نعم"
+
+msgid "Ouvrir"
+msgstr "فتح"
+
+msgid "Paiements"
+msgstr "المدفوعات"
+
+msgid "Particulier"
+msgstr "فرد"
+
+msgid "Particuliers"
+msgstr "الأفراد"
+
+msgid "Passeport"
+msgstr "جواز السفر"
+
+msgid "Payée"
+msgstr "مدفوعة"
+
+msgid "Payée, à valider par l'assureur"
+msgstr "مدفوعة، تنتظر مصادقة شركة التأمين"
+
+msgid "Pièces d'identité déposées par des clients"
+msgstr "وثائق هوية أودعها عملاء"
+
+msgid "Pièces manquantes"
+msgstr "وثائق ناقصة"
+
+msgid "Polices activées aujourd'hui"
+msgstr "الوثائق المفعّلة اليوم"
+
+msgid "Polices payées, en attente de l'assureur"
+msgstr "وثائق مدفوعة تنتظر شركة التأمين"
+
+msgid "Portail assureur"
+msgstr "بوابة شركات التأمين"
+
+msgid ""
+"Pour un agent assureur : laissez le mot de passe vide si le formulaire le "
+"permet, puis envoyez l'invitation : l'agent choisira lui-même son mot de "
+"passe."
+msgstr ""
+"بالنسبة لوكيل التأمين: اترك كلمة المرور فارغة إن سمح النموذج بذلك، ثم أرسل "
+"الدعوة: سيختار الوكيل كلمة مروره بنفسه."
+
+msgid "Prime annuelle de base en MRU."
+msgstr "القسط السنوي الأساسي بالأوقية."
+
+msgid "Raison sociale complète."
+msgstr "الاسم التجاري الكامل."
+
+msgid "Refuser des polices"
+msgstr "رفض وثائق"
+
+msgid "Refuser et rembourser"
+msgstr "رفض ورد المبلغ"
+
+msgid "Refuser l'entreprise"
+msgstr "رفض الشركة"
+
+msgid "Refuser l'identité"
+msgstr "رفض الهوية"
+
+msgid "Refuser l'identité (KYC)…"
+msgstr "رفض الهوية (KYC)…"
+
+msgid "Refuser les polices payées et rembourser…"
+msgstr "رفض الوثائق المدفوعة ورد المبالغ…"
+
+msgid "Refuser…"
+msgstr "رفض…"
+
+msgid "Refusé"
+msgstr "مرفوض"
+
+msgid "Refusée"
+msgstr "مرفوضة"
+
+msgid "Refusée (remboursée)"
+msgstr "مرفوضة (تم رد المبلغ)"
+
+msgid "Registre du Commerce"
+msgstr "السجل التجاري"
+
+msgid "Remboursement fait à la main"
+msgstr "استرداد تم يدويا"
+
+msgid "Remboursements en échec"
+msgstr "استردادات فاشلة"
+
+msgid "Remboursé"
+msgstr "مسترد"
+
+msgid "Renseigné uniquement pour les agents assureurs."
+msgstr "يُملأ فقط لوكلاء التأمين."
+
+msgid "Rien en attente"
+msgstr "لا شيء في الانتظار"
+
+msgid "Référence de l'opération chez l'opérateur (obligatoire)"
+msgstr "مرجع العملية لدى المشغّل (إلزامي)"
+
+msgid "Résilier"
+msgstr "إلغاء الوثيقة"
+
+msgid "Résilier des polices"
+msgstr "إلغاء وثائق"
+
+msgid "Résilier les polices actives…"
+msgstr "إلغاء الوثائق السارية…"
+
+msgid "Résiliée"
+msgstr "ملغاة"
+
+msgid "Révoquée"
+msgstr "ملغاة"
+
+msgid "Rôle et accès"
+msgstr "الدور والصلاحيات"
+
+msgid "Sanad · back-office"
+msgstr "سند · الإدارة"
+
+msgid "Santé"
+msgstr "الصحة"
+
+msgid ""
+"Si vrai, la police est activée dès le paiement confirmé (assureurs en API)."
+msgstr ""
+"إذا فُعّل، تُفعَّل الوثيقة فور تأكيد الدفع (الشركات المربوطة بواجهة برمجية)."
+
+msgid "Sinistres déclarés"
+msgstr "حوادث مصرح بها"
+
+msgid "Sécurité"
+msgstr "الأمان"
+
+msgid "Takaful"
+msgstr "التكافل"
+
+msgid ""
+"Tarif indicatif (démo) : pas encore la grille officielle de l'assureur."
+msgstr "تعريفة إرشادية (تجريبية): ليست بعد التعريفة الرسمية لشركة التأمين."
+
+msgid "Technique"
+msgstr "تقني"
+
+msgid "Tout le back-office"
+msgstr "كل أقسام الإدارة"
+
+msgid "Transmis à l'assureur"
+msgstr "أُحيل إلى شركة التأمين"
+
+msgid "Valeur exacte (attributs texte)."
+msgstr "قيمة مطابقة (للخصائص النصية)."
+
+msgid "Valide"
+msgstr "سارية"
+
+msgid "Valider l'identité (KYC)"
+msgstr "المصادقة على الهوية (KYC)"
+
+msgid "Valider les polices payées (à la place de l'assureur)"
+msgstr "المصادقة على الوثائق المدفوعة (بدلا من شركة التأمين)"
+
+msgid "Voyage"
+msgstr "السفر"
+
+msgid "Véhicule"
+msgstr "سيارة"
+
+msgid "Vérification"
+msgstr "التحقق"
+
+msgid "Vérification d'identité"
+msgstr "التحقق من الهوية"
+
+msgid "Vérification refusée : %(reason)s"
+msgstr "رُفض التحقق: %(reason)s"
+
+msgid "Vérifier les entreprises sélectionnées (NIF et RC contrôlés)"
+msgstr "التحقق من الشركات المحددة (بعد مراجعة الرقم الضريبي والسجل)"
+
+msgid "Vérifier l’entreprise"
+msgstr "التحقق من الشركة"
+
+msgid "Vérifié"
+msgstr "تم التحقق"
+
+msgid "Vérifiée"
+msgstr "تم التحقق منها"
+
+msgid "accès au back-office"
+msgstr "الدخول إلى الإدارة"
+
+msgid "actif"
+msgstr "نشط"
+
+msgid "action"
+msgstr "الإجراء"
+
+msgid "active"
+msgstr "نشطة"
+
+msgid "adresse"
+msgstr "العنوان"
+
+msgid "ajouté le"
+msgstr "أضيف في"
+
+msgid "ajoutée le"
+msgstr "أضيفت في"
+
+msgid "aperçu"
+msgstr "معاينة"
+
+msgid "assureur et formule"
+msgstr "شركة التأمين والصيغة"
+
+msgid "attestation"
+msgstr "شهادة"
+
+msgid "attestations"
+msgstr "الشهادات"
+
+msgid "attribut"
+msgstr "الخاصية"
+
+msgid "auteur"
+msgstr "المنفّذ"
+
+msgid "bien assuré"
+msgstr "المؤمَّن عليه"
+
+msgid "biens assurés"
+msgstr "الممتلكات المؤمَّن عليها"
+
+msgid "bloqué jusqu'au"
+msgstr "محظور حتى"
+
+msgid "branche"
+msgstr "الفرع"
+
+msgid "callback opérateur"
+msgstr "إشعار المشغّل"
+
+msgid "callbacks opérateurs"
+msgstr "إشعارات المشغّلين"
+
+msgid "caractéristiques"
+msgstr "الخصائص"
+
+msgid "caractéristiques au moment du devis"
+msgstr "الخصائص عند التسعير"
+
+msgid "client"
+msgstr "العميل"
+
+msgid "code"
+msgstr "الرمز"
+
+msgid "coefficient"
+msgstr "المعامل"
+
+msgid "commande"
+msgstr "طلب"
+
+msgid "commandes"
+msgstr "الطلبات"
+
+msgid "commandée par"
+msgstr "طلبه"
+
+msgid "commission"
+msgstr "عمولة"
+
+msgid "commissions"
+msgstr "العمولات"
+
+msgid "compagnie"
+msgstr "شركة التأمين"
+
+msgid "compagnie d'assurance"
+msgstr "شركة التأمين"
+
+msgid "compagnies d'assurance"
+msgstr "شركات التأمين"
+
+msgid "compte"
+msgstr "حساب"
+
+msgid "comptes"
+msgstr "الحسابات"
+
+msgid "confirmé le"
+msgstr "أُكد في"
+
+msgid "contenu"
+msgstr "المحتوى"
+
+msgid "contenu signé"
+msgstr "المحتوى الموقّع"
+
+msgid "créé le"
+msgstr "أُنشئ في"
+
+msgid "créée le"
+msgstr "أُنشئت في"
+
+msgid "date"
+msgstr "التاريخ"
+
+msgid "date du sinistre"
+msgstr "تاريخ الحادث"
+
+msgid "description"
+msgstr "الوصف"
+
+msgid "devis"
+msgstr "التسعيرات"
+
+msgid "durée (mois)"
+msgstr "المدة (بالأشهر)"
+
+msgid "début"
+msgstr "البداية"
+
+msgid "décidée le"
+msgstr "تقرر في"
+
+msgid "décidée par"
+msgstr "قرره"
+
+msgid "déclaré le"
+msgstr "صُرّح به في"
+
+msgid "déclaré par"
+msgstr "صرّح به"
+
+msgid "déposée le"
+msgstr "أودعت في"
+
+msgid "déposée par"
+msgstr "أودعها"
+
+msgid "détails"
+msgstr "التفاصيل"
+
+msgid "email"
+msgstr "البريد الإلكتروني"
+
+msgid "email de contact"
+msgstr "بريد التواصل"
+
+msgid "email professionnel"
+msgstr "البريد الإلكتروني المهني"
+
+msgid "entreprise"
+msgstr "شركة"
+
+msgid "entreprises"
+msgstr "الشركات"
+
+msgid "expire le"
+msgstr "ينتهي في"
+
+msgid "facteur tarifaire"
+msgstr "معامل تسعير"
+
+msgid "facteurs tarifaires"
+msgstr "معاملات التسعير"
+
+msgid "fichier"
+msgstr "الملف"
+
+msgid "fin"
+msgstr "النهاية"
+
+msgid "formule"
+msgstr "صيغة"
+
+msgid "formules"
+msgstr "الصيغ"
+
+msgid "garanties"
+msgstr "الضمانات"
+
+msgid "identifiant"
+msgstr "المعرّف"
+
+msgid "identité"
+msgstr "الهوية"
+
+msgid "immatriculation"
+msgstr "رقم اللوحة"
+
+msgid "inscrit le"
+msgstr "سُجل في"
+
+msgid "inscrite le"
+msgstr "سُجلت في"
+
+msgid "intégration"
+msgstr "الربط"
+
+msgid "invité par"
+msgstr "دعاه"
+
+msgid "jeton"
+msgstr "الرمز المميز"
+
+msgid "journal d'audit"
+msgstr "سجل التدقيق"
+
+msgid "langue"
+msgstr "اللغة"
+
+msgid "logo"
+msgstr "الشعار"
+
+msgid "maximum"
+msgstr "الحد الأقصى"
+
+msgid "membre"
+msgstr "عضو"
+
+msgid "membres"
+msgstr "الأعضاء"
+
+msgid "minimum"
+msgstr "الحد الأدنى"
+
+msgid "mise à jour le"
+msgstr "حُدّثت في"
+
+msgid "mois"
+msgstr "الشهر"
+
+msgid "montant"
+msgstr "المبلغ"
+
+msgid "montant (MRU)"
+msgstr "المبلغ (أوقية)"
+
+msgid "motif de l'échec"
+msgstr "سبب الفشل"
+
+msgid "motif de révocation"
+msgstr "سبب الإلغاء"
+
+msgid "motif du refus"
+msgstr "سبب الرفض"
+
+msgid "moyen de paiement"
+msgstr "وسيلة الدفع"
+
+msgid "nom"
+msgstr "الاسم"
+
+msgid "nom complet"
+msgstr "الاسم الكامل"
+
+msgid "note"
+msgstr "ملاحظة"
+
+msgid "note de vérification"
+msgstr "ملاحظة التحقق"
+
+msgid "numéro"
+msgstr "الرقم"
+
+msgid "numéro du payeur"
+msgstr "رقم الدافع"
+
+msgid "n° Registre du Commerce"
+msgstr "رقم السجل التجاري"
+
+msgid "n° de police chez l'assureur"
+msgstr "رقم الوثيقة لدى شركة التأمين"
+
+msgid "opérateur"
+msgstr "المشغّل"
+
+msgid "organisation"
+msgstr "الجهة"
+
+msgid "paiement"
+msgstr "دفعة"
+
+msgid "paiements"
+msgstr "المدفوعات"
+
+msgid "payée"
+msgstr "مدفوعة"
+
+msgid "photo"
+msgstr "الصورة"
+
+msgid "photo de sinistre"
+msgstr "صورة حادث"
+
+msgid "photos de sinistre"
+msgstr "صور الحوادث"
+
+msgid "pièce d'identité"
+msgstr "وثيقة هوية"
+
+msgid "pièce de l'entreprise"
+msgstr "وثيقة الشركة"
+
+msgid "pièces"
+msgstr "الوثائق"
+
+msgid "pièces d'identité"
+msgstr "وثائق الهوية"
+
+msgid "pièces de l'entreprise"
+msgstr "وثائق الشركة"
+
+msgid "police"
+msgstr "وثيقة تأمين"
+
+msgid "polices"
+msgstr "وثائق التأمين"
+
+msgid "pour"
+msgstr "مقابل"
+
+msgid "prime"
+msgstr "القسط"
+
+msgid "prime (MRU)"
+msgstr "القسط (أوقية)"
+
+msgid "prime de base"
+msgstr "القسط الأساسي"
+
+msgid "prime de base (MRU)"
+msgstr "القسط الأساسي (أوقية)"
+
+msgid "période"
+msgstr "المدة"
+
+msgid "raison sociale"
+msgstr "الاسم التجاري"
+
+msgid "remboursement"
+msgstr "استرداد"
+
+msgid "remboursements"
+msgstr "الاستردادات"
+
+msgid "remboursé à la main"
+msgstr "استُرد يدويا"
+
+msgid "renouvelle"
+msgstr "تجدد"
+
+msgid "reçu le"
+msgstr "استُلم في"
+
+msgid "référence opérateur"
+msgstr "مرجع المشغّل"
+
+msgid "résultat"
+msgstr "النتيجة"
+
+msgid "révoquée le"
+msgstr "أُلغيت في"
+
+msgid "rôle"
+msgstr "الدور"
+
+msgid "signature valide"
+msgstr "توقيع صالح"
+
+msgid "sinistre"
+msgstr "حادث"
+
+msgid "sinistres"
+msgstr "الحوادث"
+
+msgid "statut"
+msgstr "الحالة"
+
+msgid "tarif indicatif"
+msgstr "تعريفة إرشادية"
+
+msgid "taux"
+msgstr "النسبة"
+
+msgid "taux de commission"
+msgstr "نسبة العمولة"
+
+msgid "total"
+msgstr "المجموع"
+
+msgid "type"
+msgstr "النوع"
+
+msgid "type d'objet"
+msgstr "نوع العنصر"
+
+msgid "type de client"
+msgstr "نوع العميل"
+
+msgid "type de compte"
+msgstr "نوع الحساب"
+
+msgid "type de pièce"
+msgstr "نوع الوثيقة"
+
+msgid "téléphone"
+msgstr "الهاتف"
+
+msgid "valeur exacte"
+msgstr "القيمة المطابقة"
+
+msgid "validation automatique"
+msgstr "مصادقة تلقائية"
+
+msgid "version du tarif"
+msgstr "نسخة التعريفة"
+
+msgid "vérification d'identité"
+msgstr "التحقق من الهوية"
+
+msgid "vérifiée le"
+msgstr "تم التحقق في"
+
+msgid "vérifiée par"
+msgstr "تحقق منها"
+
+msgid "À payer"
+msgstr "مستحقة"
+
+msgid "À reprendre à la main avec l'opérateur"
+msgstr "يُعالج يدويا مع المشغّل"
+
+msgid "À traiter"
+msgstr "للمعالجة"
+
+msgid "À transmettre à l'assureur"
+msgstr "للإحالة إلى شركة التأمين"
+
+msgid "À utiliser une fois le remboursement effectué avec l'opérateur."
+msgstr "يُستعمل بعد إتمام الاسترداد مع المشغّل."
+
+msgid "À vérifier"
+msgstr "للتحقق"
+
+msgid "Échoué"
+msgstr "فاشل"
+
+msgid "Échoué, à traiter à la main"
+msgstr "فاشل، يُعالج يدويا"
+
+msgid "Équipe Sanad"
+msgstr "فريق سند"
+
+msgid "Équipe interne"
+msgstr "الفريق الداخلي"
+
+msgid "échecs de connexion"
+msgstr "محاولات الدخول الفاشلة"
+
+msgid "émise le"
+msgstr "صدرت في"
+
+msgid "événement d'audit"
+msgstr "حدث تدقيق"
+
+msgid "Attestations"
+msgstr "الشهادات"
+
+msgid "Audit"
+msgstr "التدقيق"
+
+msgid "Comptes"
+msgstr "الحسابات"
+
+msgid "Notifications"
+msgstr "الإشعارات"
+
+msgid "Tableau de bord"
+msgstr "لوحة القيادة"

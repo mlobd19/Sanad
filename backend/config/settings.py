@@ -26,7 +26,8 @@ ALLOWED_HOSTS = [h for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").s
 CSRF_TRUSTED_ORIGINS = [o for o in env("CSRF_TRUSTED_ORIGINS", "http://localhost:3000").split(",") if o]
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "apps.backoffice.apps.BackofficeConfig",  # avant l'admin : ses gabarits remplacent ceux de Django
+    "apps.backoffice.apps.BackofficeAdminConfig",  # admin Django avec le site de Sanad
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -93,6 +94,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "fr"
 LANGUAGES = [("fr", "Français"), ("ar", "العربية")]
+# Traductions arabes du back-office (le français est la langue des sources).
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "Africa/Nouakchott"
 USE_I18N = True
 USE_TZ = True

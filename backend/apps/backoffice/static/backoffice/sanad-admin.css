@@ -1,0 +1,226 @@
+/* Back-office Sanad : habillage de l'admin Django aux couleurs de l'app (vert, sable, encre).
+   Mêmes sélecteurs que l'admin (clair, sombre, choix explicite) : chargé après, ce fichier l'emporte. */
+
+html[data-theme="light"],
+:root {
+  --sn-green: #08603f;
+  --sn-green-dark: #064a31;
+  --sn-deep: #062f22;
+  --sn-sand: #f0a43a;
+  --sn-sand-tint: #fdeccf;
+  --sn-sand-text: #4e2f05;
+  --sn-ok-tint: #dff0e6;
+  --sn-bad: #a32626;
+  --sn-bad-tint: #fbe4e4;
+  --sn-quiet-tint: #e9eeeb;
+  --sn-card: #ffffff;
+
+  --primary: #cfe3d9;
+  --secondary: var(--sn-green);
+  --accent: var(--sn-sand);
+  --primary-fg: #fff;
+  --body-fg: #0b1a14;
+  --body-bg: #f4f7f5;
+  --body-quiet-color: #44524c;
+  --body-medium-color: #26352f;
+  --body-loud-color: #0b1a14;
+  --header-color: #cfe3d9;
+  --header-branding-color: #fff;
+  --header-bg: var(--sn-deep);
+  --header-link-color: #fff;
+  --breadcrumbs-fg: #cfe3d9;
+  --breadcrumbs-link-fg: #fff;
+  --breadcrumbs-bg: var(--sn-green-dark);
+  --link-fg: var(--sn-green);
+  --link-hover-color: var(--sn-deep);
+  --link-selected-fg: var(--sn-deep);
+  --hairline-color: #dfe7e3;
+  --border-color: #c9d4cf;
+  --error-fg: var(--sn-bad);
+  --message-success-bg: var(--sn-ok-tint);
+  --message-warning-bg: var(--sn-sand-tint);
+  --message-error-bg: var(--sn-bad-tint);
+  --darkened-bg: #e9eeeb;
+  --selected-bg: #dfe7e3;
+  --selected-row: #fdf3df;
+  --button-fg: #fff;
+  --button-bg: var(--sn-green);
+  --button-hover-bg: var(--sn-green-dark);
+  --default-button-bg: var(--sn-green-dark);
+  --default-button-hover-bg: var(--sn-deep);
+  --close-button-bg: #44524c;
+  --close-button-hover-bg: #26352f;
+  --delete-button-bg: var(--sn-bad);
+  --delete-button-hover-bg: #861d1d;
+  --object-tools-fg: #fff;
+  --object-tools-bg: var(--sn-green);
+  --object-tools-hover-bg: var(--sn-green-dark);
+  --font-family-primary: "Inter", "Noto Kufi Arabic", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sn-ok-tint: #173528;
+    --sn-sand-tint: #3a2a10;
+    --sn-sand-text: #f6cf93;
+    --sn-bad: #f19a9a;
+    --sn-bad-tint: #3b1717;
+    --sn-quiet-tint: #22302a;
+    --sn-card: #13211b;
+    --primary: #173528;
+    --secondary: #1c7a52;
+    --body-fg: #eef5f1;
+    --body-bg: #0c1612;
+    --body-quiet-color: #a3b2ab;
+    --body-medium-color: #cdd9d3;
+    --body-loud-color: #ffffff;
+    --header-bg: #04201a;
+    --breadcrumbs-bg: #0a3a2a;
+    --link-fg: #6fd3a3;
+    --link-hover-color: #a6e8c6;
+    --link-selected-fg: #a6e8c6;
+    --hairline-color: #22302a;
+    --border-color: #2a3b33;
+    --darkened-bg: #13211b;
+    --selected-bg: #1c2b24;
+    --selected-row: #2c2410;
+    --button-bg: #1c7a52;
+    --button-hover-bg: #156140;
+    --default-button-bg: #156140;
+    --default-button-hover-bg: #1c7a52;
+    --object-tools-bg: #1c7a52;
+    --object-tools-hover-bg: #156140;
+  }
+}
+
+html[data-theme="dark"] {
+  --sn-ok-tint: #173528;
+  --sn-sand-tint: #3a2a10;
+  --sn-sand-text: #f6cf93;
+  --sn-bad: #f19a9a;
+  --sn-bad-tint: #3b1717;
+  --sn-quiet-tint: #22302a;
+  --sn-card: #13211b;
+  --primary: #173528;
+  --secondary: #1c7a52;
+  --body-fg: #eef5f1;
+  --body-bg: #0c1612;
+  --body-quiet-color: #a3b2ab;
+  --body-medium-color: #cdd9d3;
+  --body-loud-color: #ffffff;
+  --header-bg: #04201a;
+  --breadcrumbs-bg: #0a3a2a;
+  --link-fg: #6fd3a3;
+  --link-hover-color: #a6e8c6;
+  --link-selected-fg: #a6e8c6;
+  --hairline-color: #22302a;
+  --border-color: #2a3b33;
+  --darkened-bg: #13211b;
+  --selected-bg: #1c2b24;
+  --selected-row: #2c2410;
+  --button-bg: #1c7a52;
+  --button-hover-bg: #156140;
+  --default-button-bg: #156140;
+  --default-button-hover-bg: #1c7a52;
+  --object-tools-bg: #1c7a52;
+  --object-tools-hover-bg: #156140;
+}
+
+html[lang="ar"] body { font-family: "Noto Kufi Arabic", "Inter", system-ui, sans-serif; }
+body { font-size: 15px; }
+
+/* --- En-tête ---------------------------------------------------------------------- */
+#header { padding-block: 12px; gap: 16px; }
+#site-name a.sn-brand { display: inline-flex; align-items: center; gap: 10px; font-family: "Space Grotesk", "Noto Kufi Arabic", sans-serif; font-weight: 700; font-size: 21px; color: #fff; }
+#user-tools { font-size: 13px; letter-spacing: 0; text-transform: none; }
+#user-tools a { border-bottom-color: rgba(255, 255, 255, 0.4); }
+.sn-lang { margin: 0; }
+.sn-lang button { min-height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #fff; background: transparent; color: #fff; font: 600 14px/1 inherit; cursor: pointer; }
+.sn-lang button[lang="ar"] { font-family: "Noto Kufi Arabic", sans-serif; }
+.sn-lang button:hover, .sn-lang button:focus-visible { background: rgba(255, 255, 255, 0.12); }
+div.breadcrumbs { padding-block: 10px; font-size: 14px; }
+:focus-visible { outline: 3px solid var(--sn-sand); outline-offset: 2px; }
+
+/* --- Titres, boutons, tableaux ------------------------------------------------------- */
+#content h1, .sn-h2 { font-family: "Space Grotesk", "Noto Kufi Arabic", sans-serif; font-weight: 700; color: var(--body-loud-color); }
+#content h1 { font-size: 26px; }
+.button, input[type=submit], input[type=button], .submit-row input, a.button { border-radius: 10px; min-height: 40px; padding-inline: 16px; font-weight: 600; }
+.object-tools a { border-radius: 18px; text-transform: none; letter-spacing: 0; font-size: 13px; padding: 8px 14px; }
+#changelist table thead th, .module h2, .module caption, .inline-group h2 { letter-spacing: 0.02em; }
+.module h2, .module caption, .inline-group h2 { background: var(--sn-green); font-size: 14px; text-transform: none; padding: 10px 12px; }
+#changelist .actions { border-radius: 10px; }
+#changelist-filter h2 { background: var(--sn-green); text-transform: none; }
+table td, table th { vertical-align: middle; }
+td.field-plate_display, td.field-reference { font-family: "Space Grotesk", sans-serif; font-weight: 700; }
+.sn-sub { display: block; color: var(--body-quiet-color); font-size: 12.5px; }
+.sn-mono { font-variant-numeric: tabular-nums; white-space: nowrap; direction: ltr; unicode-bidi: isolate; }
+
+/* --- Pastilles de statut --------------------------------------------------------------- */
+.sn-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 12.5px; white-space: nowrap; line-height: 1.5; }
+.sn-ok { background: var(--sn-ok-tint); color: var(--sn-green); }
+.sn-warn { background: var(--sn-sand-tint); color: var(--sn-sand-text); }
+.sn-bad { background: var(--sn-bad-tint); color: var(--sn-bad); }
+.sn-quiet { background: var(--sn-quiet-tint); color: var(--body-medium-color); }
+html[data-theme="dark"] .sn-ok { color: #6fd3a3; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sn-ok { color: #6fd3a3; } }
+
+/* --- Accueil « À traiter » --------------------------------------------------------------- */
+.sn-home { display: flex; flex-direction: column; gap: 28px; max-width: 1180px; }
+.sn-h2 { font-size: 20px; margin: 0 0 12px; }
+.sn-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.sn-card { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 16px; background: var(--sn-card); border: 1px solid var(--border-color); text-decoration: none; color: var(--body-fg); transition: border-color 0.15s; }
+.sn-card:hover, .sn-card:focus-visible { border-color: var(--sn-green); text-decoration: none; }
+.sn-card .sn-count { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 36px; line-height: 1.1; }
+.sn-card-label { font-weight: 700; font-size: 15px; color: var(--body-loud-color); }
+.sn-card-hint { font-size: 13px; color: var(--body-quiet-color); }
+.sn-card-extra { margin-top: 4px; align-self: flex-start; padding: 2px 8px; border-radius: 8px; background: var(--sn-bad-tint); color: var(--sn-bad); font-size: 12.5px; font-weight: 700; }
+.sn-card-warn { border-width: 2px; border-color: var(--sn-sand); }
+.sn-card-warn .sn-count { color: var(--sn-sand-text); }
+.sn-card-bad { border-width: 2px; border-color: var(--sn-bad); }
+.sn-card-bad .sn-count { color: var(--sn-bad); }
+.sn-card-done .sn-count { color: var(--body-quiet-color); }
+.sn-today { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.sn-today div { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 14px; background: var(--darkened-bg); }
+.sn-today strong { font-family: "Space Grotesk", sans-serif; font-size: 24px; font-variant-numeric: tabular-nums; }
+.sn-today span { color: var(--body-quiet-color); font-size: 13px; }
+.sn-sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.sn-section { background: var(--sn-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px 16px; }
+.sn-section h3 { margin: 0 0 8px; font-size: 15px; font-weight: 700; color: var(--body-loud-color); }
+.sn-section ul { list-style: none; margin: 0; padding: 0; }
+.sn-section li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--hairline-color); }
+.sn-section li:first-child { border-top: none; }
+.sn-section a { font-weight: 600; }
+.sn-section a.sn-add { font-weight: 500; font-size: 13px; }
+.sn-section-technical { background: var(--darkened-bg); }
+
+/* --- Panneau de décision (fiche entreprise) et formulaire de motif --------------------------- */
+.sn-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 16px; margin: 0 0 20px; border-radius: 16px; background: var(--sn-card); border: 2px solid var(--sn-sand); }
+.sn-decision.sn-ok-panel { border-color: var(--sn-green); }
+.sn-decision.sn-bad-panel { border-color: var(--sn-bad); }
+.sn-decision .sn-grow { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 6px; }
+.sn-decision form { margin: 0; }
+.sn-docs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sn-docs a { display: inline-block; padding: 6px 12px; border-radius: 10px; border: 1.5px solid var(--sn-green); font-weight: 600; }
+.sn-docs .sn-missing { padding: 6px 12px; border-radius: 10px; background: var(--sn-bad-tint); color: var(--sn-bad); font-weight: 700; }
+.sn-danger, input.sn-danger { background: var(--sn-bad) !important; }
+a.sn-btn-danger { background: var(--sn-bad); color: #fff; }
+a.sn-btn-danger:hover { background: #861d1d; color: #fff; }
+.sn-reason { max-width: 640px; }
+.sn-lead { font-size: 15px; }
+.sn-objects { margin: 0 0 16px; padding-inline-start: 20px; font-weight: 600; }
+.sn-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.sn-field label { font-weight: 700; }
+.sn-field textarea { width: 100%; box-sizing: border-box; font-size: 15px; padding: 10px; border-radius: 10px; }
+
+/* --- Corrections de détail ---------------------------------------------------------------------- */
+.sn-docs li, .sn-docs { list-style: none; }
+.inline-group .tabular td.original p { display: none; }  /* libellé technique « objet (n) » des lignes */
+.inline-group .tabular tr.has_original td { padding-top: 10px; }
+#logout-form button { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.sn-decision input[type="submit"], .sn-decision a.button {
+  display: inline-flex; align-items: center; min-height: 42px; padding: 0 18px; margin: 0;
+  font-size: 14px; font-weight: 700; line-height: 1; border-radius: 10px; text-decoration: none;
+}
+.sn-decision input[type="submit"][disabled] { opacity: 0.45; cursor: not-allowed; }
+.sn-kicker { margin: -6px 0 14px; color: var(--body-quiet-color); font-weight: 600; }
+.dashboard #content { width: auto; max-width: 1240px; }  /* l'admin fige le tableau de bord à 600 px */

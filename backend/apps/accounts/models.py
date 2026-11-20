@@ -6,6 +6,7 @@ from django.contrib.auth.models import PermissionsMixin
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 PHONE_RE = re.compile(r"^\+222\d{8}$")
 
@@ -47,39 +48,39 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
-        CUSTOMER = "customer", "Client"
-        INSURER_AGENT = "insurer_agent", "Agent assureur"
-        COMPANY_MEMBER = "company_member", "Membre d'une entreprise"
-        STAFF = "staff", "Équipe interne"
+        CUSTOMER = "customer", _("Client")
+        INSURER_AGENT = "insurer_agent", _("Agent assureur")
+        COMPANY_MEMBER = "company_member", _("Membre d'une entreprise")
+        STAFF = "staff", _("Équipe interne")
 
     class KycStatus(models.TextChoices):
-        NONE = "none", "Non commencé"
-        PENDING = "pending", "En vérification"
-        VERIFIED = "verified", "Vérifié"
-        REJECTED = "rejected", "Refusé"
+        NONE = "none", _("Non commencé")
+        PENDING = "pending", _("En vérification")
+        VERIFIED = "verified", _("Vérifié")
+        REJECTED = "rejected", _("Refusé")
 
     # Un numéro = un seul compte particulier. Le même numéro peut aussi servir de second
     # facteur (SMS) à des comptes professionnels, identifiés eux par leur email.
-    phone = models.CharField(max_length=16, db_index=True)
+    phone = models.CharField(max_length=16, db_index=True, verbose_name=_("téléphone"))
     email = models.EmailField(
-        "email professionnel", null=True, blank=True, unique=True,
-        help_text="Identifiant des comptes professionnels (agents assureurs), avec mot de passe et code SMS.",
+        _("email professionnel"), null=True, blank=True, unique=True,
+        help_text=_("Identifiant des comptes professionnels (agents assureurs), avec mot de passe et code SMS."),
     )
-    full_name = models.CharField(max_length=120, blank=True)
-    nni = models.CharField("NNI", max_length=20, blank=True, db_index=True)
-    language = models.CharField(max_length=2, choices=[("fr", "Français"), ("ar", "العربية")], default="fr")
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER)
+    full_name = models.CharField(max_length=120, blank=True, verbose_name=_("nom complet"))
+    nni = models.CharField(_("NNI"), max_length=20, blank=True, db_index=True)
+    language = models.CharField(max_length=2, choices=[("fr", "Français"), ("ar", "العربية")], default="fr", verbose_name=_("langue"))
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER, verbose_name=_("rôle"))
     insurer = models.ForeignKey(
         "catalog.Insurer", null=True, blank=True, on_delete=models.PROTECT, related_name="agents",
-        help_text="Renseigné uniquement pour les agents assureurs.",
+        help_text=_("Renseigné uniquement pour les agents assureurs."), verbose_name=_("compagnie d'assurance"),
     )
-    kyc_status = models.CharField(max_length=10, choices=KycStatus.choices, default=KycStatus.NONE)
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    date_joined = models.DateTimeField(default=timezone.now)
+    kyc_status = models.CharField(max_length=10, choices=KycStatus.choices, default=KycStatus.NONE, verbose_name=_("vérification d'identité"))
+    is_active = models.BooleanField(default=True, verbose_name=_("actif"))
+    is_staff = models.BooleanField(default=False, verbose_name=_("accès au back-office"))
+    date_joined = models.DateTimeField(default=timezone.now, verbose_name=_("inscrit le"))
     # Protection du mot de passe des comptes professionnels.
-    failed_logins = models.PositiveSmallIntegerField(default=0)
-    locked_until = models.DateTimeField(null=True, blank=True)
+    failed_logins = models.PositiveSmallIntegerField(default=0, verbose_name=_("échecs de connexion"))
+    locked_until = models.DateTimeField(null=True, blank=True, verbose_name=_("bloqué jusqu'au"))
 
     objects = UserManager()
 
@@ -90,6 +91,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     PRO_ROLES = (Role.INSURER_AGENT, Role.COMPANY_MEMBER)
 
     class Meta:
+        verbose_name = _("compte")
+        verbose_name_plural = _("comptes")
         constraints = [
             models.UniqueConstraint(
                 fields=["phone"],
@@ -117,12 +120,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.full_name or self.phone
 
+    def get_short_name(self):
+        return self.full_name or self.phone
+
 
 class OtpCode(models.Model):
     class Purpose(models.TextChoices):
-        CUSTOMER = "customer", "Connexion particulier"
-        PRO = "pro", "Connexion compte professionnel"
-        SIGNUP = "signup", "Inscription entreprise"
+        CUSTOMER = "customer", _("Connexion particulier")
+        PRO = "pro", _("Connexion compte professionnel")
+        SIGNUP = "signup", _("Inscription entreprise")
 
     phone = models.CharField(max_length=16, db_index=True)
     # Un code ne sert qu'au parcours qui l'a demandé (le même numéro peut porter plusieurs comptes).
@@ -144,22 +150,24 @@ def kyc_upload_path(instance, filename):
 
 class KycDocument(models.Model):
     class Kind(models.TextChoices):
-        ID_CARD = "id_card", "Carte d'identité"
-        PASSPORT = "passport", "Passeport"
-        VEHICLE_REGISTRATION = "vehicle_registration", "Carte grise"
+        ID_CARD = "id_card", _("Carte d'identité")
+        PASSPORT = "passport", _("Passeport")
+        VEHICLE_REGISTRATION = "vehicle_registration", _("Carte grise")
 
     class Status(models.TextChoices):
-        PENDING = "pending", "À vérifier"
-        ACCEPTED = "accepted", "Accepté"
-        REJECTED = "rejected", "Refusé"
+        PENDING = "pending", _("À vérifier")
+        ACCEPTED = "accepted", _("Accepté")
+        REJECTED = "rejected", _("Refusé")
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="documents")
-    kind = models.CharField(max_length=24, choices=Kind.choices)
-    file = models.FileField(upload_to=kyc_upload_path)
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
-    reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    review_note = models.CharField(max_length=255, blank=True)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="documents", verbose_name=_("compte"))
+    kind = models.CharField(max_length=24, choices=Kind.choices, verbose_name=_("type de pièce"))
+    file = models.FileField(upload_to=kyc_upload_path, verbose_name=_("fichier"))
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, verbose_name=_("statut"))
+    reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name=_("vérifiée par"))
+    review_note = models.CharField(max_length=255, blank=True, verbose_name=_("note de vérification"))
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_("déposée le"))
 
     class Meta:
+        verbose_name = _("pièce d'identité")
+        verbose_name_plural = _("pièces d'identité")
         ordering = ["-uploaded_at"]

@@ -32,6 +32,10 @@ cd frontend && npx next build         # doit compiler sans erreur TypeScript
 
 Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
 
+Back-office : tout nouveau texte en `_("…")` (français), sa traduction arabe dans
+`backend/locale/ar/LC_MESSAGES/django.po`, puis `python manage.py
+compile_translations` ; sinon le test des traductions échoue.
+
 ## Architecture
 
 - `backend/` : Django 5.2 + DRF, **monolithe modulaire** (pas de microservices).
@@ -59,6 +63,11 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
     pour l'arabe ; mention « SPÉCIMEN » tant que `ATTESTATION_SPECIMEN` est vrai)
   - `notifications` : SMS / WhatsApp derrière une interface, modèles FR + AR
   - `audit` : journal append-only (`record(...)` pour toute action sensible)
+  - `backoffice` : site d'administration de Sanad (`site.py` : tableau de bord
+    « À traiter », menu par métier), thème, gabarits, actions avec motif
+    (`actions.reason_page`), pastilles (`ui.py`). Textes en `_()` (français) et
+    traduction arabe dans `locale/ar/LC_MESSAGES/django.po`, compilée par
+    `python manage.py compile_translations` (pas besoin de gettext)
 - `frontend/` : Next.js 16 (App Router), TypeScript, CSS maison
   (`app/globals.css`, pas de Tailwind). Mobile d'abord, max 480 px.
   - Textes : **toujours** dans `lib/i18n.tsx`, en **français ET arabe**

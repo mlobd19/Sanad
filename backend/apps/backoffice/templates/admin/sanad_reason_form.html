@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate "Accueil" %}</a> › <a href="{{ back }}">{{ opts.verbose_name_plural|capfirst }}</a> › {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="sn-reason">
+  <p class="sn-lead">{{ intro }}</p>
+  <ul class="sn-objects">{% for obj in objects %}<li>{{ obj }}</li>{% endfor %}</ul>
+  <form method="post">{% csrf_token %}
+    {% for pk in ids %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
+    {% if action %}<input type="hidden" name="action" value="{{ action }}">{% endif %}
+    <input type="hidden" name="sn_confirm" value="1">
+    <div class="sn-field">
+      <label for="id_reason">{{ label }}</label>
+      <textarea name="reason" id="id_reason" rows="4" required aria-required="true"{% if error %} aria-invalid="true" aria-describedby="sn-reason-error"{% endif %}>{{ reason }}</textarea>
+      {% if error %}<p class="errornote" id="sn-reason-error">{{ error }}</p>{% endif %}
+    </div>
+    <div class="submit-row">
+      <input type="submit" class="default{% if danger %} sn-danger{% endif %}" value="{{ submit }}">
+      <a href="{{ back }}" class="button cancel-link">{% translate "Annuler" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -108,6 +108,28 @@ Plafond d'une transaction mobile money : `PAYMENT_MAX_AMOUNT` (0 = aucun ; à
 renseigner avec les opérateurs). Au-delà, la commande est refusée et doit être
 découpée.
 
+## Back-office de l'équipe
+
+http://localhost:3000/admin/ (téléphone + mot de passe d'un compte équipe ;
+`python manage.py createsuperuser`). En français et en arabe (bouton en haut à
+droite), clair ou sombre.
+
+- **Tableau de bord** : ce qui est à traiter (entreprises à vérifier, polices
+  payées en attente de l'assureur, remboursements en échec, identités KYC,
+  sinistres) et l'activité du jour ; chaque carte ouvre la liste filtrée.
+- **Menu par métier** : Clients, Entreprises, Contrats, Paiements, Catalogue,
+  Technique.
+- **Décisions** : fiche entreprise avec les pièces à ouvrir et les boutons
+  « Vérifier » / « Refuser » (motif obligatoire) ; refus ou résiliation de
+  polices, refus d'identité, remboursement fait à la main : toujours avec un
+  motif ou une référence.
+- **Lecture seule** pour les paiements, les attestations, les devis et l'audit :
+  rien ne se saisit à la main là où ce serait une erreur.
+
+Traductions arabes : `backend/locale/ar/LC_MESSAGES/django.po`. Après un ajout,
+`python manage.py compile_translations` (les textes manquants :
+`--missing`). Un test vérifie que chaque texte du code a sa traduction.
+
 ## Catalogue auto de démonstration
 
 `seed_demo` crée le catalogue auto de démonstration : quatre compagnies agréées

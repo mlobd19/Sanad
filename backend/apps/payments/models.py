@@ -1,31 +1,34 @@
 import uuid
 
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class Payment(models.Model):
     class Status(models.TextChoices):
-        PENDING = "pending", "En attente de confirmation"
-        SUCCEEDED = "succeeded", "Confirmé"
-        FAILED = "failed", "Échoué"
-        REFUNDED = "refunded", "Remboursé"
+        PENDING = "pending", _("En attente de confirmation")
+        SUCCEEDED = "succeeded", _("Confirmé")
+        FAILED = "failed", _("Échoué")
+        REFUNDED = "refunded", _("Remboursé")
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, verbose_name=_("identifiant"))
     # Soit une police (particulier), soit une commande de plusieurs polices (entreprise).
     policy = models.ForeignKey("policies.Policy", null=True, blank=True, on_delete=models.PROTECT,
-                               related_name="payments")
+                               related_name="payments", verbose_name=_("police"))
     order = models.ForeignKey("policies.Order", null=True, blank=True, on_delete=models.PROTECT,
-                              related_name="payments")
-    provider = models.CharField(max_length=20)
-    amount = models.PositiveIntegerField(help_text="MRU")
-    payer_phone = models.CharField(max_length=16, blank=True)
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
-    external_ref = models.CharField(max_length=80, blank=True)
-    failure_reason = models.CharField(max_length=255, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    confirmed_at = models.DateTimeField(null=True, blank=True)
+                              related_name="payments", verbose_name=_("commande"))
+    provider = models.CharField(max_length=20, verbose_name=_("moyen de paiement"))
+    amount = models.PositiveIntegerField(help_text=_("MRU"), verbose_name=_("montant (MRU)"))
+    payer_phone = models.CharField(max_length=16, blank=True, verbose_name=_("numéro du payeur"))
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True, verbose_name=_("statut"))
+    external_ref = models.CharField(max_length=80, blank=True, verbose_name=_("référence opérateur"))
+    failure_reason = models.CharField(max_length=255, blank=True, verbose_name=_("motif de l'échec"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("créé le"))
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_("confirmé le"))
 
     class Meta:
+        verbose_name = _("paiement")
+        verbose_name_plural = _("paiements")
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
@@ -47,26 +50,34 @@ class Payment(models.Model):
 
 class Refund(models.Model):
     class Status(models.TextChoices):
-        REQUESTED = "requested", "Demandé"
-        DONE = "done", "Effectué"
-        FAILED = "failed", "Échoué, à traiter à la main"
+        REQUESTED = "requested", _("Demandé")
+        DONE = "done", _("Effectué")
+        FAILED = "failed", _("Échoué, à traiter à la main")
 
     # Plusieurs remboursements possibles : une commande peut être remboursée ligne par ligne.
-    payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name="refunds")
+    payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name="refunds", verbose_name=_("paiement"))
     policy = models.ForeignKey("policies.Policy", null=True, blank=True, on_delete=models.PROTECT,
-                               related_name="refunds")
-    amount = models.PositiveIntegerField()
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
-    external_ref = models.CharField(max_length=80, blank=True)
-    note = models.CharField(max_length=255, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+                               related_name="refunds", verbose_name=_("police"))
+    amount = models.PositiveIntegerField(verbose_name=_("montant (MRU)"))
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED, verbose_name=_("statut"))
+    external_ref = models.CharField(max_length=80, blank=True, verbose_name=_("référence opérateur"))
+    note = models.CharField(max_length=255, blank=True, verbose_name=_("note"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("créé le"))
+
+    class Meta:
+        verbose_name = _("remboursement")
+        verbose_name_plural = _("remboursements")
 
 
 class CallbackLog(models.Model):
     """Trace brute de chaque callback reçu, valide ou non, pour le rapprochement."""
 
-    provider = models.CharField(max_length=20)
-    received_at = models.DateTimeField(auto_now_add=True)
-    signature_ok = models.BooleanField()
-    body = models.TextField()
-    outcome = models.CharField(max_length=80, blank=True)
+    provider = models.CharField(max_length=20, verbose_name=_("opérateur"))
+    received_at = models.DateTimeField(auto_now_add=True, verbose_name=_("reçu le"))
+    signature_ok = models.BooleanField(verbose_name=_("signature valide"))
+    body = models.TextField(verbose_name=_("contenu"))
+    outcome = models.CharField(max_length=80, blank=True, verbose_name=_("résultat"))
+
+    class Meta:
+        verbose_name = _("callback opérateur")
+        verbose_name_plural = _("callbacks opérateurs")

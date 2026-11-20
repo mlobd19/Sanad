@@ -1,20 +1,23 @@
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class AuditEvent(models.Model):
     """Journal append-only : chaque action sensible laisse une trace."""
 
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name=_("date"))
     actor = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name=_("auteur")
     )
-    action = models.CharField(max_length=64, db_index=True)
-    object_type = models.CharField(max_length=64)
-    object_id = models.CharField(max_length=64)
-    data = models.JSONField(default=dict, blank=True)
+    action = models.CharField(max_length=64, db_index=True, verbose_name=_("action"))
+    object_type = models.CharField(max_length=64, verbose_name=_("type d'objet"))
+    object_id = models.CharField(max_length=64, verbose_name=_("identifiant"))
+    data = models.JSONField(default=dict, blank=True, verbose_name=_("détails"))
 
     class Meta:
+        verbose_name = _("événement d'audit")
+        verbose_name_plural = _("journal d'audit")
         ordering = ["-created_at"]
 
     def save(self, *args, **kwargs):
