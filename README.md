@@ -40,6 +40,19 @@ codes pointent vers l'app, lancez le backend avec
 En développement, l'écran de paiement propose « Simuler la confirmation » :
 le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 
+## Comptes de démonstration
+
+Créés par `python manage.py seed_demo` **uniquement si DEBUG** (jamais en
+production). Mot de passe commun : `demo-sanad-2026`. Les codes SMS et les
+emails s'affichent dans la console du backend.
+
+| Espace | Adresse | Identifiant | Connexion |
+| --- | --- | --- | --- |
+| Particulier | `/` | n'importe quel numéro, ex. `36000001` | code SMS (le compte se crée) |
+| Portail assureur | `/assureur` | `agent@mar.test` (ou nasr, medina, iman) | mot de passe + code SMS |
+| Espace entreprise | `/entreprise` | `entreprise@demo.test` (Entreprise démo SARL, vérifiée) | mot de passe + code SMS |
+| Back-office | `/admin` | `+22230000000` | mot de passe |
+
 ## Portail assureur
 
 http://localhost:3000/assureur : l'espace web des agents des compagnies

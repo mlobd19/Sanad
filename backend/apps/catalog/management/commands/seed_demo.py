@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import ProtectedError
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import Insurer, Product, TariffFactor
@@ -29,6 +30,8 @@ TIERS, TOUS = "tiers-etendu", "tous-risques"
 
 # Mot de passe des agents démo, posé seulement quand DEBUG est vrai (jamais en production).
 DEMO_AGENT_PASSWORD = "demo-sanad-2026"
+DEMO_STAFF_PHONE = "+22230000000"  # back-office (DEBUG)
+DEMO_COMPANY_NIF, DEMO_COMPANY_EMAIL, DEMO_COMPANY_PHONE = "DEMO00001", "entreprise@demo.test", "+22240000001"
 RC_DEMO_PREMIUM = 10000  # identique partout : tarif RC homologué (montant fictif)
 
 # slug, nom court, raison sociale, n° agent démo, primes fictives {formule: prime annuelle de base}
@@ -94,7 +97,12 @@ class Command(BaseCommand):
             "(+22220000001 à +22220000004)."
         ))
         if settings.DEBUG:
+            self._demo_staff_and_company()
             self.stdout.write(f"Mot de passe démo des agents (DEBUG uniquement) : {DEMO_AGENT_PASSWORD}")
+            self.stdout.write(
+                f"Back-office (DEBUG) : {DEMO_STAFF_PHONE} / {DEMO_AGENT_PASSWORD} · "
+                f"Entreprise démo vérifiée (DEBUG) : {DEMO_COMPANY_EMAIL} / {DEMO_AGENT_PASSWORD}"
+            )
         else:
             self.stdout.write("Hors DEBUG : pas de mot de passe démo. Envoyez l'invitation depuis le back-office.")
 
@@ -104,6 +112,35 @@ class Command(BaseCommand):
         if settings.DEBUG and not agent.has_usable_password():
             agent.set_password(DEMO_AGENT_PASSWORD)
         agent.save()
+
+    def _demo_staff_and_company(self):
+        """DEBUG uniquement : un compte équipe (back-office) et une entreprise vérifiée, pour tout essayer."""
+        from apps.companies.models import Company, Membership
+
+        staff = User.objects.filter(phone=DEMO_STAFF_PHONE).exclude(role__in=User.PRO_ROLES).first()
+        if staff is None:
+            staff = User.objects.create_user(DEMO_STAFF_PHONE, role=User.Role.STAFF, full_name="Équipe Sanad (démo)")
+        staff.role, staff.is_staff, staff.is_superuser = User.Role.STAFF, True, True
+        if not staff.has_usable_password():
+            staff.set_password(DEMO_AGENT_PASSWORD)
+        staff.save()
+
+        company, _ = Company.objects.get_or_create(
+            nif=DEMO_COMPANY_NIF,
+            defaults={"legal_name": "Entreprise démo SARL", "rc_number": "NKC-DEMO-0001",
+                      "address": "Tevragh Zeina, Nouakchott"},
+        )
+        if company.status != Company.Status.VERIFIED:
+            company.status, company.verified_by, company.verified_at = Company.Status.VERIFIED, staff, timezone.now()
+            company.save()
+        admin = User.objects.filter(email=DEMO_COMPANY_EMAIL).first()
+        if admin is None:
+            admin = User.objects.create_user(DEMO_COMPANY_PHONE, role=User.Role.COMPANY_MEMBER,
+                                             email=DEMO_COMPANY_EMAIL, full_name="Admin Entreprise démo")
+        if not admin.has_usable_password():
+            admin.set_password(DEMO_AGENT_PASSWORD)
+            admin.save()
+        Membership.objects.get_or_create(user=admin, defaults={"company": company, "role": Membership.Role.ADMIN})
 
     def _retire_old_demo(self):
         """Retire les compagnies des anciens catalogues ; les désactive si elles ont déjà des contrats."""

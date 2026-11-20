@@ -243,3 +243,21 @@ def test_migration_closes_agent_sessions_only(mar_agent, customer_client):
 
     assert not Token.objects.filter(key=agent_token.key).exists()
     assert Token.objects.count() == customer_tokens >= 1
+
+
+def test_seed_creates_demo_staff_and_company_only_in_debug(db, settings):
+    from apps.companies.models import Company
+
+    settings.DEBUG = False
+    call_command("seed_demo", verbosity=0)
+    assert not User.objects.filter(role=User.Role.STAFF).exists()
+    assert not Company.objects.exists()
+
+    settings.DEBUG = True
+    call_command("seed_demo", verbosity=0)
+    call_command("seed_demo", verbosity=0)  # relançable sans doublon
+    staff = User.objects.get(phone="+22230000000", role=User.Role.STAFF)
+    assert staff.is_superuser and staff.check_password("demo-sanad-2026")
+    company = Company.objects.get(nif="DEMO00001")
+    assert company.status == Company.Status.VERIFIED
+    assert step1(APIClient(), email="entreprise@demo.test", password="demo-sanad-2026").status_code == 200
