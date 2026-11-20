@@ -20,6 +20,7 @@ api = [
     path("auth/pro/password/reset", accounts.PasswordResetView.as_view()),
     path("me", accounts.MeView.as_view()),
     path("me/documents", accounts.KycDocumentView.as_view()),
+    path("me/identity", accounts.IdentityCheckView.as_view()),
     # Biens, devis, polices
     path("assets", policies.AssetListView.as_view()),
     path("assets/scan", policies.RegistrationScanView.as_view()),

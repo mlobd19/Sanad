@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from apps.audit.models import record
 
 from .models import KycDocument, User
-from . import services
+from . import identity, services
 from .services import LoginError, OtpError, request_otp, verify_otp
 
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
@@ -113,8 +113,40 @@ class MeView(APIView):
     def patch(self, request):
         serializer = UserSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        user = services.update_profile(request.user, serializer.validated_data)
+        return Response(UserSerializer(user).data)
+
+
+class IdentityCheckView(APIView):
+    """Vérification d'identité auprès du registre national (ANRPTS), particuliers uniquement.
+
+    GET : la vérification automatique est-elle disponible ? POST : lance la vérification
+    avec le NNI et le nom du profil. Erreurs avec un « code » que l'app traduit.
+    """
+
+    throttle_scope = "identity"
+
+    def get_throttles(self):
+        # Seule l'interrogation du registre est limitée (évite de tester des NNI en série).
+        return super().get_throttles() if self.request.method == "POST" else []
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if request.user.is_pro:
+            self.permission_denied(request, message="Réservé aux comptes particuliers.")
+
+    def get(self, request):
+        return Response({"available": services.identity_check_available()})
+
+    def post(self, request):
+        try:
+            check = services.verify_identity(request.user)
+        except DjangoValidationError as exc:
+            return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
+        except identity.IdentityUnavailable:
+            return Response({"detail": "Le registre national ne répond pas. Réessayez plus tard.",
+                             "code": "unavailable"}, status=503)
+        return Response({"outcome": check.outcome, "user": UserSerializer(request.user).data})
 
 
 class KycDocumentSerializer(serializers.ModelSerializer):

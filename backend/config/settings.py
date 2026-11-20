@@ -134,7 +134,8 @@ REST_FRAMEWORK = {
         "verify": "120/minute",
         "pro_login": env("PRO_LOGIN_THROTTLE_RATE", "30/hour"),  # par adresse IP
         "password": env("PASSWORD_THROTTLE_RATE", "10/hour"),
-        "scan": env("SCAN_THROTTLE_RATE", "20/hour"),  # lecture de carte grise : payante, par compte
+        "scan": env("SCAN_THROTTLE_RATE", "20/hour"),
+        "identity": env("IDENTITY_THROTTLE_RATE", "5/hour"),  # interrogations du registre national, par compte  # lecture de carte grise : payante, par compte
     },
 }
 
@@ -183,6 +184,10 @@ PAYMENT_CALLBACK_SECRETS = {
 PAYMENT_MAX_AMOUNT = int(env("PAYMENT_MAX_AMOUNT", 0))
 ENABLE_PAYMENT_SIMULATOR = DEBUG and "simulated" in PAYMENT_PROVIDERS
 
+# Vérification d'identité au registre national : "simulated" (développement),
+# "anrpts" quand l'adaptateur existera, vide = désactivée (pièces vérifiées à la main).
+IDENTITY_PROVIDER = env("IDENTITY_PROVIDER", "simulated" if DEBUG else "")
+
 # Lecture de la carte grise par Claude (vision). Sans clé, le bouton répond
 # « lecture indisponible » et le client saisit les champs à la main.
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", "")
@@ -204,6 +209,8 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     if "simulated" in PAYMENT_PROVIDERS:
         raise RuntimeError("Le fournisseur de paiement simulé est interdit en production.")
+    if IDENTITY_PROVIDER == "simulated":
+        raise RuntimeError("Le registre d'identité simulé est interdit en production.")
     if not ATTESTATION_SIGNING_KEY:
         raise RuntimeError("ATTESTATION_SIGNING_KEY est obligatoire en production.")
 

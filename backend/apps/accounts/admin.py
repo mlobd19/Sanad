@@ -9,7 +9,7 @@ from apps.audit.models import record
 from apps.backoffice.actions import reason_page
 from apps.backoffice.ui import pill, status_pill
 
-from .models import KycDocument, User
+from .models import IdentityCheck, KycDocument, User
 from .services import send_password_email
 
 
@@ -31,6 +31,23 @@ class KycDocumentInline(admin.TabularInline):
     @admin.display(description=_("statut"))
     def status_display(self, doc):
         return status_pill(doc)
+
+
+class IdentityCheckInline(admin.TabularInline):
+    """Historique des interrogations du registre national : lecture seule."""
+
+    model = IdentityCheck
+    extra = 0
+    can_delete = False
+    fields = ("created_at", "provider", "nni", "full_name", "outcome_display", "reference")
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description=_("résultat"))
+    def outcome_display(self, check):
+        return status_pill(check, "outcome")
 
 
 class RoleFilter(admin.SimpleListFilter):
@@ -58,7 +75,7 @@ class UserAdmin(BaseUserAdmin):
     list_display_links = ("phone_display", "full_name")
     list_filter = (RoleFilter, "kyc_status", "insurer", "is_active")
     search_fields = ("phone", "email", "full_name", "nni")
-    inlines = [KycDocumentInline]
+    inlines = [IdentityCheckInline, KycDocumentInline]
     fieldsets = (
         (_("Identité"), {"fields": ("full_name", "phone", "email", "nni", "language")}),
         (_("Rôle et accès"), {

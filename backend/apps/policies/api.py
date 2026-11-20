@@ -22,7 +22,11 @@ def django_errors(fn):
         try:
             return fn(*args, **kwargs)
         except DjangoValidationError as exc:
-            return Response({"detail": exc.messages[0]}, status=400)
+            body = {"detail": exc.messages[0]}
+            code = getattr(exc, "error_list", [None])[0]
+            if code is not None and code.code:
+                body["code"] = code.code  # traduit par l'app (ex. kyc_required)
+            return Response(body, status=400)
         except DjangoPermissionDenied as exc:
             raise PermissionDenied(str(exc)) from exc
 

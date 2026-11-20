@@ -25,7 +25,8 @@ from rest_framework.authtoken.models import Token
 from apps.audit.models import record
 from apps.notifications.service import notify
 
-from .models import OtpCode, User, normalize_phone
+from . import identity
+from .models import IdentityCheck, OtpCode, User, normalize_phone
 
 PRO_CHALLENGE_SALT = "sanad.pro-login"
 BAD_CREDENTIALS = "Email ou mot de passe incorrect."
@@ -220,3 +221,69 @@ def reset_password(uidb64: str, token: str, password: str) -> User:
     Token.objects.filter(user=user).delete()  # ferme les sessions ouvertes avec l'ancien mot de passe
     record("user.password_set", user, actor=user)
     return user
+
+
+# --- Identité : profil et registre national -------------------------------------
+
+
+def update_profile(user: User, data: dict) -> User:
+    """Mise à jour du profil. Changer le nom ou le NNI d'une identité vérifiée relance la vérification."""
+    identity_changed = any(
+        key in data and str(data[key]).strip() != getattr(user, key) for key in ("full_name", "nni")
+    )
+    for key in ("full_name", "nni", "language"):
+        if key in data:
+            setattr(user, key, str(data[key]).strip())
+    fields = ["full_name", "nni", "language"]
+    if identity_changed and user.kyc_status == User.KycStatus.VERIFIED:
+        user.kyc_status = User.KycStatus.NONE
+        fields.append("kyc_status")
+        record("kyc.reset", user, actor=user, reason="identité modifiée")
+    user.save(update_fields=fields)
+    return user
+
+
+def identity_check_available() -> bool:
+    try:
+        return identity.get_identity_provider() is not None
+    except identity.IdentityUnavailable:
+        return False
+
+
+def verify_identity(user: User) -> IdentityCheck:
+    """Interroge le registre national avec le NNI et le nom du profil.
+
+    Correspondance : identité vérifiée. Désaccord ou NNI inconnu : rien n'est refusé
+    automatiquement (fautes de saisie, translittération arabe / français) ; le client
+    corrige son profil ou dépose une pièce vérifiée à la main dans le back-office.
+    Lève identity.IdentityUnavailable si le registre ne répond pas.
+    """
+    if user.kyc_status == User.KycStatus.VERIFIED:
+        raise ValidationError("Votre identité est déjà vérifiée.", code="already_verified")
+    if user.kyc_status == User.KycStatus.REJECTED:
+        raise ValidationError("Votre identité a été refusée : contactez le support.", code="rejected")
+    nni, full_name = user.nni.strip(), user.full_name.strip()
+    if not full_name or not nni:
+        raise ValidationError("Renseignez votre nom complet et votre NNI.", code="missing_fields")
+    if not identity.NNI_PATTERN.match(nni):
+        raise ValidationError("Le NNI compte 10 chiffres.", code="invalid_nni")
+
+    provider = identity.get_identity_provider()
+    if provider is None:
+        raise identity.IdentityUnavailable("vérification automatique désactivée")
+    try:
+        result = provider.verify(nni, full_name)
+    except identity.IdentityUnavailable:
+        IdentityCheck.objects.create(user=user, provider=provider.name, nni=nni, full_name=full_name,
+                                     outcome=IdentityCheck.Outcome.UNAVAILABLE)
+        raise
+    check = IdentityCheck.objects.create(user=user, provider=provider.name, nni=nni, full_name=full_name,
+                                         outcome=result.outcome, reference=result.reference)
+    if result.outcome == identity.Outcome.MATCH:
+        user.kyc_status = User.KycStatus.VERIFIED
+        user.save(update_fields=["kyc_status"])
+        record("kyc.verified", user, actor=user, method=provider.name, reference=result.reference)
+    else:
+        record("kyc.registry_no_match", user, actor=user, method=provider.name, outcome=result.outcome,
+               reference=result.reference)
+    return check

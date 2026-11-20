@@ -8,6 +8,8 @@ TONES = {
     "pending": "warn", "succeeded": "ok", "failed": "bad", "refunded": "quiet", "requested": "warn", "done": "ok",
     # Entreprises, KYC, attestations
     "verified": "ok", "rejected": "bad", "none": "quiet", "valid": "ok", "revoked": "bad", "accepted": "ok",
+    # Vérifications au registre national
+    "match": "ok", "mismatch": "warn", "not_found": "warn", "unavailable": "quiet",
     # Sinistres
     "submitted": "warn", "sent": "warn", "in_review": "warn", "closed": "quiet",
 }

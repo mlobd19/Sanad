@@ -21,6 +21,10 @@ def initiate_payment(customer, policy: Policy, provider_name: str, payer_phone: 
         raise PermissionDenied("Cette police n'appartient pas à ce client.")
     if policy.status != Policy.Status.DRAFT:
         raise ValidationError("Cette police n'attend pas de paiement.")
+    # Particuliers : identité vérifiée (registre national ou pièce validée) avant tout paiement.
+    # Les commandes d'entreprise passent par initiate_order_payment (entreprise vérifiée NIF + RC).
+    if customer.kyc_status != customer.KycStatus.VERIFIED:
+        raise ValidationError("Vérifiez votre identité avant de payer.", code="kyc_required")
     _check_ceiling(policy.premium)
     try:
         provider = get_provider(provider_name)

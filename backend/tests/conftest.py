@@ -60,6 +60,8 @@ def customer_client(demo):
     client = APIClient()
     login(client, "+22236000001")
     client.patch("/api/me", {"full_name": "Sidi Mohamed", "nni": "1234567890"}, format="json")
+    # Identité vérifiée : condition pour payer (voir test_identity pour le parcours registre).
+    User.objects.filter(phone="+22236000001", role=User.Role.CUSTOMER).update(kyc_status=User.KycStatus.VERIFIED)
     return client
 
 

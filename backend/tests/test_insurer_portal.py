@@ -119,7 +119,7 @@ def test_issued_and_refused_tabs(customer_client, mar_agent):
     assert row["customer"]["full_name"] == "Sidi Mohamed"
     assert row["vehicle"]["fiscal_power"] == 8
     assert row["payment_provider"] == "simulated"
-    assert row["kyc_status"] == "none"
+    assert row["kyc_status"] == "verified"  # condition pour payer
 
 
 def test_unknown_status_filter_is_rejected(mar_agent):

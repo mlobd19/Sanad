@@ -1,11 +1,29 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { Icon } from "@/components/Icon";
 import { App, BottomNav, Loading, TopBar, useUser } from "@/components/Shell";
 import { api, ApiError, setToken, type User } from "@/lib/api";
 import { useI18n, type Key, type Lang } from "@/lib/i18n";
+
+type IdOutcome = "match" | "mismatch" | "not_found";
+
+const OUTCOMES: Record<IdOutcome, { tone: "green" | "sand"; key: Key }> = {
+  match: { tone: "green", key: "idMatch" },
+  mismatch: { tone: "sand", key: "idMismatch" },
+  not_found: { tone: "sand", key: "idNotFound" },
+};
+
+const ID_ERRORS: Record<string, Key> = {
+  unavailable: "idUnavailable",
+  missing_fields: "idMissing",
+  invalid_nni: "idInvalidNni",
+  rejected: "idRejected",
+  already_verified: "idMatch",
+};
 
 export default function ProfilePage() {
   const { t, lang, setLang } = useI18n();
@@ -15,6 +33,20 @@ export default function ProfilePage() {
   const [nni, setNni] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [registry, setRegistry] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [idResult, setIdResult] = useState<{ tone: "green" | "sand" | "red"; key: Key } | null>(null);
+  // Arrivée depuis l'écran de paiement : on y renvoie une fois l'identité vérifiée.
+  const [returnTo, setReturnTo] = useState("");
+
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get("retour") ?? "";
+    if (/^\/paiement\/\d+$/.test(target)) setReturnTo(target);
+  }, []);
+
+  useEffect(() => {
+    api<{ available: boolean }>("me/identity").then((r) => setRegistry(r.available)).catch(() => setRegistry(false));
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -34,6 +66,26 @@ export default function ProfilePage() {
       setMessage(err instanceof ApiError ? err.message : t("error"));
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Vérification au registre national : enregistre d'abord le nom et le NNI saisis, puis interroge le registre.
+  async function checkIdentity() {
+    setChecking(true);
+    setIdResult(null);
+    setMessage("");
+    try {
+      if (user && (fullName !== user.full_name || nni !== user.nni)) {
+        setUser(await api<User>("me", { method: "PATCH", body: { full_name: fullName, nni } }));
+      }
+      const r = await api<{ outcome: IdOutcome; user: User }>("me/identity", { method: "POST" });
+      setUser(r.user);
+      setIdResult(OUTCOMES[r.outcome]);
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : "";
+      setIdResult({ tone: "red", key: ID_ERRORS[code] ?? (err instanceof ApiError && err.status === 429 ? "idUnavailable" : "error") });
+    } finally {
+      setChecking(false);
     }
   }
 
@@ -71,6 +123,27 @@ export default function ProfilePage() {
             <span className={`pill ${user.kyc_status === "verified" ? "" : user.kyc_status === "rejected" ? "bad" : "warn"}`}>
               {t(`kyc_${user.kyc_status}` as Key)}
             </span>
+          </div>
+          {user.kyc_status === "verified" && <span className="small muted">{t("idChangeResets")}</span>}
+          {registry && (user.kyc_status === "none" || user.kyc_status === "pending") && (
+            <div className="stack" style={{ gap: 6 }}>
+              <button type="button" className="btn outline block" onClick={checkIdentity} disabled={checking || busy}
+                aria-describedby="id-hint">
+                {checking ? <span className="spinner sm" aria-hidden="true" /> : <Icon name="shield" size={20} strokeWidth={2} />}
+                {checking ? t("idChecking") : t("idCheck")}
+              </button>
+              <span id="id-hint" className="small muted">{t("idCheckHint")}</span>
+            </div>
+          )}
+          {returnTo && user.kyc_status === "verified" && (
+            <Link className="btn primary block" href={returnTo}>{t("continueToPay")}</Link>
+          )}
+          <div aria-live="polite">
+            {idResult && (
+              <p className={`banner ${idResult.tone}`} role={idResult.tone === "red" ? "alert" : "status"} style={{ margin: 0 }}>
+                {t(idResult.key)}
+              </p>
+            )}
           </div>
           {message && <p className="small" role="status" style={{ margin: 0 }}>{message}</p>}
           <button className="btn primary block" disabled={busy}>{t("save")}</button>

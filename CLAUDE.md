@@ -47,6 +47,10 @@ compile_translations` ; sinon le test des traductions échoue.
     passe + code SMS ; le SMS seul n'ouvre jamais qu'un compte particulier.
     Codes SMS liés à un usage (`OtpCode.purpose`). Invitation / mot de passe
     oublié par email (lien 72 h). Back-office : `backends.PhonePasswordBackend`
+    Identité : `identity.py` (registre national ANRPTS derrière une interface ;
+    `simulated` en développement, interdit en production ; adaptateur réel à
+    écrire avec la documentation de l'ANRPTS). Un désaccord ne refuse jamais
+    automatiquement ; changer nom ou NNI d'une identité vérifiée la réinitialise
   - `companies` : entreprises (NIF, RC, statut de vérification), pièces,
     membres (administrateur / gestionnaire), flotte, devis groupés, commandes ;
     tout part de `services.member_company(user)`
@@ -86,6 +90,8 @@ compile_translations` ; sinon le test des traductions échoue.
   `paid → refused` (remboursement automatique), `active → cancelled`
   (attestation révoquée). Toute transition passe par `policies/services.py`.
 - Un véhicule ne peut pas être couvert deux fois sur la même période.
+- Particulier : **identité vérifiée avant tout paiement** (registre national ou
+  pièce validée au back-office) ; devis et police brouillon restent possibles.
 - Espace entreprise : une entreprise ne voit jamais les données d'une autre ;
   pas de paiement tant qu'elle n'est pas vérifiée (NIF + RC) ; mobile money
   uniquement, plafond `PAYMENT_MAX_AMOUNT`.
@@ -102,7 +108,9 @@ compile_translations` ; sinon le test des traductions échoue.
 
 - Catalogue démo (`seed_demo`) : **NASR, MAR, MEDINA Assurances, IMAN Assurance**.
   Agents démo `agent@<code>.test` (`+22220000001` à `+22220000004`), mot de
-  passe `demo-sanad-2026` posé **uniquement en DEBUG**. **Les primes sont fictives** et
+  passe `demo-sanad-2026` posé **uniquement en DEBUG**. Registre d'identité
+  simulé : NNI `1234567890` = « Sidi Mohamed », `000…` inconnu, `999…`
+  injoignable, tout autre NNI à 10 chiffres correspond. **Les primes sont fictives** et
   marquées `is_indicative` (« Indicatif » dans l'app) : ne jamais les présenter
   comme de vrais tarifs.
 - **Logos des compagnies** : uniquement les fichiers officiels fournis par les
@@ -128,7 +136,8 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 1. Espace entreprise, suite : **voyage**, puis **santé de groupe** (l'auto de la
    flotte est faite ; un plan par produit)
-2. Dépôt des pièces KYC et déclaration de sinistre dans l'app
+2. Déclaration de sinistre (photos) dans l'app ; dépôt de pièce d'identité
+   seulement en secours de la vérification ANRPTS (adaptateur réel à écrire)
 3. Mise en ligne (Render : Django + PostgreSQL, Next.js) ; avant : code SMS
    pour la connexion au back-office `/admin/`
 4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),

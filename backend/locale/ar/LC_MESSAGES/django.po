@@ -1005,3 +1005,28 @@ msgstr "الإشعارات"
 
 msgid "Tableau de bord"
 msgstr "لوحة القيادة"
+
+# Vérification d'identité au registre national (ANRPTS)
+msgid "vérification au registre national"
+msgstr "تحقق لدى السجل الوطني"
+
+msgid "vérifications au registre national"
+msgstr "عمليات التحقق لدى السجل الوطني"
+
+msgid "Identité confirmée"
+msgstr "تم تأكيد الهوية"
+
+msgid "Nom différent du registre"
+msgstr "الاسم مختلف عن السجل"
+
+msgid "NNI inconnu du registre"
+msgstr "الرقم الوطني غير موجود في السجل"
+
+msgid "Registre injoignable"
+msgstr "تعذر الاتصال بالسجل"
+
+msgid "source"
+msgstr "المصدر"
+
+msgid "référence du registre"
+msgstr "مرجع السجل"

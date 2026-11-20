@@ -171,3 +171,26 @@ class KycDocument(models.Model):
         verbose_name = _("pièce d'identité")
         verbose_name_plural = _("pièces d'identité")
         ordering = ["-uploaded_at"]
+
+
+class IdentityCheck(models.Model):
+    """Une interrogation du registre national (ANRPTS ou simulateur). Journal, jamais modifié."""
+
+    class Outcome(models.TextChoices):
+        MATCH = "match", _("Identité confirmée")
+        MISMATCH = "mismatch", _("Nom différent du registre")
+        NOT_FOUND = "not_found", _("NNI inconnu du registre")
+        UNAVAILABLE = "unavailable", _("Registre injoignable")
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="identity_checks", verbose_name=_("compte"))
+    provider = models.CharField(max_length=20, verbose_name=_("source"))
+    nni = models.CharField(_("NNI"), max_length=20)
+    full_name = models.CharField(max_length=120, verbose_name=_("nom complet"))
+    outcome = models.CharField(max_length=12, choices=Outcome.choices, verbose_name=_("résultat"))
+    reference = models.CharField(max_length=64, blank=True, verbose_name=_("référence du registre"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("vérifiée le"))
+
+    class Meta:
+        verbose_name = _("vérification au registre national")
+        verbose_name_plural = _("vérifications au registre national")
+        ordering = ["-created_at"]

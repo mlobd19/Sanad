@@ -16,6 +16,7 @@ export default function PaymentPage() {
   const router = useRouter();
   const { policyId } = useParams<{ policyId: string }>();
   const { user } = useUser();
+  const [kycNeeded, setKycNeeded] = useState(false);
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [provider, setProvider] = useState("");
@@ -28,6 +29,7 @@ export default function PaymentPage() {
   useEffect(() => {
     if (!user) return;
     setPayer(user.phone);
+    setKycNeeded(user.kyc_status !== "verified");
     Promise.all([api<Policy>(`policies/${policyId}`), api<Provider[]>("payments/providers")])
       .then(([p, list]) => {
         setPolicy(p);
@@ -60,7 +62,8 @@ export default function PaymentPage() {
       stopPolling();
       timer.current = setInterval(() => poll().catch(() => undefined), 3000);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("error"));
+      if (err instanceof ApiError && err.code === "kyc_required") setKycNeeded(true);
+      else setError(err instanceof ApiError ? err.message : t("error"));
     } finally {
       setBusy(false);
     }
@@ -142,6 +145,18 @@ export default function PaymentPage() {
         ) : (
           policy?.status === "draft" && (
             <>
+              {kycNeeded && (
+                <div className={`banner ${user?.kyc_status === "rejected" ? "red" : "sand"}`} role="alert"
+                  style={{ flexDirection: "column", alignItems: "stretch", gap: 12 }}>
+                  <span>{t(user?.kyc_status === "rejected" ? "kycRejectedPay" : "kycBeforePay")}</span>
+                  {user?.kyc_status !== "rejected" && (
+                    <Link className="btn primary block" href={`/profil?retour=/paiement/${policyId}`}>
+                      <Icon name="shield" size={20} strokeWidth={2} />
+                      {t("idCheck")}
+                    </Link>
+                  )}
+                </div>
+              )}
               <section className="stack">
                 <h2 className="eyebrow">{t("method")}</h2>
                 <div className="stack" role="radiogroup" aria-label={t("method")}>
@@ -182,7 +197,7 @@ export default function PaymentPage() {
               <button type="button" className="btn link" onClick={changeMethod}>{t("changeMethod")}</button>
             </>
           ) : (
-            <button type="button" className="btn primary block tall" onClick={pay} disabled={busy || !provider}>
+            <button type="button" className="btn primary block tall" onClick={pay} disabled={busy || !provider || kycNeeded}>
               {t("pay", { amount: money(policy.premium, lang) })}
             </button>
           )}
