@@ -10,6 +10,24 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _load_dotenv(path: Path):
+    """Charge le .env de la racine du dépôt s'il existe (développement local).
+
+    Les variables déjà définies dans l'environnement gardent la priorité.
+    """
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+_load_dotenv(BASE_DIR.parent / ".env")
+
+
 def env(name, default=None):
     return os.environ.get(name, default)
 
@@ -116,6 +134,7 @@ REST_FRAMEWORK = {
         "verify": "120/minute",
         "pro_login": env("PRO_LOGIN_THROTTLE_RATE", "30/hour"),  # par adresse IP
         "password": env("PASSWORD_THROTTLE_RATE", "10/hour"),
+        "scan": env("SCAN_THROTTLE_RATE", "20/hour"),  # lecture de carte grise : payante, par compte
     },
 }
 
@@ -163,6 +182,11 @@ PAYMENT_CALLBACK_SECRETS = {
 # Plafond d'une transaction mobile money (MRU) ; 0 = pas de plafond. À renseigner avec les opérateurs.
 PAYMENT_MAX_AMOUNT = int(env("PAYMENT_MAX_AMOUNT", 0))
 ENABLE_PAYMENT_SIMULATOR = DEBUG and "simulated" in PAYMENT_PROVIDERS
+
+# Lecture de la carte grise par Claude (vision). Sans clé, le bouton répond
+# « lecture indisponible » et le client saisit les champs à la main.
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", "")
+REGISTRATION_SCAN_MODEL = env("REGISTRATION_SCAN_MODEL", "claude-opus-5-5")
 
 NOTIFICATION_BACKEND = env("NOTIFICATION_BACKEND", "apps.notifications.backends.ConsoleBackend")
 

@@ -68,6 +68,42 @@ def build_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO, mont
     return sorted(created, key=lambda q: q.premium)
 
 
+# --- Lecture de la carte grise ------------------------------------------------------
+
+SCAN_MAX_UPLOAD = 15 * 1024 * 1024  # photo brute d'un téléphone récent
+
+
+def scan_registration_card(user, upload) -> dict:
+    """Pré-remplissage du formulaire véhicule depuis une photo de carte grise.
+
+    La photo n'est jamais enregistrée : seuls les champs lus sont renvoyés, et le
+    client les vérifie avant de valider. Lève registration_scan.ScanUnavailable ou
+    ScanFailed si la lecture automatique n'a pas abouti.
+    """
+    from . import registration_scan
+
+    if upload is None:
+        raise ValidationError("Ajoutez une photo de la carte grise.", code="missing")
+    if upload.size > SCAN_MAX_UPLOAD:
+        raise ValidationError("Photo trop lourde (15 Mo maximum).", code="too_large")
+    try:
+        jpeg = registration_scan.prepare_image(upload.read())
+    except ValueError:
+        raise ValidationError("Photo illisible : utilisez une image JPEG ou PNG.", code="unreadable") from None
+    data = registration_scan.read_card(jpeg)
+    if not data.get("is_registration_card"):
+        raise ValidationError("Ce document ne ressemble pas à une carte grise.", code="not_card")
+    plate = " ".join(str(data.get("plate") or "").upper().split())[:40]
+    make = " ".join(" ".join(str(data.get(k) or "") for k in ("make", "model")).split())[:80]
+    try:
+        power = int(data.get("fiscal_power") or 0)
+    except (TypeError, ValueError):
+        power = 0
+    result = {"reference": plate, "make": make, "fiscal_power": power if 1 <= power <= 60 else None}
+    record("vehicle.registration_scanned", user, actor=user, found=sorted(k for k, v in result.items() if v))
+    return result
+
+
 def _has_overlapping_cover(asset, starts_on, ends_on, exclude=None):
     qs = Policy.objects.filter(
         asset__reference__iexact=asset.reference,

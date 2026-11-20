@@ -22,6 +22,7 @@ api = [
     path("me/documents", accounts.KycDocumentView.as_view()),
     # Biens, devis, polices
     path("assets", policies.AssetListView.as_view()),
+    path("assets/scan", policies.RegistrationScanView.as_view()),
     path("assets/<int:asset_id>/quotes", policies.QuoteView.as_view()),
     path("policies", policies.PolicyListView.as_view()),
     path("policies/<int:policy_id>", policies.PolicyDetailView.as_view()),

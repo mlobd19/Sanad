@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
+from rest_framework.parsers import MultiPartParser
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
@@ -10,7 +11,7 @@ from rest_framework.views import APIView
 
 from apps.attestations.models import Attestation
 
-from . import services
+from . import registration_scan, services
 from .models import Claim, Commission, InsuredAsset, Policy, Quote
 
 
@@ -123,6 +124,37 @@ class AssetListView(APIView):
         serializer.is_valid(raise_exception=True)
         asset = serializer.save(owner=request.user)
         return Response(AssetSerializer(asset).data, status=status.HTTP_201_CREATED)
+
+
+class CanScanRegistration(BasePermission):
+    """Particuliers et membres d'entreprise (flotte) ; pas les agents assureurs."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and user.role != user.Role.INSURER_AGENT)
+
+
+class RegistrationScanView(APIView):
+    """Lit une photo de carte grise et renvoie les champs pour pré-remplir le formulaire.
+
+    Chaque erreur porte un « code » que l'app traduit (français / arabe).
+    """
+
+    permission_classes = [CanScanRegistration]
+    parser_classes = [MultiPartParser]
+    throttle_scope = "scan"
+
+    def post(self, request):
+        try:
+            fields = services.scan_registration_card(request.user, request.FILES.get("image"))
+        except DjangoValidationError as exc:
+            return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
+        except registration_scan.ScanUnavailable:
+            return Response({"detail": "La lecture automatique n'est pas disponible.", "code": "unavailable"},
+                            status=503)
+        except registration_scan.ScanFailed:
+            return Response({"detail": "La carte grise n'a pas pu être lue.", "code": "failed"}, status=502)
+        return Response(fields)
 
 
 class QuoteView(APIView):

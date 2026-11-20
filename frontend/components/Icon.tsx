@@ -18,6 +18,7 @@ const paths: Record<string, string> = {
   qr: "M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2 M18 14h2v2 M14 18v2h6",
   expand: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5",
   close: "M6 6l12 12 M18 6L6 18",
+  camera: "M4 8h3l2-3h6l2 3h3v11H4z M12 13.5m-3.5 0a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0",
   phone: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2",
 };
 

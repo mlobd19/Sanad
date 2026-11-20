@@ -21,10 +21,18 @@ export function setToken(token: string | null) {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Code d'erreur machine renvoyé par certaines API (ex. lecture de carte grise), traduit par l'app. */
+  code: string;
+  constructor(status: number, message: string, code = "") {
     super(message);
     this.status = status;
+    this.code = code;
   }
+}
+
+function errorCode(data: unknown): string {
+  const code = data && typeof data === "object" ? (data as Record<string, unknown>).code : undefined;
+  return typeof code === "string" ? code : "";
 }
 
 function firstMessage(data: unknown): string {
@@ -59,7 +67,7 @@ export async function api<T = unknown>(path: string, options: { method?: string;
     }
   }
   const data = response.status === 204 ? null : await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`);
+  if (!response.ok) throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`, errorCode(data));
   return data as T;
 }
 
@@ -79,7 +87,7 @@ export async function apiUpload<T = unknown>(path: string, form: FormData): Prom
     body: form,
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`);
+  if (!response.ok) throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`, errorCode(data));
   return data as T;
 }
 
@@ -89,7 +97,7 @@ export async function downloadFile(path: string, filename: string): Promise<void
   const response = await fetch(`/api/${path}`, { headers: token ? { Authorization: `Token ${token}` } : {} });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`);
+    throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`, errorCode(data));
   }
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement("a");
@@ -229,5 +237,8 @@ export type GroupOffer = {
 };
 
 export type CompanyOrder = { id: number; total: number; created_at: string; policies: Policy[] };
+
+/** Champs lus sur une carte grise ; vides (ou null) quand illisibles. */
+export type RegistrationScan = { reference: string; make: string; fiscal_power: number | null };
 
 export type FleetImport = { created: string[]; errors: { line: number; plate?: string; message: string }[] };

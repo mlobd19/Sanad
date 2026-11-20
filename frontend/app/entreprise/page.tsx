@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type R
 
 import { DURATION_LABEL, DurationPicker } from "@/components/DurationPicker";
 import { InsurerLogo } from "@/components/InsurerLogo";
+import { ScanRegistration } from "@/components/ScanRegistration";
 import {
   api,
   ApiError,
@@ -21,6 +22,7 @@ import {
   type PaymentStart,
   type Policy,
   type Provider,
+  type RegistrationScan,
   type Vehicle,
 } from "@/lib/api";
 import { date, daysUntil, money, num } from "@/lib/format";
@@ -344,6 +346,11 @@ function AddVehicleCard({ onAdded }: { onAdded: () => void }) {
   return (
     <form className="card" onSubmit={submit}>
       <h3 className="card-title">{t("addVehicleTitle")}</h3>
+      <ScanRegistration onRead={(f: RegistrationScan) => {
+        if (f.reference) setPlate(f.reference);
+        if (f.make) setMake(f.make);
+        if (f.fiscal_power) setPower(String(f.fiscal_power));
+      }} />
       <div className="form-grid">
         <div className="field">
           <label htmlFor="v-plate">{t("plate")}</label>

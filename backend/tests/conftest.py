@@ -20,6 +20,7 @@ def _settings(settings, tmp_path):
     settings.PAYMENT_PROVIDERS = ["simulated"]
     settings.MEDIA_ROOT = tmp_path
     settings.ATTESTATION_SIGNING_KEY = TEST_SIGNING_KEY
+    settings.ANTHROPIC_API_KEY = ""  # jamais d'appel réel à l'API Claude pendant les tests
     settings.REST_FRAMEWORK = {**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": []}
     MemoryBackend.outbox.clear()
 

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
+import { ScanRegistration } from "@/components/ScanRegistration";
 import { App, Stepper, TopBar, useUser } from "@/components/Shell";
-import { api, ApiError, type Asset } from "@/lib/api";
+import { api, ApiError, type Asset, type RegistrationScan } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 const USAGES = [
@@ -30,6 +31,13 @@ export default function VehiclePage() {
   useEffect(() => {
     if (user) api<Asset[]>("assets").then(setAssets).catch(() => setAssets([]));
   }, [user]);
+
+  // Champs lus sur la carte grise : seuls les champs trouvés remplacent la saisie.
+  function prefill(fields: RegistrationScan) {
+    if (fields.reference) setPlate(fields.reference);
+    if (fields.make) setMake(fields.make);
+    if (fields.fiscal_power) setPower(String(fields.fiscal_power));
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -73,6 +81,7 @@ export default function VehiclePage() {
         )}
 
         <form className="stack" style={{ gap: 16 }} onSubmit={submit}>
+          <ScanRegistration onRead={prefill} />
           <div className="field">
             <label htmlFor="plate">{t("plate")}</label>
             <input id="plate" className="input" value={plate} onChange={(e) => setPlate(e.target.value)} required dir="ltr" autoCapitalize="characters" />
