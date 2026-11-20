@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DURATION_LABEL } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
 import { App, ErrorBox, Loading, Stepper, TopBar, useUser } from "@/components/Shell";
 import { api, ApiError, type PaymentStart, type Policy, type Provider } from "@/lib/api";
@@ -103,7 +104,7 @@ export default function PaymentPage() {
           <section className="amount-card" aria-label={t("summary")}>
             <span className="sub">{policy.insurer} · {policy.product} · <bdi>{policy.plate}</bdi></span>
             <span className="big">{money(policy.premium, lang)}</span>
-            <span className="sub">{date(policy.starts_on, lang)} → {date(policy.ends_on, lang)}</span>
+            <span className="sub">{date(policy.starts_on, lang)} → {date(policy.ends_on, lang)} · {t(DURATION_LABEL[policy.duration_months])}</span>
           </section>
         )}
 

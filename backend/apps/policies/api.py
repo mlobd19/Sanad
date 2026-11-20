@@ -69,7 +69,7 @@ class QuoteSerializer(serializers.ModelSerializer):
         model = Quote
         fields = [
             "id", "insurer", "insurer_legal_name", "insurer_slug", "insurer_logo", "product", "product_code",
-            "coverages", "indicative", "premium", "expires_at",
+            "coverages", "indicative", "premium", "duration_months", "expires_at",
         ]
 
     def get_insurer_logo(self, quote):
@@ -92,12 +92,13 @@ class PolicySerializer(serializers.ModelSerializer):
     attestation = serializers.SerializerMethodField()
     renewed = serializers.SerializerMethodField()
     insurer_logo = serializers.SerializerMethodField()
+    duration_months = serializers.IntegerField(source="quote.duration_months", read_only=True)
 
     class Meta:
         model = Policy
         fields = [
             "id", "insurer", "insurer_logo", "product", "plate", "premium", "status", "status_label",
-            "starts_on", "ends_on", "refusal_reason", "attestation", "asset_id", "renewed", "created_at",
+            "starts_on", "ends_on", "duration_months", "refusal_reason", "attestation", "asset_id", "renewed", "created_at",
         ]
 
     def get_insurer_logo(self, policy):
@@ -130,7 +131,8 @@ class QuoteView(APIView):
     @django_errors
     def post(self, request, asset_id):
         asset = get_object_or_404(InsuredAsset, pk=asset_id, owner=request.user)
-        quotes = services.compute_quotes(request.user, asset)
+        months = services.parse_duration(request.data.get("months"))
+        quotes = services.compute_quotes(request.user, asset, months=months)
         return Response(QuoteSerializer(quotes, many=True).data, status=status.HTTP_201_CREATED)
 
 

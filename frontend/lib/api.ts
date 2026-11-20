@@ -114,6 +114,10 @@ export type User = {
   role: string;
 };
 
+/** Durées de couverture proposées (mois). */
+export const DURATIONS = [3, 6, 12] as const;
+export type Months = (typeof DURATIONS)[number];
+
 export type Asset = { id: number; kind: string; reference: string; attributes: Record<string, string | number> };
 
 export type Quote = {
@@ -127,6 +131,7 @@ export type Quote = {
   coverages: string[];
   indicative: boolean;
   premium: number;
+  duration_months: Months;
   expires_at: string;
 };
 
@@ -145,6 +150,7 @@ export type Policy = {
   status_label: string;
   starts_on: string;
   ends_on: string;
+  duration_months: Months;
   refusal_reason: string;
   attestation: Attestation | null;
   asset_id: number;
@@ -218,7 +224,7 @@ export type Vehicle = {
 
 export type GroupOffer = {
   insurer: string; insurer_legal_name: string; insurer_logo: string | null; product: string; product_code: string;
-  coverages: string[]; indicative: boolean; total: number;
+  coverages: string[]; indicative: boolean; total: number; duration_months: Months;
   lines: { asset_id: number; plate: string; quote_id: number; premium: number }[];
 };
 

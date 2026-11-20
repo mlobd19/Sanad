@@ -271,7 +271,7 @@ def import_fleet(user, raw: bytes) -> dict:
 # --- Devis groupés et commandes -----------------------------------------------------------------
 
 
-def quote_selection(user, asset_ids: list[int]) -> list[dict]:
+def quote_selection(user, asset_ids: list[int], months: int = 12) -> list[dict]:
     """Offres de chaque compagnie pour toute la sélection : prix par véhicule et total."""
     company, _ = member_company(user)
     ids = {int(i) for i in asset_ids or []}
@@ -280,7 +280,7 @@ def quote_selection(user, asset_ids: list[int]) -> list[dict]:
         raise ValidationError("Sélectionnez des véhicules de votre flotte.")
     offers: dict[int, dict] = {}
     for asset in assets:
-        for quote in policy_services.build_quotes(user, asset):
+        for quote in policy_services.build_quotes(user, asset, months=months):
             product = quote.product
             offer = offers.setdefault(product.pk, {"product": product, "lines": []})
             offer["lines"].append({"asset_id": asset.pk, "plate": asset.reference, "quote_id": quote.pk,
@@ -302,6 +302,8 @@ def create_order(user, quote_ids: list[int], starts_on: date | None = None) -> O
         raise ValidationError("Devis introuvables : relancez la comparaison.")
     if len({q.asset_id for q in quotes}) != len(quotes):
         raise ValidationError("Un seul devis par véhicule.")
+    if len({q.duration_months for q in quotes}) != 1:
+        raise ValidationError("Une commande porte sur une seule durée.")
     order = Order.objects.create(company=company, created_by=user)
     for quote in sorted(quotes, key=lambda q: q.asset.reference):
         try:

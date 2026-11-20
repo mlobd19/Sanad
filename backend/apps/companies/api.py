@@ -11,7 +11,7 @@ from apps.accounts.api import UserSerializer
 from apps.accounts.services import LoginError
 from apps.policies.api import PolicySerializer, django_errors, logo_url
 from apps.policies.models import Order
-from apps.policies.services import parse_statuses
+from apps.policies.services import parse_duration, parse_statuses
 
 from . import services
 from .models import CompanyDocument, Membership
@@ -175,7 +175,8 @@ class QuoteSelectionView(APIView):
 
     @django_errors
     def post(self, request):
-        offers = services.quote_selection(request.user, request.data.get("asset_ids") or [])
+        months = parse_duration(request.data.get("months"))
+        offers = services.quote_selection(request.user, request.data.get("asset_ids") or [], months=months)
         return Response([{
             "insurer": o["product"].insurer.name,
             "insurer_legal_name": o["product"].insurer.legal_name,
@@ -185,6 +186,7 @@ class QuoteSelectionView(APIView):
             "coverages": o["product"].coverages,
             "indicative": o["product"].is_indicative,
             "total": o["total"],
+            "duration_months": months,
             "lines": o["lines"],
         } for o in offers])
 

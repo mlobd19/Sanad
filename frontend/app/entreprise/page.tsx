@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
+import { DURATION_LABEL, DurationPicker } from "@/components/DurationPicker";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import {
   api,
@@ -16,6 +17,7 @@ import {
   type CompanyOrder,
   type FleetImport,
   type GroupOffer,
+  type Months,
   type PaymentStart,
   type Policy,
   type Provider,
@@ -439,6 +441,7 @@ function QuotesTab({ selection, verified, onBackToFleet, onPaid }: {
   const [formula, setFormula] = useState("all");
   const [order, setOrder] = useState<CompanyOrder | null>(null);
   const [startsOn, setStartsOn] = useState(new Date().toISOString().slice(0, 10));
+  const [months, setMonths] = useState<Months>(12);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const key = selection.join(",");
@@ -448,10 +451,10 @@ function QuotesTab({ selection, verified, onBackToFleet, onPaid }: {
     setOffers(null);
     setOrder(null);
     setError("");
-    api<GroupOffer[]>("company/quotes", { body: { asset_ids: key.split(",").map(Number) } })
+    api<GroupOffer[]>("company/quotes", { body: { asset_ids: key.split(",").map(Number), months } })
       .then(setOffers)
       .catch((err) => setError(message(err, t("error"))));
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, months]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function orderOffer(offer: GroupOffer) {
     setBusy(true);
@@ -494,6 +497,8 @@ function QuotesTab({ selection, verified, onBackToFleet, onPaid }: {
             onChange={(e) => setStartsOn(e.target.value)} />
         </div>
       </SectionHead>
+      <DurationPicker value={months} onChange={setMonths} disabled={!offers && !error} />
+      {months < 12 && <p className="note" style={{ margin: 0 }}>{t("shortTermNote")}</p>}
       <p className="note" style={{ margin: 0 }}>{t("indicativeNote")}</p>
       {error && <div className="banner red" role="alert">{error}</div>}
       {!offers && !error && <div className="center" style={{ minHeight: 160 }}><span className="spinner" aria-label={t("loading")} /></div>}
@@ -517,6 +522,7 @@ function QuotesTab({ selection, verified, onBackToFleet, onPaid }: {
               </div>
               <div className="stack" style={{ gap: 4, alignItems: "flex-end" }}>
                 <span className="price">{money(o.total, lang)}</span>
+                <span className="small muted">{t(DURATION_LABEL[o.duration_months])}</span>
                 {o.total === cheapest && formula !== "rc" && <span className="badge-sand">{t("cheapest")}</span>}
                 <Indicative on={o.indicative} />
               </div>

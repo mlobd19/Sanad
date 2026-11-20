@@ -7,6 +7,13 @@ from django.utils.translation import gettext_lazy as _
 
 LOGO_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]  # pas de SVG : il peut embarquer du script
 
+# Durées proposées (mois) et part de la prime annuelle facturée pour chacune.
+# Barème court terme INDICATIF : à remplacer par le barème officiel (homologué
+# pour la RC) dès qu'il est communiqué par les compagnies.
+DURATIONS = (3, 6, 12)
+DEFAULT_DURATION = 12
+SHORT_TERM_RATES = {3: Decimal("0.40"), 6: Decimal("0.65"), 12: Decimal("1")}
+
 
 def logo_upload_path(instance, filename):
     ext = filename.rsplit(".", 1)[-1].lower()
@@ -59,7 +66,6 @@ class Product(models.Model):
     name = models.CharField(max_length=120, help_text=_("Ex. RC seule, Tiers étendu, Tous risques."), verbose_name=_("nom"))
     coverages = models.JSONField(default=list, help_text=_("Liste des garanties affichées au client."), verbose_name=_("garanties"))
     base_premium = models.PositiveIntegerField(help_text=_("Prime annuelle de base en MRU."), verbose_name=_("prime de base (MRU)"))
-    duration_months = models.PositiveSmallIntegerField(default=12, verbose_name=_("durée (mois)"))
     tariff_version = models.CharField(max_length=20, default="v1", verbose_name=_("version du tarif"))
     is_indicative = models.BooleanField(
         default=False, help_text=_("Tarif indicatif (démo) : pas encore la grille officielle de l'assureur."), verbose_name=_("tarif indicatif")
@@ -75,9 +81,11 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.insurer} · {self.name}"
 
-    def price(self, attributes: dict) -> int:
-        """Prime en MRU : base × multiplicateurs des facteurs applicables."""
-        premium = Decimal(self.base_premium)
+    def price(self, attributes: dict, months: int = DEFAULT_DURATION) -> int:
+        """Prime en MRU : base annuelle × multiplicateurs des facteurs applicables × barème de durée."""
+        if months not in SHORT_TERM_RATES:
+            raise ValidationError(f"Durée non proposée : {months} mois.")
+        premium = Decimal(self.base_premium) * SHORT_TERM_RATES[months]
         for factor in self.factors.all():
             if factor.applies_to(attributes):
                 premium *= factor.multiplier

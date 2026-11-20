@@ -13,7 +13,7 @@ from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from apps.audit.models import record
-from apps.catalog.models import Product
+from apps.catalog.models import DEFAULT_DURATION, DURATIONS, Product
 from apps.notifications.service import notify
 
 from .models import Commission, InsuredAsset, Policy, Quote
@@ -22,14 +22,28 @@ QUOTE_VALIDITY = timedelta(hours=48)
 REQUIRED_VEHICLE_ATTRIBUTES = {"fiscal_power", "usage"}
 
 
-def compute_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO) -> list[Quote]:
+def parse_duration(value) -> int:
+    """Durée demandée (3, 6 ou 12 mois) ; 12 mois si rien n'est précisé."""
+    if value in (None, ""):
+        return DEFAULT_DURATION
+    try:
+        months = int(value)
+    except (TypeError, ValueError):
+        months = None
+    if months not in DURATIONS:
+        raise ValidationError("Durée possible : 3, 6 ou 12 mois.")
+    return months
+
+
+def compute_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO, months: int = DEFAULT_DURATION) -> list[Quote]:
     if asset.owner_id != customer.pk or asset.company_id:
         raise PermissionDenied("Ce bien n'appartient pas à ce client.")
-    return build_quotes(customer, asset, branch)
+    return build_quotes(customer, asset, branch, months)
 
 
-def build_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO) -> list[Quote]:
-    """Devis de tous les assureurs actifs pour ce bien (droits vérifiés par l'appelant)."""
+def build_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO, months: int = DEFAULT_DURATION) -> list[Quote]:
+    """Devis de tous les assureurs actifs pour ce bien et cette durée (droits vérifiés par l'appelant)."""
+    months = parse_duration(months)
     missing = REQUIRED_VEHICLE_ATTRIBUTES - set(asset.attributes)
     if asset.kind == InsuredAsset.Kind.VEHICLE and missing:
         raise ValidationError(f"Attributs manquants : {', '.join(sorted(missing))}.")
@@ -42,7 +56,8 @@ def build_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO) -> l
             customer=customer,
             asset=asset,
             product=p,
-            premium=p.price(asset.attributes),
+            premium=p.price(asset.attributes, months),
+            duration_months=months,
             tariff_version=p.tariff_version,
             attributes_snapshot=dict(asset.attributes),
             expires_at=expires,
@@ -80,7 +95,7 @@ def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal
     starts_on = starts_on or today
     if starts_on < today or starts_on > today + timedelta(days=60):
         raise ValidationError("La date d'effet doit être comprise entre aujourd'hui et J+60.")
-    ends_on = Policy.compute_end(starts_on, quote.product.duration_months)
+    ends_on = Policy.compute_end(starts_on, quote.duration_months)
     if _has_overlapping_cover(quote.asset, starts_on, ends_on):
         raise ValidationError("Ce véhicule est déjà couvert sur cette période.")
     policy = Policy.objects.create(
@@ -95,7 +110,7 @@ def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal
         company=company,
         order=order,
     )
-    record("policy.created", policy, actor=customer, premium=policy.premium)
+    record("policy.created", policy, actor=customer, premium=policy.premium, months=quote.duration_months)
     return policy
 
 

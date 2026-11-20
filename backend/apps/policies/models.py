@@ -42,6 +42,7 @@ class Quote(models.Model):
     asset = models.ForeignKey(InsuredAsset, on_delete=models.CASCADE, related_name="quotes", verbose_name=_("bien assuré"))
     product = models.ForeignKey("catalog.Product", on_delete=models.PROTECT, related_name="quotes", verbose_name=_("formule"))
     premium = models.PositiveIntegerField(help_text=_("MRU"), verbose_name=_("prime (MRU)"))
+    duration_months = models.PositiveSmallIntegerField(default=12, verbose_name=_("durée (mois)"))
     tariff_version = models.CharField(max_length=20, verbose_name=_("version du tarif"))
     attributes_snapshot = models.JSONField(default=dict, verbose_name=_("caractéristiques au moment du devis"))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("créé le"))

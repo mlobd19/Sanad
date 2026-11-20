@@ -3,10 +3,11 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
+import { DURATION_LABEL, DurationPicker, parseMonths } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { App, ErrorBox, Loading, Stepper, TopBar, useUser } from "@/components/Shell";
-import { api, ApiError, type Asset, type Policy, type Quote } from "@/lib/api";
+import { api, ApiError, type Asset, type Months, type Policy, type Quote } from "@/lib/api";
 import { date, money } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 
@@ -25,24 +26,43 @@ function QuotesScreen() {
   const [quotes, setQuotes] = useState<Quote[] | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const [formula, setFormula] = useState<string>("");
+  const [months, setMonths] = useState<Months>(parseMonths(search.get("duree")));
+  const [loading, setLoading] = useState(false);
   const [startsOn, setStartsOn] = useState(search.get("debut") ?? new Date().toISOString().slice(0, 10));
   const [editDate, setEditDate] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const dateInput = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (user) api<Asset[]>("assets").then((list) => setAsset(list.find((a) => String(a.id) === assetId) ?? null)).catch(() => undefined);
+  }, [user, assetId]);
+
+  // Choix en cours, relu au rechargement des devis (sans relancer leur chargement).
+  const choice = useRef({ formula: "", insurer: "" });
+
+  // Nouveaux devis à chaque changement de durée : la formule et la compagnie choisies sont conservées.
   const load = useCallback(() => {
     setError("");
-    api<Asset[]>("assets").then((list) => setAsset(list.find((a) => String(a.id) === assetId) ?? null)).catch(() => undefined);
-    api<Quote[]>(`assets/${assetId}/quotes`, { method: "POST" })
+    setLoading(true);
+    api<Quote[]>(`assets/${assetId}/quotes`, { body: { months } })
       .then((qs) => {
+        const { formula: current, insurer } = choice.current;
+        const code = qs.some((q) => q.product_code === current)
+          ? current
+          : FORMULA_ORDER.find((c) => qs.some((q) => q.product_code === c)) ?? qs[0]?.product_code ?? "";
+        const same = qs.find((q) => q.product_code === code && q.insurer_slug === insurer);
         setQuotes(qs);
-        const first = FORMULA_ORDER.find((code) => qs.some((q) => q.product_code === code)) ?? qs[0]?.product_code ?? "";
-        setFormula(first);
-        setPicked(qs.find((q) => q.product_code === first)?.id ?? null);
+        setFormula(code);
+        setPicked((same ?? qs.find((q) => q.product_code === code))?.id ?? null);
       })
-      .catch((e) => setError(e.message));
-  }, [assetId]);
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [assetId, months]);
+
+  useEffect(() => {
+    choice.current = { formula, insurer: quotes?.find((q) => q.id === picked)?.insurer_slug ?? "" };
+  }, [formula, picked, quotes]);
 
   useEffect(() => {
     if (user) load();
@@ -110,6 +130,8 @@ function QuotesScreen() {
         {quotes && quotes.length === 0 && <p className="ink2">{t("noQuotes")}</p>}
         {quotes && quotes.length > 0 && (
           <>
+            <DurationPicker value={months} onChange={setMonths} disabled={loading} />
+            {months < 12 && <p className="note" style={{ margin: 0 }}>{t("shortTermNote")}</p>}
             <div className="chips" role="group" aria-label={t("formula")}>
               {formulas.map(([code, label]) => (
                 <button key={code} type="button" aria-pressed={formula === code} onClick={() => chooseFormula(code)}>
@@ -123,7 +145,8 @@ function QuotesScreen() {
                 {t("rcRegulated")}
               </p>
             )}
-            <div className="stack" role="radiogroup" aria-label={t("quotesTitle")}>
+            <div className="stack" role="radiogroup" aria-label={t("quotesTitle")} aria-busy={loading}
+              style={loading ? { opacity: 0.5, pointerEvents: "none" } : undefined}>
               {shown.map((q) => {
                 const on = q.id === picked;
                 return (
@@ -163,7 +186,7 @@ function QuotesScreen() {
                 );
               })}
             </div>
-            <span className="small muted" style={{ textAlign: "center" }}>{t("pricesNote")}</span>
+            <span className="small muted" style={{ textAlign: "center" }}>{t("pricesNote", { duration: t(DURATION_LABEL[months]) })}</span>
             {quotes.some((q) => q.indicative) && (
               <p className="note" style={{ margin: 0, justifyContent: "center", textAlign: "center" }}>{t("indicativeNote")}</p>
             )}
@@ -180,12 +203,12 @@ function QuotesScreen() {
           ) : (
             <div className="between" style={{ fontSize: 14 }}>
               <span className="ink2">
-                {t("effectOn")} <strong style={{ color: "var(--ink)" }}>{date(startsOn, lang)}</strong>
+                {t("effectOn")} <strong style={{ color: "var(--ink)" }}>{date(startsOn, lang)}</strong> · {t(DURATION_LABEL[months])}
               </span>
               <button type="button" className="btn link" onClick={() => setEditDate(true)}>{t("edit")}</button>
             </div>
           )}
-          <button type="button" className="btn primary block tall split" onClick={proceed} disabled={!picked || busy}>
+          <button type="button" className="btn primary block tall split" onClick={proceed} disabled={!picked || busy || loading}>
             <span>{t("continue")}</span>
             {chosen && <span>{money(chosen.premium, lang)}</span>}
           </button>

@@ -42,7 +42,7 @@ function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
         <div className="banner sand">
           <Icon name="clock" size={20} strokeWidth={2} />
           <span className="grow" style={{ fontWeight: 600, fontSize: 14 }}>{t("expiresShort", { date: date(p.ends_on, lang) })}</span>
-          <Link href={`/devis/${p.asset_id}?renouvellement=${p.id}&debut=${addDays(p.ends_on, 1)}`}>{t("renew")}</Link>
+          <Link href={`/devis/${p.asset_id}?renouvellement=${p.id}&debut=${addDays(p.ends_on, 1)}&duree=${p.duration_months}`}>{t("renew")}</Link>
         </div>
       )}
       {p.status === "draft" ? (
