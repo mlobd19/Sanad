@@ -116,6 +116,8 @@ OTP_MAX_ATTEMPTS = int(env("OTP_MAX_ATTEMPTS", 5))
 ATTESTATION_SIGNING_KEY = env("ATTESTATION_SIGNING_KEY", "")
 ATTESTATION_VERIFY_BASE_URL = env("ATTESTATION_VERIFY_BASE_URL", "http://localhost:8000/v/")
 ATTESTATION_NUMBER_PREFIX = env("ATTESTATION_NUMBER_PREFIX", "SN")
+# Tant qu'aucun partenariat n'est signé, le PDF porte la mention « SPÉCIMEN, sans valeur d'assurance ».
+ATTESTATION_SPECIMEN = env_bool("ATTESTATION_SPECIMEN", True)
 
 # Fournisseurs de paiement actifs. "simulated" n'existe que hors production.
 PAYMENT_PROVIDERS = [p for p in env("PAYMENT_PROVIDERS", "simulated").split(",") if p]
@@ -153,4 +155,6 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+    # fontTools (sous-ensemble des polices du PDF) est très bavard au niveau INFO.
+    "loggers": {"fontTools": {"level": "WARNING"}},
 }

@@ -30,6 +30,7 @@ api = [
     path("payments/<uuid:payment_id>/simulate-confirm", payments.SimulateConfirmView.as_view()),
     # Attestations
     path("attestations/<int:attestation_id>/qr.png", attestations.QrCodeView.as_view()),
+    path("attestations/<int:attestation_id>/pdf", attestations.AttestationPdfView.as_view()),
     path("verify/public-key", attestations.PublicKeyView.as_view()),
     path("verify/<str:token>", attestations.VerifyView.as_view()),
     # Portail assureur

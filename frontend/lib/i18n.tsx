@@ -92,7 +92,6 @@ const fr = {
   validTo: "au",
   signed: "Signée numériquement",
   signedText: "À présenter lors d'un contrôle. L'agent scanne le QR code et vérifie l'attestation, même sans réseau.",
-  downloadQr: "Télécharger",
   share: "Partager",
   openCheck: "Voir ce que voit l'agent de contrôle",
   refusedText: "L'assureur n'a pas validé ce contrat ({reason}). Vous avez été remboursé.",
@@ -225,6 +224,10 @@ const fr = {
   provider_bankily: "Bankily",
   provider_masrvi: "Masrvi",
   provider_sedad: "Sedad",
+  downloadPdf: "Télécharger le PDF",
+  download: "Télécharger",
+  pdf: "PDF",
+  pdfOf: "PDF de l'attestation {number}",
 };
 
 export type Key = keyof typeof fr;
@@ -310,7 +313,6 @@ const ar: Record<Key, string> = {
   validTo: "إلى",
   signed: "موقّعة رقميا",
   signedText: "تُقدَّم عند المراقبة. يمسح العون رمز QR ويتحقق من الشهادة حتى دون اتصال.",
-  downloadQr: "تنزيل",
   share: "مشاركة",
   openCheck: "ما يراه عون المراقبة",
   refusedText: "لم توافق شركة التأمين على هذا العقد ({reason}). تم رد المبلغ.",
@@ -439,6 +441,10 @@ const ar: Record<Key, string> = {
   provider_bankily: "Bankily",
   provider_masrvi: "Masrvi",
   provider_sedad: "Sedad",
+  downloadPdf: "تنزيل PDF",
+  download: "تنزيل",
+  pdf: "PDF",
+  pdfOf: "ملف PDF للشهادة {number}",
 };
 
 const dictionaries: Record<Lang, Record<Key, string>> = { fr, ar };

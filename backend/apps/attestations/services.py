@@ -2,6 +2,7 @@ import io
 
 import qrcode
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
@@ -101,3 +102,33 @@ def qr_png(attestation: Attestation) -> bytes:
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+# --- PDF ------------------------------------------------------------------------
+
+
+class AttestationRevoked(ValidationError):
+    pass
+
+
+def attestation_for(user, attestation_id: int) -> Attestation:
+    """Attestation visible par ce compte : son propriétaire, ou un agent de la compagnie.
+
+    Attestation.DoesNotExist pour tout autre compte (on ne révèle pas qu'elle existe).
+    """
+    qs = Attestation.objects.select_related(
+        "policy__customer", "policy__asset", "policy__product__insurer"
+    ).filter(pk=attestation_id)
+    if user.role == user.Role.INSURER_AGENT and user.insurer_id:
+        return qs.get(policy__product__insurer_id=user.insurer_id)
+    return qs.get(policy__customer=user)
+
+
+def attestation_pdf(attestation: Attestation, actor=None) -> bytes:
+    """PDF A4 bilingue. Une attestation révoquée ne se télécharge plus."""
+    from .pdf import render
+
+    if attestation.status != Attestation.Status.VALID:
+        raise AttestationRevoked("Cette attestation a été révoquée : elle ne peut plus être téléchargée.")
+    record("attestation.pdf_downloaded", attestation, actor=actor)
+    return render(attestation, specimen=settings.ATTESTATION_SPECIMEN)

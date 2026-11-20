@@ -47,7 +47,8 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
   - `payments` : un adaptateur par opérateur (`providers.py`), callbacks signés
     HMAC et idempotents, remboursements
   - `attestations` : numéro `SN-AAAA-NNNNNN`, signature Ed25519, QR, vérification
-    publique `/v/<jeton>`, révocation
+    publique `/v/<jeton>`, révocation, PDF bilingue (`pdf.py`, fpdf2 + HarfBuzz
+    pour l'arabe ; mention « SPÉCIMEN » tant que `ATTESTATION_SPECIMEN` est vrai)
   - `notifications` : SMS / WhatsApp derrière une interface, modèles FR + AR
   - `audit` : journal append-only (`record(...)` pour toute action sensible)
 - `frontend/` : Next.js 16 (App Router), TypeScript, CSS maison
@@ -74,6 +75,8 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
   montant exact). Le fournisseur `simulated` est interdit en production.
 - Aucune donnée de compte mobile money stockée ; seules les références.
 - Vérification publique : données personnelles **masquées**.
+- Attestation PDF : jamais de prime dessus ; mention « SPÉCIMEN » obligatoire
+  tant qu'aucun partenariat n'est signé avec la compagnie.
 
 ## Données et marques
 
@@ -102,9 +105,8 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 ## Pas encore fait (feuille de route)
 
-1. PDF de l'attestation
-2. Dépôt des pièces KYC et déclaration de sinistre dans l'app
-3. Mise en ligne (Render : Django + PostgreSQL, Next.js)
-4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
+1. Dépôt des pièces KYC et déclaration de sinistre dans l'app
+2. Mise en ligne (Render : Django + PostgreSQL, Next.js)
+3. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
    fournisseur SMS et WhatsApp Business
-5. Mode hors ligne (service worker)
+4. Mode hors ligne (service worker)

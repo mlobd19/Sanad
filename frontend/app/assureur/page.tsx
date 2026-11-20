@@ -7,6 +7,7 @@ import { InsurerLogo } from "@/components/InsurerLogo";
 import {
   api,
   ApiError,
+  downloadFile,
   getToken,
   setToken,
   type InsurerCommissions,
@@ -415,7 +416,10 @@ function IssuedTab() {
                       {date(p.starts_on, lang)}
                       <span className="sub">{t("validTo")} {date(p.ends_on, lang)}</span>
                     </td>
-                    <td data-label={t("colAttestation")} className="num"><bdi dir="ltr">{p.attestation?.number ?? "—"}</bdi></td>
+                    <td data-label={t("colAttestation")} className="num">
+                      <bdi dir="ltr">{p.attestation?.number ?? "—"}</bdi>
+                      {p.attestation && p.status === "active" && <PdfButton id={p.attestation.id} number={p.attestation.number} />}
+                    </td>
                     <td data-label={t("colInsurerRef")} className="num"><bdi dir="ltr">{p.insurer_reference || "—"}</bdi></td>
                   </tr>
                 ))}
@@ -449,6 +453,38 @@ function IssuedTab() {
           )
         }
       </Loadable>
+    </>
+  );
+}
+
+function PdfButton({ id, number }: { id: number; number: string }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function download() {
+    setBusy(true);
+    setError("");
+    try {
+      await downloadFile(`attestations/${id}/pdf`, `attestation-${number}.pdf`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className="btn outline"
+        style={{ display: "flex", minHeight: 36, padding: "0 12px", fontSize: 13, marginTop: 6 }}
+        onClick={download}
+        disabled={busy}
+        aria-label={t("pdfOf", { number })}
+      >
+        {busy ? <span className="spinner sm" /> : t("pdf")}
+      </button>
+      {error && <span className="error small" role="alert" style={{ display: "block" }}>{error}</span>}
     </>
   );
 }

@@ -68,6 +68,24 @@ export async function apiBlobUrl(path: string): Promise<string> {
   return URL.createObjectURL(await response.blob());
 }
 
+/** Télécharge un fichier protégé (PDF…) avec le jeton de session, sous le nom donné. */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const token = getToken();
+  const response = await fetch(`/api/${path}`, { headers: token ? { Authorization: `Token ${token}` } : {} });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // --- Types renvoyés par l'API -------------------------------------------------
 
 export type User = {

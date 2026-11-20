@@ -121,6 +121,19 @@ services ; les vues API ne contiennent pas de logique métier.
 | `notifications` | SMS / WhatsApp derrière une interface unique, modèles FR et AR |
 | `audit` | Journal non modifiable de chaque action sensible |
 
+## Attestation PDF
+
+Le client la télécharge depuis l'écran de son contrat, l'agent depuis l'onglet
+« Polices émises » du portail. Une page A4, français et arabe côte à côte, avec
+le logo officiel de la compagnie (sigle sinon) et le QR code de vérification :
+**seul le QR code fait foi**, le PDF n'est qu'une présentation.
+
+Tant qu'aucun partenariat n'est signé, le PDF porte la mention et le filigrane
+**« SPÉCIMEN · sans valeur d'assurance »** (`ATTESTATION_SPECIMEN=true` par
+défaut ; ne le désactiver qu'avec un accord signé avec la compagnie).
+Polices : Noto Sans et Noto Kufi Arabic (licence OFL), dans
+`backend/apps/attestations/fonts/`.
+
 ## Cycle de vie d'une police
 
 ```
@@ -148,6 +161,7 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 | POST | `/api/payments/callback/{provider}` | Callback opérateur (signature HMAC `X-Signature`) |
 | POST | `/api/policies/{id}/claims` | Déclarer un sinistre |
 | GET | `/api/attestations/{id}/qr.png` | QR code de l'attestation |
+| GET | `/api/attestations/{id}/pdf` | Attestation PDF (A4, français et arabe) : client propriétaire ou agent de la compagnie ; 410 si révoquée |
 | GET | `/api/verify/{jeton}` | Vérification publique (données masquées) |
 | GET | `/api/verify/public-key` | Clé publique pour la vérification hors ligne |
 | GET | `/v/{jeton}` | Page web ouverte en scannant le QR |
@@ -164,7 +178,7 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 - **SMS et WhatsApp** : écrire un backend dans `apps/notifications/backends.py`
   (agrégateur SMS local, fournisseur WhatsApp Business).
 - **Stockage des pièces** : stockage objet chiffré en production.
-- **PDF de l'attestation**, dépôt des pièces KYC et déclaration de sinistre dans l'app client.
+- **Dépôt des pièces KYC** et **déclaration de sinistre** dans l'app client.
 - **Mode hors ligne** de l'app (service worker).
 - **Grilles tarifaires réelles** et accords de partenariat avec les compagnies
   (les primes de `seed_demo` sont fictives).

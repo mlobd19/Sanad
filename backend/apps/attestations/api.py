@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from . import signing
 from .models import Attestation
-from .services import check, qr_png
+from .services import AttestationRevoked, attestation_for, attestation_pdf, check, qr_png
 
 
 class VerifyView(APIView):
@@ -38,6 +38,22 @@ class QrCodeView(APIView):
     def get(self, request, attestation_id):
         att = get_object_or_404(Attestation, pk=attestation_id, policy__customer=request.user)
         return HttpResponse(qr_png(att), content_type="image/png")
+
+
+class AttestationPdfView(APIView):
+    """PDF de l'attestation, pour le client propriétaire ou un agent de la compagnie."""
+
+    def get(self, request, attestation_id):
+        try:
+            att = attestation_for(request.user, attestation_id)
+            pdf = attestation_pdf(att, actor=request.user)
+        except Attestation.DoesNotExist:
+            return Response({"detail": "Attestation introuvable."}, status=404)
+        except AttestationRevoked as exc:
+            return Response({"detail": exc.messages[0]}, status=410)
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="attestation-{att.number}.pdf"'
+        return response
 
 
 def verify_page(request, token):

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { KhaimaMark } from "@/components/Logo";
 import { App, ErrorBox, Loading, StatusPill, TopBar, useUser } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
+import { ApiError, downloadFile } from "@/lib/api";
 import { date } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
@@ -16,6 +18,20 @@ export default function ContractPage() {
   const { policyId } = useParams<{ policyId: string }>();
   const { user } = useUser();
   const { policy, qr, error } = usePolicyQr(policyId, !!user);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState("");
+
+  async function downloadPdf(attestationId: number, number: string) {
+    setPdfBusy(true);
+    setPdfError("");
+    try {
+      await downloadFile(`attestations/${attestationId}/pdf`, `attestation-${number}.pdf`);
+    } catch (err) {
+      setPdfError(err instanceof ApiError ? err.message : t("error"));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   async function share() {
     if (!policy?.attestation) return;
@@ -91,13 +107,18 @@ export default function ContractPage() {
               <Icon name="expand" size={22} strokeWidth={2.2} />
               {t("showForControl")}
             </Link>
+            {pdfError && <p className="error" role="alert">{pdfError}</p>}
             <div className="grid2">
-              {qr ? (
-                <a className="btn outline" href={qr} download={`${att.number}.png`}>
-                  <Icon name="download" size={18} strokeWidth={2} />
-                  {t("downloadQr")}
-                </a>
-              ) : <span />}
+              <button
+                type="button"
+                className="btn outline"
+                onClick={() => downloadPdf(att.id, att.number)}
+                disabled={pdfBusy}
+                aria-label={t("downloadPdf")}
+              >
+                {pdfBusy ? <span className="spinner sm" /> : <Icon name="download" size={18} strokeWidth={2} />}
+                {t("download")}
+              </button>
               <button type="button" className="btn outline" onClick={share}>
                 <Icon name="share" size={18} strokeWidth={2} />
                 {t("share")}
