@@ -286,3 +286,43 @@ def test_customers_and_agents_cannot_use_company_api(customer_client):
     for path in ("/api/company/me", "/api/company/fleet", "/api/company/policies"):
         assert customer_client.get(path).status_code == 403
         assert agent().get(path).status_code == 403
+
+
+# --- Pièces NIF / RC : stockage privé ---------------------------------------------------------
+
+
+def test_company_documents_are_private_and_opened_only_by_staff(db, demo, settings):
+    from django.test import Client
+
+    from apps.audit.models import AuditEvent
+
+    company_client()
+    company = Company.objects.get(nif="00123456")
+    doc = company.documents.get(kind="nif")
+    assert doc.file.name.endswith(".pdf")
+    assert (settings.PRIVATE_MEDIA_ROOT / doc.file.name).is_file()
+    assert not any(settings.MEDIA_ROOT.glob("companies/**/*"))  # rien dans le dossier public
+    with pytest.raises(ValueError):
+        doc.file.url
+
+    url = f"/admin/companies/company/piece/{doc.pk}/"
+    assert Client().get(url).status_code == 302  # non connecté
+    staff = User.objects.create_user("+22230000000", password="Equipe-Sanad-2026", role=User.Role.STAFF,
+                                     is_staff=True, is_superuser=True)
+    admin = Client()
+    admin.force_login(staff)
+    resp = admin.get(url)
+    assert resp.status_code == 200 and resp["Content-Type"] == "application/pdf"
+    assert b"".join(resp.streaming_content).startswith(b"%PDF-")
+    event = AuditEvent.objects.get(action="company.document_viewed")
+    assert event.actor == staff and event.data == {"kind": "nif", "document_id": doc.pk}
+
+    page = admin.get(f"/admin/companies/company/{company.pk}/change/")
+    assert page.status_code == 200 and url.encode() in page.content
+
+
+def test_company_document_type_is_checked_on_content(db, demo):
+    client = company_client(verified=False)
+    fake = SimpleUploadedFile("nif.pdf", b"<script>alert(1)</script>", content_type="application/pdf")
+    resp = client.post("/api/company/documents", {"kind": "nif", "file": fake}, format="multipart")
+    assert resp.status_code == 400 and "JPEG, PNG, PDF" in resp.data["detail"]

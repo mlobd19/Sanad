@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from apps.accounts import services as accounts
 from apps.accounts.models import OtpCode, User, normalize_phone
+from apps.accounts.storage import detect_document_type
 from apps.audit.models import record
 from apps.notifications.service import notify
 from apps.policies import services as policy_services
@@ -26,7 +27,6 @@ from .models import Company, CompanyDocument, Membership, normalize_identifier
 
 SIGNUP_SALT = "sanad.company-signup"
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
-ALLOWED_TYPES = {"image/jpeg", "image/png", "application/pdf"}
 USAGES = {"personal": "personal", "personnel": "personal", "commercial": "commercial", "taxi": "taxi"}
 MAX_IMPORT_ROWS = 500
 
@@ -130,8 +130,10 @@ def add_document(user, kind: str, file) -> CompanyDocument:
         raise ValidationError("Joignez le fichier.")
     if file.size > MAX_UPLOAD_BYTES:
         raise ValidationError("Fichier trop lourd (8 Mo maximum).")
-    if getattr(file, "content_type", None) not in ALLOWED_TYPES:
+    ext = detect_document_type(file)  # sur le contenu, pas sur le type annoncé par le navigateur
+    if not ext:
         raise ValidationError("Formats acceptés : JPEG, PNG, PDF.")
+    file.name = f"{kind}.{ext}"
     doc = CompanyDocument.objects.create(company=company, kind=kind, file=file, uploaded_by=user)
     if company.status == Company.Status.REJECTED:  # nouvelle pièce après un refus : on revérifie
         company.status, company.rejection_reason = Company.Status.PENDING, ""

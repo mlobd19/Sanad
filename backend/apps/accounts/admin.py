@@ -1,9 +1,6 @@
-import mimetypes
-
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -16,6 +13,7 @@ from apps.backoffice.ui import pill, status_pill
 
 from .models import IdentityCheck, KycDocument, User
 from .services import send_password_email
+from .storage import private_file_response
 
 
 class KycDocumentInline(admin.TabularInline):
@@ -118,15 +116,8 @@ class UserAdmin(BaseUserAdmin):
         if not self.has_view_permission(request):
             raise PermissionDenied
         doc = get_object_or_404(KycDocument, pk=doc_id)
-        try:
-            handle = doc.file.open("rb")
-        except FileNotFoundError:
-            raise Http404 from None
+        response = private_file_response(doc.file)
         record("kyc.document_viewed", doc, actor=request.user, user_id=doc.user_id)
-        content_type = mimetypes.guess_type(doc.file.name)[0] or "application/octet-stream"
-        response = FileResponse(handle, content_type=content_type)
-        response["Content-Disposition"] = "inline"
-        response["Cache-Control"] = "private, no-store"
         return response
 
     @admin.display(description=_("téléphone"), ordering="phone")

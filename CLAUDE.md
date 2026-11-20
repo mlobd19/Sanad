@@ -100,8 +100,9 @@ compile_translations` ; sinon le test des traductions échoue.
 - Paiements : ne jamais activer une police sans callback valide (signature,
   montant exact). Le fournisseur `simulated` est interdit en production.
 - Aucune donnée de compte mobile money stockée ; seules les références.
-- Pièces d'identité : stockage privé (`PRIVATE_MEDIA_ROOT`, `accounts/storage.py`),
-  jamais d'URL publique ; ouvertes seulement au back-office, consultation journalisée.
+- Pièces justificatives (identité, NIF / RC) : stockage privé (`PRIVATE_MEDIA_ROOT`,
+  `accounts/storage.py`), type vérifié sur le contenu, jamais d'URL publique ;
+  ouvertes seulement au back-office, chaque consultation journalisée.
 - Vérification publique : données personnelles **masquées**.
 - Attestation PDF : jamais de prime dessus ; mention « SPÉCIMEN » obligatoire
   tant qu'aucun partenariat n'est signé avec la compagnie.

@@ -1,5 +1,5 @@
 from django.contrib import admin, messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
@@ -7,6 +7,8 @@ from django.utils.html import format_html
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
+from apps.accounts.storage import private_file_response
+from apps.audit.models import record
 from apps.backoffice.actions import reason_page
 from apps.backoffice.ui import pill, status_pill
 
@@ -26,7 +28,9 @@ class DocumentInline(admin.TabularInline):
 
     @admin.display(description=_("fichier"))
     def open_file(self, doc):
-        return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', doc.file.url, gettext("Ouvrir"))
+        # Fichier privé : ouvert par une vue réservée à l'équipe, jamais par une URL publique.
+        url = reverse("admin:companies_companydocument_file", args=[doc.pk])
+        return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', url, gettext("Ouvrir"))
 
 
 class MembershipInline(admin.TabularInline):
@@ -101,8 +105,19 @@ class CompanyAdmin(admin.ModelAdmin):
         return [
             path("<int:pk>/verifier/", self.admin_site.admin_view(self.verify_view), name="companies_company_verify"),
             path("<int:pk>/refuser/", self.admin_site.admin_view(self.reject_view), name="companies_company_reject"),
+            path("piece/<int:doc_id>/", self.admin_site.admin_view(self.document_file_view),
+                 name="companies_companydocument_file"),
             *super().get_urls(),
         ]
+
+    def document_file_view(self, request, doc_id):
+        """Affiche une pièce NIF / RC à l'équipe ; chaque consultation est journalisée."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        doc = get_object_or_404(CompanyDocument, pk=doc_id)
+        response = private_file_response(doc.file)
+        record("company.document_viewed", doc.company, actor=request.user, kind=doc.kind, document_id=doc.pk)
+        return response
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         company = self.get_object(request, object_id)

@@ -13,7 +13,7 @@
     </strong>
     <ul class="sn-docs">
       {% for doc in sn_documents %}
-        <li><a href="{{ doc.file.url }}" target="_blank" rel="noopener">{{ doc.get_kind_display }} · {{ doc.uploaded_at|date:"d/m/Y" }}</a></li>
+        <li><a href="{% url 'admin:companies_companydocument_file' doc.pk %}" target="_blank" rel="noopener">{{ doc.get_kind_display }} · {{ doc.uploaded_at|date:"d/m/Y" }}</a></li>
       {% endfor %}
       {% for label in sn_missing %}<li class="sn-missing">{% blocktranslate %}{{ label }} manquante{% endblocktranslate %}</li>{% endfor %}
     </ul>

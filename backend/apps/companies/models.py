@@ -11,6 +11,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.accounts.storage import PrivateStorage
+
 NIF_RE = re.compile(r"^[A-Z0-9]{5,20}$")
 RC_RE = re.compile(r"^[A-Z0-9][A-Z0-9 /.\-]{2,38}[A-Z0-9]$")
 
@@ -73,7 +75,7 @@ class CompanyDocument(models.Model):
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="documents", verbose_name=_("entreprise"))
     kind = models.CharField(max_length=4, choices=Kind.choices, verbose_name=_("type de pièce"))
-    file = models.FileField(upload_to=document_upload_path, verbose_name=_("fichier"))
+    file = models.FileField(upload_to=document_upload_path, storage=PrivateStorage(), verbose_name=_("fichier"))
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+", verbose_name=_("déposée par"))
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_("déposée le"))
 

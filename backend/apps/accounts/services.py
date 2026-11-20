@@ -26,6 +26,7 @@ from apps.audit.models import record
 from apps.notifications.service import notify
 
 from . import identity
+from .storage import detect_document_type
 from .models import IdentityCheck, KycDocument, OtpCode, User, normalize_phone
 
 PRO_CHALLENGE_SALT = "sanad.pro-login"
@@ -296,25 +297,6 @@ KYC_IDENTITY_KINDS = (KycDocument.Kind.ID_CARD, KycDocument.Kind.PASSPORT)
 KYC_MAX_PENDING = 3
 
 
-def _document_type(upload) -> str:
-    """Extension sûre déduite du contenu (pas du nom ni du type annoncé par le client)."""
-    from PIL import Image, UnidentifiedImageError
-
-    head = upload.read(5)
-    upload.seek(0)
-    if head == b"%PDF-":
-        return "pdf"
-    try:
-        with Image.open(upload) as img:
-            fmt = img.format
-            img.verify()
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
-        fmt = None
-    finally:
-        upload.seek(0)
-    return {"JPEG": "jpg", "PNG": "png"}.get(fmt, "")
-
-
 def upload_kyc_document(user: User, kind: str, upload) -> KycDocument:
     """Dépôt d'une pièce d'identité, vérifiée ensuite à la main au back-office.
 
@@ -330,7 +312,7 @@ def upload_kyc_document(user: User, kind: str, upload) -> KycDocument:
         raise ValidationError("Ajoutez la photo ou le PDF de la pièce.", code="missing")
     if upload.size > KYC_MAX_BYTES:
         raise ValidationError("Fichier trop lourd (8 Mo maximum).", code="too_large")
-    ext = _document_type(upload)
+    ext = detect_document_type(upload)
     if not ext:
         raise ValidationError("Formats acceptés : JPEG, PNG, PDF.", code="invalid_type")
     if user.documents.filter(status=KycDocument.Status.PENDING).count() >= KYC_MAX_PENDING:
