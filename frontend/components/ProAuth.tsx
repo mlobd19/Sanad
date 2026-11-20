@@ -20,6 +20,9 @@ export const COMPANY_SPACE: ProSpace = {
 
 type Challenge = { challenge: string; phone: string };
 
+/** Espace de chaque compte pro : un compte bien authentifié arrive toujours dans le sien. */
+const PRO_HOMES: Record<string, string> = { insurer_agent: "/assureur", company_member: "/entreprise" };
+
 function PasswordField({ id, label, value, onChange, autoComplete, show, onToggle, minLength }: {
   id: string; label: string; value: string; onChange: (v: string) => void; autoComplete: string;
   show: boolean; onToggle?: () => void; minLength?: number;
@@ -70,10 +73,12 @@ export function ProLoginForm({ space, titleKey, introKey, footer }: {
 
   async function verify(code: string) {
     const res = await api<OtpResult>("auth/pro/verify", { body: { challenge: pending?.challenge, code } });
-    if (res.user.role !== space.role) throw new Error(t(space.notAllowedKey));
+    // Ex. un compte entreprise saisi sur le portail assureur : il est authentifié, on l'envoie dans son espace.
+    const home = PRO_HOMES[res.user.role];
+    if (!home) throw new Error(t(space.notAllowedKey));
     setToken(res.token);
     if (res.user.language !== lang) await api("me", { method: "PATCH", body: { language: lang } });
-    router.replace(space.home);
+    router.replace(home);
   }
 
   async function resend() {
