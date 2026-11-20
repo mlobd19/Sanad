@@ -4,6 +4,7 @@ Le backend réel (agrégateur SMS local, fournisseur WhatsApp Business) se
 branche via NOTIFICATION_BACKEND sans toucher au code métier.
 """
 from django.conf import settings
+from django.core.mail import send_mail
 from django.utils.module_loading import import_string
 
 TEMPLATES = {
@@ -23,6 +24,40 @@ TEMPLATES = {
         "fr": "Votre assurance auto ({plate}) expire dans {days} jour(s). Renouvelez-la sur {platform}.",
         "ar": "ينتهي تأمين سيارتك ({plate}) خلال {days} يوم. جدده على {platform}.",
     },
+    # E-mails (comptes professionnels)
+    "password_invite": {
+        "fr": (
+            "Bonjour {name},\n\n"
+            "Un compte {platform} a été ouvert pour vous ({role}).\n"
+            "Choisissez votre mot de passe avec ce lien, valable 72 heures :\n{link}\n\n"
+            "À chaque connexion, vous saisirez votre email, ce mot de passe, puis un code reçu par SMS "
+            "au {phone}.\n\nSi vous n'attendiez pas ce message, ignorez-le."
+        ),
+        "ar": (
+            "مرحبا {name}،\n\n"
+            "تم فتح حساب لك في {platform} ({role}).\n"
+            "اختر كلمة المرور عبر هذا الرابط، الصالح لمدة 72 ساعة:\n{link}\n\n"
+            "عند كل دخول، ستدخل بريدك الإلكتروني وكلمة المرور ثم رمزا يصلك برسالة نصية على {phone}.\n\n"
+            "إذا لم تكن تنتظر هذه الرسالة، فتجاهلها."
+        ),
+    },
+    "password_reset": {
+        "fr": (
+            "Bonjour {name},\n\n"
+            "Pour choisir un nouveau mot de passe {platform}, ouvrez ce lien, valable 72 heures :\n{link}\n\n"
+            "Si vous n'avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable."
+        ),
+        "ar": (
+            "مرحبا {name}،\n\n"
+            "لاختيار كلمة مرور جديدة في {platform}، افتح هذا الرابط الصالح لمدة 72 ساعة:\n{link}\n\n"
+            "إذا لم تطلب ذلك، فتجاهل هذه الرسالة: كلمة المرور الحالية تبقى صالحة."
+        ),
+    },
+}
+
+SUBJECTS = {
+    "password_invite": {"fr": "Votre compte {platform} : choisissez votre mot de passe", "ar": "حسابك في {platform}: اختر كلمة المرور"},
+    "password_reset": {"fr": "{platform} : nouveau mot de passe", "ar": "{platform}: كلمة مرور جديدة"},
 }
 
 
@@ -33,5 +68,11 @@ def render(template: str, language: str, context: dict) -> str:
 
 
 def notify(channel: str, to: str, template: str, context: dict, language: str = "fr"):
+    body = render(template, language, context)
+    if channel == "email":
+        # Les e-mails passent par le système d'envoi de Django (console en dev, SMTP en production).
+        subjects = SUBJECTS[template]
+        subject = (subjects.get(language) or subjects["fr"]).format(platform=settings.PLATFORM_NAME)
+        return send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to]) == 1
     backend = import_string(settings.NOTIFICATION_BACKEND)()
-    return backend.send(channel=channel, to=to, body=render(template, language, context))
+    return backend.send(channel=channel, to=to, body=body)

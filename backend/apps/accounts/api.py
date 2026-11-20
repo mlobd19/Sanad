@@ -8,7 +8,8 @@ from rest_framework.views import APIView
 from apps.audit.models import record
 
 from .models import KycDocument, User
-from .services import OtpError, request_otp, verify_otp
+from . import services
+from .services import LoginError, OtpError, request_otp, verify_otp
 
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 ALLOWED_TYPES = {"image/jpeg", "image/png", "application/pdf"}
@@ -17,8 +18,8 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "application/pdf"}
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "phone", "full_name", "nni", "language", "kyc_status", "role"]
-        read_only_fields = ["id", "phone", "kyc_status", "role"]
+        fields = ["id", "phone", "email", "full_name", "nni", "language", "kyc_status", "role"]
+        read_only_fields = ["id", "phone", "email", "kyc_status", "role"]
 
 
 class OtpRequestView(APIView):
@@ -45,6 +46,64 @@ class OtpVerifyView(APIView):
             return Response({"detail": message}, status=400)
         token, _ = Token.objects.get_or_create(user=user)
         return Response({"token": token.key, "created": created, "user": UserSerializer(user).data})
+
+
+class ProLoginView(APIView):
+    """Comptes professionnels, étape 1 : email + mot de passe → code SMS."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "pro_login"
+
+    def post(self, request):
+        try:
+            challenge, phone = services.pro_login(request.data.get("email", ""), request.data.get("password", ""))
+        except LoginError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response({"challenge": challenge, "phone": phone, "detail": "Code envoyé par SMS."})
+
+
+class ProVerifyView(APIView):
+    """Comptes professionnels, étape 2 : code SMS → jeton de session."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "pro_login"
+
+    def post(self, request):
+        try:
+            user = services.pro_verify(request.data.get("challenge", ""), request.data.get("code", ""))
+        except LoginError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "user": UserSerializer(user).data})
+
+
+class PasswordForgotView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "password"
+
+    def post(self, request):
+        services.forgot_password(request.data.get("email", ""))
+        return Response(
+            {"detail": "Si un compte correspond à cet email, un lien vient de lui être envoyé."}, status=202
+        )
+
+
+class PasswordResetView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "password"
+
+    def post(self, request):
+        try:
+            services.reset_password(
+                request.data.get("uid", ""), request.data.get("token", ""), request.data.get("password", "")
+            )
+        except DjangoValidationError as exc:
+            return Response({"detail": " ".join(exc.messages)}, status=400)
+        return Response({"detail": "Mot de passe enregistré. Vous pouvez vous connecter."})
 
 
 class MeView(APIView):

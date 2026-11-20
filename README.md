@@ -43,8 +43,21 @@ le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 ## Portail assureur
 
 http://localhost:3000/assureur : l'espace web des agents des compagnies
-(bureau d'abord, utilisable sur tablette, français et arabe). Connexion par code
-SMS avec un agent démo, par exemple `+22220000002` pour MAR.
+(bureau d'abord, utilisable sur tablette, français et arabe).
+
+**Connexion en deux facteurs** : email professionnel + mot de passe, puis code
+reçu par SMS sur le téléphone du compte. Un agent ne peut **pas** se connecter
+par SMS seul (l'app client refuse son numéro). En démo : `agent@mar.test`, mot de
+passe `demo-sanad-2026` (posé par `seed_demo` **uniquement si DEBUG**), code SMS
+dans la console du backend.
+
+- 5 mots de passe faux bloquent le compte 15 minutes ; même message d'erreur
+  que l'email existe ou non.
+- Nouvel agent : l'équipe le crée dans le back-office (téléphone, email, rôle,
+  compagnie), puis action « Envoyer l'invitation par email ». Le lien, valable
+  72 h et à usage unique, sert à choisir le mot de passe. « Mot de passe
+  oublié ? » envoie le même type de lien.
+- En développement, les emails s'affichent dans la console du backend.
 
 - **Demandes à valider** : polices payées de la compagnie de l'agent (client,
   véhicule, formule, prime, moyen de paiement, statut KYC). « Valider » active la
@@ -72,10 +85,10 @@ démo par compagnie :
 
 | Compagnie | Raison sociale | Formules | Agent démo |
 | --- | --- | --- | --- |
-| NASR | Nationale d'Assurance et de Réassurance | RC, Tiers étendu, Tous risques | `+22220000001` |
-| MAR | Mauritanienne d'Assurance et de Réassurance | RC, Tiers étendu, Tous risques | `+22220000002` |
-| MEDINA Assurances | MEDINA Assurances | RC, Tiers étendu | `+22220000003` |
-| IMAN Assurance | IMAN Assurance | RC, Tiers étendu | `+22220000004` |
+| NASR | Nationale d'Assurance et de Réassurance | RC, Tiers étendu, Tous risques | `agent@nasr.test` · `+22220000001` |
+| MAR | Mauritanienne d'Assurance et de Réassurance | RC, Tiers étendu, Tous risques | `agent@mar.test` · `+22220000002` |
+| MEDINA Assurances | MEDINA Assurances | RC, Tiers étendu | `agent@medina.test` · `+22220000003` |
+| IMAN Assurance | IMAN Assurance | RC, Tiers étendu | `agent@iman.test` · `+22220000004` |
 
 **Les primes sont fictives.** Chaque produit est marqué « indicatif » et l'app
 l'affiche. La RC automobile, seule branche à tarif homologué, a le même prix
@@ -150,7 +163,11 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 | Méthode | Chemin | Usage |
 | --- | --- | --- |
 | POST | `/api/auth/otp/request` | `{phone}` → envoie un code par SMS |
-| POST | `/api/auth/otp/verify` | `{phone, code}` → `{token, user}` |
+| POST | `/api/auth/otp/verify` | `{phone, code}` → `{token, user}` (refusé aux comptes professionnels) |
+| POST | `/api/auth/pro/login` | Comptes pro : `{email, password}` → `{challenge, phone}` + code SMS |
+| POST | `/api/auth/pro/verify` | `{challenge, code}` → `{token, user}` |
+| POST | `/api/auth/pro/password/forgot` | `{email}` → lien par email (réponse identique si l'email est inconnu) |
+| POST | `/api/auth/pro/password/reset` | `{uid, token, password}` : choisir le mot de passe (invitation ou oubli) |
 | GET/PATCH | `/api/me` | Profil (nom, NNI, langue) |
 | GET/POST | `/api/me/documents` | Pièces KYC (JPEG, PNG, PDF, 8 Mo max) |
 | GET/POST | `/api/assets` | Véhicules : `{reference, attributes: {fiscal_power, usage, …}}` |

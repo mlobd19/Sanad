@@ -13,27 +13,34 @@ function formatPhone(digits: string) {
   return digits.replace(/\D/g, "").slice(0, 8).replace(/(\d{2})(?=\d)/g, "$1 ");
 }
 
-type Props = {
-  /** Titre et texte d'introduction de l'étape « numéro » (textes déjà traduits). */
-  title: string;
-  intro: string;
-  /**
-   * Appelé après un code valide, avant toute mise en session. Si la fonction lève
-   * une erreur, son message s'affiche et le formulaire revient à l'étape « numéro ».
-   */
-  onVerified: (result: OtpResult) => Promise<void>;
+function message(err: unknown, fallback: string) {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+// --- Étape « code à 6 chiffres » (particuliers et comptes professionnels) ---------------
+
+type CodeProps = {
+  /** Numéro affiché après « Envoyé par SMS au » (complet ou masqué). */
+  sentTo: string;
+  /** Vérifie le code ; une erreur levée s'affiche et vide les cases. */
+  onSubmit: (code: string) => Promise<void>;
+  /** Renvoie un code ; une erreur levée s'affiche. */
+  onResend: () => Promise<void>;
+  onBack: () => void;
+  backLabel: string;
 };
 
-/** Formulaire de connexion par code SMS (numéro, puis code à 6 chiffres). */
-export function OtpLogin({ title, intro, onVerified }: Props) {
+export function OtpCodeForm({ sentTo, onSubmit, onResend, onBack, backLabel }: CodeProps) {
   const { t } = useI18n();
-  const [phone, setPhone] = useState("");
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
-  const [step, setStep] = useState<"phone" | "code">("phone");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [wait, setWait] = useState(0);
+  const [wait, setWait] = useState(RESEND_DELAY);
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    boxes.current[0]?.focus();
+  }, []);
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -41,42 +48,30 @@ export function OtpLogin({ title, intro, onVerified }: Props) {
     return () => clearTimeout(id);
   }, [wait]);
 
-  async function sendCode(e?: FormEvent) {
-    e?.preventDefault();
+  async function submit(code: string) {
     setBusy(true);
     setError("");
     try {
-      await api("auth/otp/request", { body: { phone } });
-      setStep("code");
-      setDigits(Array(6).fill(""));
-      setWait(RESEND_DELAY);
-      setTimeout(() => boxes.current[0]?.focus(), 50);
+      await onSubmit(code);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("error"));
-    } finally {
+      setError(message(err, t("error")));
+      setDigits(Array(6).fill(""));
       setBusy(false);
+      setTimeout(() => boxes.current[0]?.focus(), 0);
     }
   }
 
-  async function verify(code: string) {
+  async function resend() {
     setBusy(true);
     setError("");
-    let result: OtpResult;
     try {
-      result = await api<OtpResult>("auth/otp/verify", { body: { phone, code } });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("error"));
+      await onResend();
       setDigits(Array(6).fill(""));
+      setWait(RESEND_DELAY);
       boxes.current[0]?.focus();
-      setBusy(false);
-      return;
-    }
-    try {
-      await onVerified(result);
     } catch (err) {
-      // Le code est consommé : on repart du numéro.
-      setError(err instanceof Error && err.message ? err.message : t("error"));
-      setStep("phone");
+      setError(message(err, t("error")));
+    } finally {
       setBusy(false);
     }
   }
@@ -84,7 +79,7 @@ export function OtpLogin({ title, intro, onVerified }: Props) {
   function fill(values: string[]) {
     setDigits(values);
     const code = values.join("");
-    if (code.length === 6 && !busy) verify(code);
+    if (code.length === 6 && !busy) submit(code);
   }
 
   function onDigit(i: number, value: string) {
@@ -114,48 +109,12 @@ export function OtpLogin({ title, intro, onVerified }: Props) {
     }
   }
 
-  const shownPhone = `+222 ${formatPhone(phone)}`;
-
-  if (step === "phone") {
-    return (
-      <form className="stack" onSubmit={sendCode} style={{ gap: 20, flex: 1 }}>
-        <div className="stack" style={{ gap: 6 }}>
-          <h2 className="title">{title}</h2>
-          <p className="ink2" style={{ margin: 0 }}>{intro}</p>
-        </div>
-        <div className="field">
-          <label htmlFor="phone">{t("phoneLabel")}</label>
-          <div className="row" style={{ gap: 8 }} dir="ltr">
-            <span className="input" style={{ width: "auto", display: "flex", alignItems: "center", background: "var(--bg)", fontWeight: 700 }}>
-              +222
-            </span>
-            <input
-              id="phone"
-              className="input"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel-national"
-              placeholder={t("phonePlaceholder")}
-              value={formatPhone(phone)}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              style={{ fontWeight: 600, letterSpacing: "0.04em" }}
-              required
-            />
-          </div>
-        </div>
-        {error && <p className="error" role="alert">{error}</p>}
-        <div className="grow" />
-        <button className="btn primary block tall" disabled={busy || phone.length < 8}>{t("sendCode")}</button>
-      </form>
-    );
-  }
-
   return (
-    <form className="stack" onSubmit={(e) => { e.preventDefault(); verify(digits.join("")); }} style={{ gap: 22, flex: 1 }}>
+    <form className="stack" onSubmit={(e) => { e.preventDefault(); submit(digits.join("")); }} style={{ gap: 22, flex: 1 }}>
       <div className="stack" style={{ gap: 6 }}>
         <h2 className="title">{t("codeTitle")}</h2>
         <p className="ink2" style={{ margin: 0 }}>
-          {t("codeSentShort")} <strong style={{ color: "var(--ink)" }}><bdi>{shownPhone}</bdi></strong>
+          {t("codeSentShort")} <strong style={{ color: "var(--ink)" }}><bdi dir="ltr">{sentTo}</bdi></strong>
         </p>
       </div>
       <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
@@ -182,21 +141,108 @@ export function OtpLogin({ title, intro, onVerified }: Props) {
       </fieldset>
       {error && <p className="error" role="alert">{error}</p>}
       <div className="between">
-        <button type="button" className="btn link" onClick={() => { setStep("phone"); setError(""); }}>
-          {t("changeNumber")}
-        </button>
+        <button type="button" className="btn link" onClick={onBack}>{backLabel}</button>
         {wait > 0 ? (
           <span className="ink2 small">
             {t("resendIn")} <strong style={{ color: "var(--ink)" }}>0:{String(wait).padStart(2, "0")}</strong>
           </span>
         ) : (
-          <button type="button" className="btn link" onClick={() => sendCode()} disabled={busy}>{t("resend")}</button>
+          <button type="button" className="btn link" onClick={resend} disabled={busy}>{t("resend")}</button>
         )}
       </div>
       <div className="grow" />
       <button className="btn primary block tall" disabled={busy || digits.join("").length !== 6}>
         {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("verify")}
       </button>
+    </form>
+  );
+}
+
+// --- Connexion des particuliers : numéro puis code -----------------------------------------
+
+type Props = {
+  title: string;
+  intro: string;
+  /**
+   * Appelé après un code valide, avant toute mise en session. Si la fonction lève
+   * une erreur, son message s'affiche et le formulaire revient à l'étape « numéro ».
+   */
+  onVerified: (result: OtpResult) => Promise<void>;
+};
+
+export function OtpLogin({ title, intro, onVerified }: Props) {
+  const { t } = useI18n();
+  const [phone, setPhone] = useState("");
+  const [step, setStep] = useState<"phone" | "code">("phone");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function sendCode(e?: FormEvent) {
+    e?.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api("auth/otp/request", { body: { phone } });
+      setStep("code");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verify(code: string) {
+    const result = await api<OtpResult>("auth/otp/verify", { body: { phone, code } }); // erreur → affichée sous le code
+    try {
+      await onVerified(result);
+    } catch (err) {
+      // Le code est consommé : on repart du numéro.
+      setError(message(err, t("error")));
+      setStep("phone");
+    }
+  }
+
+  if (step === "code") {
+    return (
+      <OtpCodeForm
+        sentTo={`+222 ${formatPhone(phone)}`}
+        onSubmit={verify}
+        onResend={() => api("auth/otp/request", { body: { phone } }).then(() => undefined)}
+        onBack={() => { setStep("phone"); setError(""); }}
+        backLabel={t("changeNumber")}
+      />
+    );
+  }
+
+  return (
+    <form className="stack" onSubmit={sendCode} style={{ gap: 20, flex: 1 }}>
+      <div className="stack" style={{ gap: 6 }}>
+        <h2 className="title">{title}</h2>
+        <p className="ink2" style={{ margin: 0 }}>{intro}</p>
+      </div>
+      <div className="field">
+        <label htmlFor="phone">{t("phoneLabel")}</label>
+        <div className="row" style={{ gap: 8 }} dir="ltr">
+          <span className="input" style={{ width: "auto", display: "flex", alignItems: "center", background: "var(--bg)", fontWeight: 700 }}>
+            +222
+          </span>
+          <input
+            id="phone"
+            className="input"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            placeholder={t("phonePlaceholder")}
+            value={formatPhone(phone)}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            style={{ fontWeight: 600, letterSpacing: "0.04em" }}
+            required
+          />
+        </div>
+      </div>
+      {error && <p className="error" role="alert">{error}</p>}
+      <div className="grow" />
+      <button className="btn primary block tall" disabled={busy || phone.length < 8}>{t("sendCode")}</button>
     </form>
   );
 }

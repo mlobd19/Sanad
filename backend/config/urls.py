@@ -15,6 +15,10 @@ api = [
     # Compte et KYC
     path("auth/otp/request", accounts.OtpRequestView.as_view()),
     path("auth/otp/verify", accounts.OtpVerifyView.as_view()),
+    path("auth/pro/login", accounts.ProLoginView.as_view()),
+    path("auth/pro/verify", accounts.ProVerifyView.as_view()),
+    path("auth/pro/password/forgot", accounts.PasswordForgotView.as_view()),
+    path("auth/pro/password/reset", accounts.PasswordResetView.as_view()),
     path("me", accounts.MeView.as_view()),
     path("me/documents", accounts.KycDocumentView.as_view()),
     # Biens, devis, polices

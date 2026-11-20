@@ -91,6 +91,7 @@ export async function downloadFile(path: string, filename: string): Promise<void
 export type User = {
   id: number;
   phone: string;
+  email: string | null;
   full_name: string;
   nni: string;
   language: "fr" | "ar";

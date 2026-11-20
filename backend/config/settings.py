@@ -100,7 +100,12 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.TokenAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"otp": env("OTP_THROTTLE_RATE", "5/hour"), "verify": "120/minute"},
+    "DEFAULT_THROTTLE_RATES": {
+        "otp": env("OTP_THROTTLE_RATE", "5/hour"),
+        "verify": "120/minute",
+        "pro_login": env("PRO_LOGIN_THROTTLE_RATE", "30/hour"),  # par adresse IP
+        "password": env("PASSWORD_THROTTLE_RATE", "10/hour"),
+    },
 }
 
 # --- Métier -----------------------------------------------------------------
@@ -110,6 +115,21 @@ CURRENCY = "MRU"
 
 OTP_TTL_SECONDS = int(env("OTP_TTL_SECONDS", 300))
 OTP_MAX_ATTEMPTS = int(env("OTP_MAX_ATTEMPTS", 5))
+
+# Comptes professionnels (agents assureurs) : email + mot de passe + code SMS.
+PRO_LOGIN_MAX_FAILURES = int(env("PRO_LOGIN_MAX_FAILURES", 5))
+PRO_LOGIN_LOCK_MINUTES = int(env("PRO_LOGIN_LOCK_MINUTES", 15))
+PASSWORD_RESET_TIMEOUT = 72 * 3600  # lien d'invitation ou de réinitialisation : 72 h
+PORTAL_BASE_URL = env("PORTAL_BASE_URL", "http://localhost:3000")  # liens envoyés par email
+
+# E-mail : affiché dans la console en développement, SMTP en production.
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(env("EMAIL_PORT", 587))
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Sanad <no-reply@localhost>")
 
 # Clé Ed25519 (graine de 32 octets en base64) qui signe les attestations.
 # En production, elle vient d'un coffre de clés ; jamais du dépôt.

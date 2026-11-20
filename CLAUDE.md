@@ -38,7 +38,9 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
   Chaque app garde ses tables ; la logique métier vit dans `services.py`, jamais
   dans les vues (`api.py`).
   - `accounts` : utilisateur par téléphone (+222XXXXXXXX), OTP, KYC, rôles
-    `customer` / `insurer_agent` / `staff`
+    `customer` / `insurer_agent` / `staff`. Particuliers : téléphone + code SMS.
+    Comptes pro (`User.PRO_ROLES`) : email + mot de passe + code SMS, jamais
+    par SMS seul ; invitation / mot de passe oublié par email (lien 72 h)
   - `catalog` : compagnies, produits, facteurs tarifaires, logos ;
     commandes `seed_demo` et `import_logos`
   - `policies` : véhicules, devis, polices (cycle de vie dans `services.py`),
@@ -81,7 +83,8 @@ Ajouter un test pour chaque règle métier nouvelle ou bug corrigé.
 ## Données et marques
 
 - Catalogue démo (`seed_demo`) : **NASR, MAR, MEDINA Assurances, IMAN Assurance**.
-  Agents démo `+22220000001` à `+22220000004`. **Les primes sont fictives** et
+  Agents démo `agent@<code>.test` (`+22220000001` à `+22220000004`), mot de
+  passe `demo-sanad-2026` posé **uniquement en DEBUG**. **Les primes sont fictives** et
   marquées `is_indicative` (« Indicatif » dans l'app) : ne jamais les présenter
   comme de vrais tarifs.
 - **Logos des compagnies** : uniquement les fichiers officiels fournis par les
@@ -105,8 +108,18 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 ## Pas encore fait (feuille de route)
 
-1. Dépôt des pièces KYC et déclaration de sinistre dans l'app
-2. Mise en ligne (Render : Django + PostgreSQL, Next.js)
-3. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
-   fournisseur SMS et WhatsApp Business
-4. Mode hors ligne (service worker)
+1. Espace entreprise (décisions du 20/11/2026, voir ci-dessous)
+2. Dépôt des pièces KYC et déclaration de sinistre dans l'app
+3. Mise en ligne (Render : Django + PostgreSQL, Next.js) ; avant : code SMS
+   pour la connexion au back-office `/admin/`
+4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
+   fournisseur SMS et WhatsApp Business, envoi d'emails (SMTP)
+5. Mode hors ligne (service worker)
+
+### Espace entreprise : décisions du porteur (20/11/2026)
+
+1. **Compte entreprise distinct** des comptes particuliers.
+2. Pièces à l'ouverture : **NIF et Registre du Commerce**.
+3. Paiement : **mobile money uniquement** (pas de virement sur facture).
+4. Produits : **Auto, Santé et Voyage**.
+Connexion prévue : email + mot de passe + code SMS (mécanisme des comptes pro).

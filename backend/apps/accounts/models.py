@@ -54,6 +54,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         REJECTED = "rejected", "Refusé"
 
     phone = models.CharField(max_length=16, unique=True)
+    email = models.EmailField(
+        "email professionnel", null=True, blank=True, unique=True,
+        help_text="Identifiant des comptes professionnels (agents assureurs), avec mot de passe et code SMS.",
+    )
     full_name = models.CharField(max_length=120, blank=True)
     nni = models.CharField("NNI", max_length=20, blank=True, db_index=True)
     language = models.CharField(max_length=2, choices=[("fr", "Français"), ("ar", "العربية")], default="fr")
@@ -66,15 +70,32 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
+    # Protection du mot de passe des comptes professionnels.
+    failed_logins = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
 
     USERNAME_FIELD = "phone"
     REQUIRED_FIELDS = []
 
+    # Rôles qui se connectent par email + mot de passe + code SMS (jamais par SMS seul).
+    PRO_ROLES = (Role.INSURER_AGENT,)
+
+    @property
+    def is_pro(self) -> bool:
+        return self.role in self.PRO_ROLES
+
     def clean(self):
         if self.role == self.Role.INSURER_AGENT and not self.insurer_id:
             raise ValidationError("Un agent assureur doit être rattaché à un assureur.")
+        if self.is_pro and not self.email:
+            raise ValidationError("Un compte professionnel doit avoir un email.")
+
+    def save(self, *args, **kwargs):
+        # Un email vide devient NULL (sinon deux comptes sans email violeraient l'unicité).
+        self.email = (self.email or "").strip().lower() or None
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.full_name or self.phone

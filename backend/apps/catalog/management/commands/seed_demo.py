@@ -12,6 +12,7 @@ identique d'une compagnie à l'autre (montant de démonstration ici aussi).
 """
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import ProtectedError
@@ -26,6 +27,8 @@ FORMULAS = {
 }
 TIERS, TOUS = "tiers-etendu", "tous-risques"
 
+# Mot de passe des agents démo, posé seulement quand DEBUG est vrai (jamais en production).
+DEMO_AGENT_PASSWORD = "demo-sanad-2026"
 RC_DEMO_PREMIUM = 10000  # identique partout : tarif RC homologué (montant fictif)
 
 # slug, nom court, raison sociale, n° agent démo, primes fictives {formule: prime annuelle de base}
@@ -78,15 +81,27 @@ class Command(BaseCommand):
                 )
             agent = User.objects.filter(phone=agent_phone).first()
             if agent is None:
-                User.objects.create_user(agent_phone, role=User.Role.INSURER_AGENT, insurer=insurer,
-                                         full_name=f"Agent {name} (démo)")
+                agent = User.objects.create_user(agent_phone, role=User.Role.INSURER_AGENT, insurer=insurer,
+                                                 full_name=f"Agent {name} (démo)")
             elif agent.insurer_id != insurer.pk:
                 agent.insurer, agent.role, agent.full_name = insurer, User.Role.INSURER_AGENT, f"Agent {name} (démo)"
-                agent.save()
+            self._demo_login(agent, slug)
         self.stdout.write(self.style.SUCCESS(
             "Catalogue auto prêt : NASR, MAR, MEDINA, IMAN (tarifs fictifs). "
-            "Agents démo : +22220000001 à +22220000004."
+            "Agents démo : agent@nasr.test, agent@mar.test, agent@medina.test, agent@iman.test "
+            "(+22220000001 à +22220000004)."
         ))
+        if settings.DEBUG:
+            self.stdout.write(f"Mot de passe démo des agents (DEBUG uniquement) : {DEMO_AGENT_PASSWORD}")
+        else:
+            self.stdout.write("Hors DEBUG : pas de mot de passe démo. Envoyez l'invitation depuis le back-office.")
+
+    def _demo_login(self, agent, slug):
+        """Email agent@<code>.test ; mot de passe démo uniquement en DEBUG, sans jamais écraser un mot de passe choisi."""
+        agent.email = agent.email or f"agent@{slug}.test"
+        if settings.DEBUG and not agent.has_usable_password():
+            agent.set_password(DEMO_AGENT_PASSWORD)
+        agent.save()
 
     def _retire_old_demo(self):
         """Retire les compagnies des anciens catalogues ; les désactive si elles ont déjà des contrats."""
