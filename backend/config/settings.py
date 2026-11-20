@@ -21,6 +21,9 @@ def env_bool(name, default=False):
 SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-me")
 DEBUG = env_bool("DJANGO_DEBUG", True)
 ALLOWED_HOSTS = [h for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
+# Le back-office est servi à travers l'app (http://localhost:3000/admin/) : son origine doit être acceptée
+# par la protection CSRF du formulaire de connexion. En production : https://<domaine>.
+CSRF_TRUSTED_ORIGINS = [o for o in env("CSRF_TRUSTED_ORIGINS", "http://localhost:3000").split(",") if o]
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -14,10 +14,10 @@ en français). Les utilisateurs finaux lisent **français et arabe**.
 # Backend (Python 3.13)
 cd backend && source .venv/bin/activate
 python manage.py migrate && python manage.py seed_demo
-python manage.py runserver            # http://localhost:8000 (admin : /admin/)
+python manage.py runserver            # API sur :8000 (ne pas ouvrir directement)
 
 # Application client
-cd frontend && npm run dev            # http://localhost:3000
+cd frontend && npm run dev            # http://localhost:3000 : app, /assureur, /entreprise, /admin
 ```
 
 Dans VS Code : tâche **« Lancer Sanad »** (les deux serveurs). Les codes SMS

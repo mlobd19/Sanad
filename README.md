@@ -18,7 +18,7 @@ python manage.py createsuperuser    # numéro +222XXXXXXXX
 python manage.py runserver
 ```
 
-- Back-office : http://localhost:8000/admin/
+- Back-office : http://localhost:3000/admin/ (servi à travers l'app ; aussi sur :8000/admin/)
 - Les codes SMS s'affichent dans la console (backend de notification `Console`).
 - Tests : `cd backend && pytest`
 
