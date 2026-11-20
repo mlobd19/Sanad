@@ -119,13 +119,19 @@ export default function ProfilePage() {
             <label htmlFor="nni">{t("nni")}</label>
             <input id="nni" className="input" value={nni} onChange={(e) => setNni(e.target.value)} inputMode="numeric" dir="ltr" />
           </div>
+          {user.kyc_status === "verified" && <span className="small muted">{t("idChangeResets")}</span>}
+          {message && <p className="small" role="status" style={{ margin: 0 }}>{message}</p>}
+          <button className="btn primary block" disabled={busy}>{t("save")}</button>
+        </form>
+
+        {/* Hors du formulaire du profil : le dépôt de pièce a son propre formulaire (pas de <form> imbriqués). */}
+        <section className="card" aria-labelledby="kyc-title">
           <div className="between">
-            <span className="muted">{t("kyc")}</span>
+            <h2 id="kyc-title" className="eyebrow" style={{ margin: 0 }}>{t("kyc")}</h2>
             <span className={`pill ${user.kyc_status === "verified" ? "" : user.kyc_status === "rejected" ? "bad" : "warn"}`}>
               {t(`kyc_${user.kyc_status}` as Key)}
             </span>
           </div>
-          {user.kyc_status === "verified" && <span className="small muted">{t("idChangeResets")}</span>}
           {registry && (user.kyc_status === "none" || user.kyc_status === "pending") && (
             <div className="stack" style={{ gap: 6 }}>
               <button type="button" className="btn outline block" onClick={checkIdentity} disabled={checking || busy}
@@ -136,13 +142,6 @@ export default function ProfilePage() {
               <span id="id-hint" className="small muted">{t("idCheckHint")}</span>
             </div>
           )}
-          {returnTo && user.kyc_status === "verified" && (
-            <Link className="btn primary block" href={returnTo}>{t("continueToPay")}</Link>
-          )}
-          {(user.kyc_status === "none" || user.kyc_status === "pending") && (
-            <IdentityDocument user={user} onUploaded={setUser}
-              open={!registry || (idResult !== null && idResult.key !== "idMatch")} />
-          )}
           <div aria-live="polite">
             {idResult && (
               <p className={`banner ${idResult.tone}`} role={idResult.tone === "red" ? "alert" : "status"} style={{ margin: 0 }}>
@@ -150,9 +149,14 @@ export default function ProfilePage() {
               </p>
             )}
           </div>
-          {message && <p className="small" role="status" style={{ margin: 0 }}>{message}</p>}
-          <button className="btn primary block" disabled={busy}>{t("save")}</button>
-        </form>
+          {returnTo && user.kyc_status === "verified" && (
+            <Link className="btn primary block" href={returnTo}>{t("continueToPay")}</Link>
+          )}
+          {(user.kyc_status === "none" || user.kyc_status === "pending") && (
+            <IdentityDocument user={user} onUploaded={setUser}
+              open={!registry || (idResult !== null && idResult.key !== "idMatch")} />
+          )}
+        </section>
 
         <section className="card">
           <h2 className="eyebrow">{t("language")}</h2>
