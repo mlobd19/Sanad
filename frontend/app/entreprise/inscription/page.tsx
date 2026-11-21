@@ -125,7 +125,7 @@ export default function CompanySignupPage() {
         <p className="note" style={{ margin: 0 }}>{t("signupDocsNote")}</p>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn primary block tall" disabled={busy || form.phone.length < 8 || form.password.length < 10}>
-          {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("signupSubmit")}
+          {busy ? <span className="spinner sm" /> : t("signupSubmit")}
         </button>
         <p className="small ink2" style={{ margin: 0, textAlign: "center" }}>
           {t("companyHasAccount")} <Link href="/connexion?espace=pro" style={{ fontWeight: 700 }}>{t("verify")}</Link>

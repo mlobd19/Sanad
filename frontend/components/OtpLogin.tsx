@@ -152,7 +152,7 @@ export function OtpCodeForm({ sentTo, onSubmit, onResend, onBack, backLabel }: C
       </div>
       <div className="grow" />
       <button className="btn primary block tall" disabled={busy || digits.join("").length !== 6}>
-        {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("verify")}
+        {busy ? <span className="spinner sm" /> : t("verify")}
       </button>
     </form>
   );

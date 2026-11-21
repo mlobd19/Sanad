@@ -154,7 +154,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
 
       <div className="stack" style={{ gap: 8 }}>
         <button className="btn primary block tall" disabled={busy}>
-          {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} aria-hidden="true" /> : null}
+          {busy ? <span className="spinner sm" aria-hidden="true" /> : null}
           {busy ? t("claimSending") : t("claimSubmit")}
         </button>
         {onCancel && <button type="button" className="btn outline block" onClick={onCancel} disabled={busy}>{t("cancel")}</button>}

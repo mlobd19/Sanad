@@ -85,7 +85,7 @@ function Landing() {
         <KhaimaMark size={84} color="#fff" />
         <div className="stack" style={{ gap: 10 }}>
           <h1 className="title" style={{ fontSize: 34, lineHeight: 1.12, color: "#fff" }}>{t("tagline")}</h1>
-          <p style={{ margin: 0, color: "var(--green-soft)", fontSize: 16, lineHeight: 1.5 }}>{t("landingIntro")}</p>
+          <p style={{ margin: 0, color: "var(--on-deep)", fontSize: 16, lineHeight: 1.5 }}>{t("landingIntro")}</p>
         </div>
       </header>
 

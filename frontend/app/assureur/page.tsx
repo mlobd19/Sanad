@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { InsurerLogo } from "@/components/InsurerLogo";
+import { ThemeToggleButton } from "@/components/ThemeChoice";
 import {
   api,
   ApiError,
@@ -158,6 +159,7 @@ function Portal({ me }: { me: InsurerMe }) {
           <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
             {lang === "fr" ? "العربية" : "Français"}
           </button>
+          <ThemeToggleButton />
           <button type="button" className="btn-on-dark" onClick={logout}>{t("logout")}</button>
         </div>
       </header>
@@ -655,7 +657,7 @@ function DecisionDialog({ decision, onClose, onDone }: {
             {t("cancel")}
           </button>
           <button className={`btn ${validate ? "primary" : "danger-solid"}`} disabled={busy}>
-            {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t(validate ? "confirmValidate" : "confirmRefuse")}
+            {busy ? <span className="spinner sm" /> : t(validate ? "confirmValidate" : "confirmRefuse")}
           </button>
         </div>
       </form>
@@ -856,7 +858,7 @@ function CloseClaimDialog({ claim, onClose, onDone }: {
         <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
           <button type="button" className="btn outline" onClick={() => ref.current?.close()} disabled={busy}>{t("cancel")}</button>
           <button className="btn primary" disabled={busy}>
-            {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("confirmClose")}
+            {busy ? <span className="spinner sm" /> : t("confirmClose")}
           </button>
         </div>
       </form>

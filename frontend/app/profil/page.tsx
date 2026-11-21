@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
 import { IdentityDocument } from "@/components/IdentityDocument";
+import { ThemeChoicePicker } from "@/components/ThemeChoice";
 import { App, BottomNav, Loading, TopBar } from "@/components/Shell";
 import { api, ApiError, type User } from "@/lib/api";
 import { useI18n, type Key, type Lang } from "@/lib/i18n";
@@ -167,6 +168,11 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+        </section>
+
+        <section className="card" aria-labelledby="theme-title">
+          <h2 id="theme-title" className="eyebrow">{t("theme")}</h2>
+          <ThemeChoicePicker />
         </section>
 
         <button type="button" className="btn outline block" onClick={logout}>{t("logout")}</button>

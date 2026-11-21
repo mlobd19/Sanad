@@ -154,6 +154,14 @@ dans Claude. Palette dans `globals.css` (`--green #08603F`,
 `--green-deep #062F22`, `--sand #F0A43A`, `--ink #0B1A14`). Contraste élevé,
 cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
+**Mode sombre** : suit le réglage de l'appareil, ou le choix « Automatique / Clair /
+Sombre » (Profil, bouton « Thème » des espaces pro ; `lib/theme.ts`, posé sur
+`<html data-theme>` avant l'affichage). Toutes les couleurs passent par les
+variables de `globals.css`, jamais de couleur en dur dans un écran. Texte sur un
+aplat : `--on-green`, `--on-ink`, `--on-red`, `--on-sand` (le vert devient clair
+en sombre, son texte devient foncé). Exceptions voulues : blanc sur le vert
+profond des en-têtes, fond blanc du QR code et des logos des compagnies.
+
 ## Git
 
 - Branche `main`, dépôt `mlobd19/Sanad`.

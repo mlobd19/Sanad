@@ -104,7 +104,7 @@ export function ProLoginForm({ titleKey, introKey, footer }: { titleKey: Key; in
       </Link>
       <div className="grow" />
       <button className="btn primary block tall" disabled={busy || !email || !password}>
-        {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("continue")}
+        {busy ? <span className="spinner sm" /> : t("continue")}
       </button>
       {footer}
     </form>
@@ -151,7 +151,7 @@ export function ForgotPasswordForm() {
       <div className="grow" />
       {!sent && (
         <button className="btn primary block tall" disabled={busy || !email}>
-          {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("sendLink")}
+          {busy ? <span className="spinner sm" /> : t("sendLink")}
         </button>
       )}
       <Link href={PRO_LOGIN_URL} className="btn link" style={{ alignSelf: "center" }}>{t("backToLogin")}</Link>
@@ -231,7 +231,7 @@ function SetPasswordInner() {
       {error && <p className="error" role="alert">{error}</p>}
       <div className="grow" />
       <button className="btn primary block tall" disabled={busy || password.length < 10 || !confirm}>
-        {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("savePassword")}
+        {busy ? <span className="spinner sm" /> : t("savePassword")}
       </button>
     </form>
   );

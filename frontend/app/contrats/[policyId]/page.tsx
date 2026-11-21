@@ -59,7 +59,7 @@ export default function ContractPage() {
             <h1>{t("contractTitle")}</h1>
           </div>
           <div className="row" style={{ padding: "0 6px" }}>
-            <span className="avatar" style={{ width: 40, height: 40, background: "#fff", color: "var(--green)" }}>
+            <span className="avatar" style={{ width: 40, height: 40, background: "var(--on-green)", color: "var(--green)" }}>
               <Icon name="check" size={22} strokeWidth={3} />
             </span>
             <div className="stack" style={{ gap: 2 }}>
@@ -87,7 +87,7 @@ export default function ContractPage() {
                   <small>{t("attestationShort")}</small>
                   <strong>N° <bdi>{att.number}</bdi></strong>
                 </div>
-                <KhaimaMark size={30} color="#fff" />
+                <KhaimaMark size={30} color="var(--on-ink)" />
               </header>
               <div className="body">
                 {qr ? <img className="qr" src={qr} alt="QR code" /> : <div className="qr" aria-hidden="true" />}
