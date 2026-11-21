@@ -25,8 +25,8 @@ production et refuse de démarrer tant que la configuration n'est pas complète
 clé de signature…) : voir `backend/config/production.py`.
 
 `DEMO_MODE=1` (distinct de DEBUG) active la démonstration : simulateurs de
-paiement et d'identité, comptes démo, `reset_demo` et bandeau « Démonstration »
-dans l'app. Il ne lève aucune autre protection de production.
+paiement et d'identité, comptes démo et `reset_demo`. Il ne lève aucune autre
+protection de production.
 
 - Back-office : http://localhost:3000/admin/ (servi à travers l'app ; aussi sur :8000/admin/),
   mot de passe puis code SMS

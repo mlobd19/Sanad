@@ -108,8 +108,8 @@ compile_translations` ; sinon le test des traductions échoue.
   e-mails réels, paiement opérationnel avec secret, clé de signature, code SMS
   du back-office…). Toute nouvelle variable indispensable y ajoute sa règle et
   son test (`tests/test_production_settings.py`).
-- **DEMO_MODE** (distinct de DEBUG) : simulateurs, comptes démo, `reset_demo`,
-  bandeau « Démonstration » (`/api/meta`). Ne lève aucune autre protection.
+- **DEMO_MODE** (distinct de DEBUG) : simulateurs, comptes démo, `reset_demo`.
+  Ne lève aucune autre protection.
 - Tests : `config/settings_test.py` (DEBUG, sans démo ni `.env` local).
 - Jamais de code SMS ni de lien de mot de passe dans les journaux hors DEBUG
   (`notifications/backends.redact`).

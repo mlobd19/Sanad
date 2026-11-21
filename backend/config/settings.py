@@ -45,8 +45,8 @@ def env_bool(name, default=False):
 SECRET_KEY = env("DJANGO_SECRET_KEY", DEV_SECRET_KEY)
 # Faux par défaut : une variable oubliée ne doit jamais ouvrir le mode développement en ligne.
 DEBUG = env_bool("DJANGO_DEBUG", False)
-# Démonstration : simulateurs (paiement, registre d'identité), comptes démo, reset_demo et bandeau
-# « Démonstration » dans l'app. Distinct de DEBUG ; ne lève aucune autre protection de production.
+# Démonstration : simulateurs (paiement, registre d'identité), comptes démo et reset_demo.
+# Distinct de DEBUG ; ne lève aucune autre protection de production.
 DEMO_MODE = env_bool("DEMO_MODE", False)
 DEMO_PASSWORD = env("DEMO_PASSWORD", "")  # mot de passe des comptes démo : jamais dans le code
 ALLOWED_HOSTS = [h for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]

@@ -27,9 +27,6 @@ const fr = {
   entryInsurerHint: "Validez les contrats et suivez les sinistres.",
   staffEntry: "Espace admin",
   createCompanyAccount: "Créer un compte entreprise",
-  // Bandeau de l'instance de démonstration (DEMO_MODE)
-  demoBannerTitle: "Démonstration",
-  demoBannerText: "données et tarifs fictifs, aucun contrat réel.",
   // Apparence (mode sombre)
   theme: "Apparence",
   themeAuto: "Automatique",
@@ -492,8 +489,6 @@ const ar: Record<Key, string> = {
   entryInsurerHint: "صادق على العقود وتابع الحوادث.",
   staffEntry: "فضاء الإدارة",
   createCompanyAccount: "إنشاء حساب مؤسسة",
-  demoBannerTitle: "نسخة تجريبية",
-  demoBannerText: "بيانات وأسعار وهمية، ولا عقد حقيقي.",
   theme: "المظهر",
   themeAuto: "تلقائي",
   themeLight: "فاتح",

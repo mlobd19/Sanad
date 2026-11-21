@@ -1,9 +1,8 @@
-"""Mode démo (bandeau, droits du compte équipe) et journaux sans code SMS ni lien hors DEBUG."""
+"""Mode démo (droits du compte équipe) et journaux sans code SMS ni lien hors DEBUG."""
 import logging
 
 import pytest
 from django.test import Client
-from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.accounts.services import send_code
@@ -44,15 +43,6 @@ def test_password_link_never_logged_outside_debug(console, settings, caplog, dem
         notify("whatsapp", agent.phone, "password_reset", {"link": "https://app.test/mot-de-passe?uid=MQ&token=abc",
                                                             "phone": "", "role": "MAR", "name": "Agent"})
     assert "token=abc" not in caplog.text and "[lien masqué]" in caplog.text
-
-
-# --- Bandeau « Démonstration » ----------------------------------------------------------------------
-
-def test_meta_tells_the_app_about_demo_mode(settings):
-    settings.DEMO_MODE = False
-    assert APIClient().get("/api/meta").data == {"demo_mode": False}
-    settings.DEMO_MODE = True
-    assert APIClient().get("/api/meta").data == {"demo_mode": True}
 
 
 # --- Compte équipe non superutilisateur ----------------------------------------------------------------
