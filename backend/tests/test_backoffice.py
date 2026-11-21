@@ -1,4 +1,6 @@
-"""Back-office : accueil « À traiter », décisions avec motif, lecture seule, langues."""
+"""Back-office : connexion par code SMS, accueil « À traiter », décisions avec motif, lecture seule, langues."""
+import re
+
 import pytest
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -7,6 +9,8 @@ from django.utils import translation
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.audit.models import AuditEvent
+from apps.notifications.backends import MemoryBackend
 from apps.backoffice.management.commands.compile_translations import source_messages
 from apps.companies import services as company_services
 from apps.companies.models import Company, CompanyDocument, Membership
@@ -60,9 +64,67 @@ def test_backoffice_is_served_to_staff_only(admin_client, customer_client, demo)
     assert login.status_code == 200 and b"errornote" in login.content
 
 
-def test_staff_logs_in_with_phone_and_password(staff):
+def last_sms_code(phone="+22230000000") -> str:
+    sms = [m for m in MemoryBackend.outbox if m["channel"] == "sms" and m["to"] == phone][-1]
+    return re.search(r"\b(\d{6})\b", sms["body"]).group(1)
+
+
+def test_staff_logs_in_with_password_then_sms_code(staff):
     client = Client()
-    resp = client.post("/admin/login/?next=/admin/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
+    resp = client.post("/admin/login/?next=/admin/policies/policy/",
+                       {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
+    assert resp.status_code == 302 and resp.url == "/admin/login/code/"
+    assert client.get("/admin/").status_code == 302  # pas encore connecté : le mot de passe ne suffit pas
+    page = client.get("/admin/login/code/")
+    assert page.status_code == 200 and "+222 •• •• •• 00" in page.content.decode()
+
+    resp = client.post("/admin/login/code/", {"code": "000000" if last_sms_code() != "000000" else "111111"})
+    assert resp.status_code == 200 and b"errornote" in resp.content
+    resp = client.post("/admin/login/code/", {"code": last_sms_code()})
+    assert resp.status_code == 302 and resp.url == "/admin/policies/policy/"
+    assert client.get("/admin/").status_code == 200
+    assert AuditEvent.objects.filter(action="user.login", data__method="password+sms").exists()
+    assert client.get("/admin/login/code/").status_code == 302  # étape terminée : plus de code en attente
+
+
+def test_sms_code_cannot_be_reused_or_brute_forced(staff, settings):
+    client = Client()
+    client.post("/admin/login/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
+    good = last_sms_code()
+    wrong = "000000" if good != "000000" else "111111"
+    for _ in range(settings.OTP_MAX_ATTEMPTS):
+        client.post("/admin/login/code/", {"code": wrong})
+    client.post("/admin/login/code/", {"code": good})  # trop tard : le code est épuisé
+    assert client.get("/admin/").status_code == 302
+
+
+def test_code_resend_waits_a_minute(staff, monkeypatch):
+    from apps.backoffice import site
+
+    client = Client()
+    client.post("/admin/login/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
+    first = last_sms_code()
+    resp = client.post("/admin/login/code/", {"resend": "1"})
+    assert b"errornote" in resp.content and last_sms_code() == first  # trop tôt
+    now = site.time.time()
+    monkeypatch.setattr(site.time, "time", lambda: now + site.RESEND_DELAY + 1)
+    resp = client.post("/admin/login/code/", {"resend": "1"})
+    assert b"sn-notice" in resp.content
+    assert client.post("/admin/login/code/", {"code": last_sms_code()}).status_code == 302
+
+
+def test_staff_account_locks_after_repeated_bad_passwords(staff, settings):
+    client = Client()
+    for _ in range(settings.PRO_LOGIN_MAX_FAILURES):
+        client.post("/admin/login/", {"username": "+22230000000", "password": "mauvais"})
+    resp = client.post("/admin/login/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
+    assert resp.status_code == 200 and b"errornote" in resp.content  # verrouillé, même avec le bon mot de passe
+    assert not [m for m in MemoryBackend.outbox if m["to"] == "+22230000000"]
+
+
+def test_sms_step_can_be_disabled_in_development_only(staff, settings):
+    settings.BACKOFFICE_SMS_CODE = False
+    resp = Client().post("/admin/login/?next=/admin/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
     assert resp.status_code == 302 and resp.url == "/admin/"
 
 

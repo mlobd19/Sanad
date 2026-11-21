@@ -53,6 +53,8 @@ api = [
     path("company/orders/<int:order_id>/pay", companies.OrderPayView.as_view()),
     path("company/policies", companies.CompanyPolicyView.as_view()),
     path("company/attestations.zip", companies.AttestationZipView.as_view()),
+    path("company/claims", companies.FleetClaimListView.as_view()),
+    path("company/policies/<int:policy_id>/claims", companies.FleetClaimView.as_view()),
     # Portail assureur
     path("insurer/me", policies.InsurerMeView.as_view()),
     path("insurer/policies", policies.InsurerPolicyListView.as_view()),

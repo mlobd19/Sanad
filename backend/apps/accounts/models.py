@@ -131,6 +131,7 @@ class OtpCode(models.Model):
         CUSTOMER = "customer", _("Connexion particulier")
         PRO = "pro", _("Connexion compte professionnel")
         SIGNUP = "signup", _("Inscription entreprise")
+        STAFF = "staff", _("Connexion back-office")
 
     phone = models.CharField(max_length=16, db_index=True)
     # Un code ne sert qu'au parcours qui l'a demandé (le même numéro peut porter plusieurs comptes).

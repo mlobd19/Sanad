@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
+import { ClaimForm } from "@/components/ClaimForm";
 import { DURATION_LABEL, DurationPicker } from "@/components/DurationPicker";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { ScanRegistration } from "@/components/ScanRegistration";
@@ -16,6 +17,7 @@ import {
   type CompanyMe,
   type CompanyMember,
   type CompanyOrder,
+  type FleetClaim,
   type FleetImport,
   type GroupOffer,
   type Months,
@@ -29,18 +31,22 @@ import { date, daysUntil, money, num } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useLoad } from "@/lib/useLoad";
 
-type Tab = "fleet" | "quotes" | "contracts" | "company";
+type Tab = "fleet" | "quotes" | "contracts" | "claims" | "company";
 
 const TABS: { id: Tab; label: Key }[] = [
   { id: "fleet", label: "tabFleet" },
   { id: "quotes", label: "tabQuotes" },
   { id: "contracts", label: "tabContracts" },
+  { id: "claims", label: "tabClaims" },
   { id: "company", label: "tabCompany" },
 ];
 
 const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial", taxi: "usageTaxi" };
 const STATUS_PILL: Record<string, string> = { active: "pill", refused: "pill bad", paid: "pill warn", draft: "pill quiet" };
 const COMPANY_PILL: Record<string, string> = { verified: "pill", pending: "pill warn", rejected: "pill bad" };
+const CLAIM_PILL: Record<string, string> = { submitted: "pill warn", in_review: "pill warn", closed: "pill quiet" };
+/** Un sinistre se déclare sur un contrat en cours ou échu. */
+const claimable = (p: Policy) => p.status === "active" || p.status === "expired";
 
 function message(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.message : fallback;
@@ -101,7 +107,11 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("fleet");
   const [selection, setSelection] = useState<number[]>([]);
-  const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ fleet: null, quotes: null, contracts: null, company: null });
+  // Contrat choisi dans « Contrats » pour déclarer un sinistre (ouvre le formulaire de l'onglet « Sinistres »).
+  const [declareFor, setDeclareFor] = useState<number | null>(null);
+  const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({
+    fleet: null, quotes: null, contracts: null, claims: null, company: null,
+  });
   const { company, member } = me;
 
   useEffect(() => {
@@ -181,7 +191,8 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
             onBackToFleet={() => setTab("fleet")}
             onPaid={() => { setSelection([]); setTab("contracts"); }} />
         )}
-        {tab === "contracts" && <ContractsTab />}
+        {tab === "contracts" && <ContractsTab onDeclare={(id) => { setDeclareFor(id); setTab("claims"); }} />}
+        {tab === "claims" && <ClaimsTab declareFor={declareFor} setDeclareFor={setDeclareFor} />}
         {tab === "company" && <CompanyTab me={me} refreshMe={refreshMe} />}
       </main>
     </div>
@@ -669,7 +680,7 @@ function OrderPayment({ order, verified, onPaid, onCancel }: {
 
 // --- Onglet « Contrats » ------------------------------------------------------------------------
 
-function ContractsTab() {
+function ContractsTab({ onDeclare }: { onDeclare: (policyId: number) => void }) {
   const { t, lang } = useI18n();
   const { data, error, reload } = useLoad<Policy[]>("company/policies");
   const [busy, setBusy] = useState("");
@@ -715,6 +726,7 @@ function ContractsTab() {
                 <th scope="col">{t("colStatus")}</th>
                 <th scope="col">{t("period")}</th>
                 <th scope="col">{t("colAttestation")}</th>
+                <th scope="col"><span className="sr-only">{t("colActions")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -743,9 +755,131 @@ function ContractsTab() {
                         </button>
                       )}
                     </td>
+                    <td data-label={t("colActions")}>
+                      {claimable(p) && (
+                        <button type="button" className="btn outline small-btn" onClick={() => onDeclare(p.id)}
+                          aria-label={t("declareClaimFor", { plate: p.plate })}>
+                          {t("declareClaim")}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+// --- Onglet « Sinistres » ----------------------------------------------------------------------
+
+function ClaimsTab({ declareFor, setDeclareFor }: {
+  declareFor: number | null; setDeclareFor: (id: number | null) => void;
+}) {
+  const { t, lang } = useI18n();
+  const { data, error, reload } = useLoad<FleetClaim[]>("company/claims");
+  const { data: policies } = useLoad<Policy[]>("company/policies");
+  const [declaring, setDeclaring] = useState(declareFor !== null);
+  const [sent, setSent] = useState<FleetClaim | null>(null);
+
+  const eligible = (policies ?? []).filter(claimable).sort((a, b) => a.plate.localeCompare(b.plate));
+  const chosen = eligible.find((p) => p.id === declareFor) ?? null;
+
+  function start() {
+    setSent(null);
+    setDeclaring(true);
+  }
+
+  function stop() {
+    setDeclaring(false);
+    setDeclareFor(null);
+  }
+
+  return (
+    <>
+      <SectionHead title={t("tabClaims")}>
+        <button type="button" className="btn outline" onClick={reload}>{t("refresh")}</button>
+        {!declaring && <button type="button" className="btn primary" onClick={start}>{t("declareClaim")}</button>}
+      </SectionHead>
+
+      {sent && (
+        <div className="banner green" role="status">
+          {t("claimSent", { number: sent.number, insurer: sent.insurer })}
+        </div>
+      )}
+
+      {declaring && (
+        <section className="card" aria-labelledby="declare-title" style={{ maxWidth: 560 }}>
+          <h3 id="declare-title" style={{ margin: 0 }}>{t("declareClaim")}</h3>
+          {policies && eligible.length === 0 && <p className="ink2" style={{ margin: 0 }}>{t("fleetNoClaimable")}</p>}
+          {eligible.length > 0 && (
+            <div className="field">
+              <label htmlFor="claim-vehicle">{t("claimVehicle")}</label>
+              <select id="claim-vehicle" className="input" value={chosen?.id ?? ""}
+                onChange={(e) => setDeclareFor(e.target.value ? Number(e.target.value) : null)}>
+                <option value="">{t("claimPickVehicle")}</option>
+                {eligible.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.plate} · {p.insurer} · {p.product}{p.status === "expired" ? ` (${t("status_expired")})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {chosen ? (
+            <ClaimForm<FleetClaim> key={chosen.id} policy={chosen} endpoint={`company/policies/${chosen.id}/claims`}
+              onCancel={stop}
+              onSent={(claim) => { setSent(claim); stop(); reload(); }} />
+          ) : (
+            <button type="button" className="btn outline" style={{ alignSelf: "flex-start" }} onClick={stop}>{t("cancel")}</button>
+          )}
+        </section>
+      )}
+
+      {error && <div className="banner red" role="alert">{error === "error" ? t("error") : error}</div>}
+      {!data && !error && <div className="center" style={{ minHeight: 160 }}><span className="spinner" aria-label={t("loading")} /></div>}
+      {data && data.length === 0 && <div className="card"><p className="ink2" style={{ margin: 0 }}>{t("fleetNoClaims")}</p></div>}
+      {data && data.length > 0 && (
+        <div className="ptable-wrap">
+          <table className="ptable">
+            <thead>
+              <tr>
+                <th scope="col">{t("colClaim")}</th>
+                <th scope="col">{t("vehicle")}</th>
+                <th scope="col">{t("colOccurred")}</th>
+                <th scope="col">{t("colStatus")}</th>
+                <th scope="col">{t("claimInsurerNote")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((c) => (
+                <tr key={c.id}>
+                  <td data-label={t("colClaim")}>
+                    <strong><bdi dir="ltr">{c.number}</bdi></strong>
+                    <span className="sub">{t(`claimKind_${c.kind}` as Key)}</span>
+                    {c.declared_by && <span className="sub">{t("declaredBy", { name: c.declared_by })}</span>}
+                  </td>
+                  <td data-label={t("vehicle")}>
+                    <bdi className="plate" dir="ltr">{c.plate}</bdi>
+                    <span className="sub">{c.insurer}</span>
+                  </td>
+                  <td data-label={t("colOccurred")} className="num">
+                    {date(c.occurred_on, lang)}
+                    <span className="sub">{c.place}</span>
+                  </td>
+                  <td data-label={t("colStatus")}>
+                    <span className={CLAIM_PILL[c.status]}>{t(`claimStatus_${c.status}` as Key)}</span>
+                    {c.injuries && <span className="sub">{t("injuriesFlag")}</span>}
+                    {c.photos > 0 && <span className="sub">{t("claimPhotoCount", { n: num(c.photos, lang) })}</span>}
+                  </td>
+                  <td data-label={t("claimInsurerNote")} style={{ maxWidth: 320 }}>
+                    {c.closing_note || <span className="muted">—</span>}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

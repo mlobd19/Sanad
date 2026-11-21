@@ -744,7 +744,14 @@ function ClaimsTab({ onTaken, onClose }: { onTaken: (claim: InsurerClaim) => voi
                     <span className="sub">{t(`claimKind_${c.kind}` as Key)} · {t("colReceived")} {date(c.created_at, lang)}</span>
                   </td>
                   <td data-label={t("colCustomer")}>
-                    <strong>{c.customer.full_name || <span className="muted">{t("noName")}</span>}</strong>
+                    {c.customer.company ? (
+                      <>
+                        <strong><bdi>{c.customer.company}</bdi></strong>
+                        <span className="sub">{t("declaredBy", { name: c.customer.full_name || c.customer.phone })}</span>
+                      </>
+                    ) : (
+                      <strong>{c.customer.full_name || <span className="muted">{t("noName")}</span>}</strong>
+                    )}
                     <span className="sub"><bdi dir="ltr">{intlPhone(c.customer.phone)}</bdi></span>
                   </td>
                   <td data-label={t("vehicle")}>
@@ -843,7 +850,7 @@ function CloseClaimDialog({ claim, onClose, onDone }: {
         <h2 id="close-claim-title">{t("closeClaimTitle")} <bdi dir="ltr">{claim.number}</bdi></h2>
         <p className="ink2" style={{ margin: 0 }}>{t("closeClaimText")}</p>
         <div className="card" style={{ background: "var(--bg)", border: "none", gap: 4 }}>
-          <strong>{claim.customer.full_name || t("noName")}</strong>
+          <strong><bdi>{claim.customer.company || claim.customer.full_name || t("noName")}</bdi></strong>
           <span className="ink2 small"><bdi dir="ltr">{claim.policy.plate}</bdi> · {t(`claimKind_${claim.kind}` as Key)}</span>
         </div>
         <div className="field">

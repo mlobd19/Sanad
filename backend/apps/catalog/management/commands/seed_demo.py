@@ -100,7 +100,7 @@ class Command(BaseCommand):
             self._demo_staff_and_company()
             self.stdout.write(f"Mot de passe démo des agents (DEBUG uniquement) : {DEMO_AGENT_PASSWORD}")
             self.stdout.write(
-                f"Back-office (DEBUG) : {DEMO_STAFF_PHONE} / {DEMO_AGENT_PASSWORD} · "
+                f"Back-office (DEBUG) : {DEMO_STAFF_PHONE} / {DEMO_AGENT_PASSWORD} puis code SMS (console) · "
                 f"Entreprise démo vérifiée (DEBUG) : {DEMO_COMPANY_EMAIL} / {DEMO_AGENT_PASSWORD}"
             )
         else:

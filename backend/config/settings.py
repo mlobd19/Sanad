@@ -152,6 +152,8 @@ OTP_MAX_ATTEMPTS = int(env("OTP_MAX_ATTEMPTS", 5))
 # Comptes professionnels (agents assureurs) : email + mot de passe + code SMS.
 PRO_LOGIN_MAX_FAILURES = int(env("PRO_LOGIN_MAX_FAILURES", 5))
 PRO_LOGIN_LOCK_MINUTES = int(env("PRO_LOGIN_LOCK_MINUTES", 15))
+# Back-office : code SMS après le mot de passe. Désactivable en développement seulement.
+BACKOFFICE_SMS_CODE = env_bool("BACKOFFICE_SMS_CODE", True)
 PASSWORD_RESET_TIMEOUT = 72 * 3600  # lien d'invitation ou de réinitialisation : 72 h
 PORTAL_BASE_URL = env("PORTAL_BASE_URL", "http://localhost:3000")  # liens envoyés par email
 
@@ -213,6 +215,8 @@ if not DEBUG:
         raise RuntimeError("Le fournisseur de paiement simulé est interdit en production.")
     if IDENTITY_PROVIDER == "simulated":
         raise RuntimeError("Le registre d'identité simulé est interdit en production.")
+    if not BACKOFFICE_SMS_CODE:
+        raise RuntimeError("Le code SMS de connexion au back-office est obligatoire en production.")
     if not ATTESTATION_SIGNING_KEY:
         raise RuntimeError("ATTESTATION_SIGNING_KEY est obligatoire en production.")
 

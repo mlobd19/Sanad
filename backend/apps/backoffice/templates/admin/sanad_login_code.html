@@ -1,0 +1,30 @@
+{% extends "admin/login.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block content %}
+{% if error %}<p class="errornote" role="alert">{{ error }}</p>{% endif %}
+{% if notice %}<p class="sn-notice" role="status">{{ notice }}</p>{% endif %}
+
+<div id="content-main">
+  <p>{% translate "Un code à 6 chiffres vient d'être envoyé par SMS au numéro du compte :" %}
+    <strong><bdi dir="ltr">{{ phone }}</bdi></strong></p>
+
+  <form method="post" id="login-form">{% csrf_token %}
+    <div class="form-row">
+      <label for="id_code" class="required">{% translate "Code reçu par SMS" %}</label>
+      <input type="text" name="code" id="id_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+             autocomplete="one-time-code" dir="ltr" required autofocus>
+    </div>
+    <div class="submit-row">
+      <input type="submit" value="{% translate 'Valider' %}">
+    </div>
+  </form>
+
+  <form method="post" class="sn-resend">{% csrf_token %}
+    <button type="submit" name="resend" value="1" class="button">{% translate "Renvoyer le code" %}</button>
+    <a href="{% url 'admin:login' %}">{% translate "Recommencer la connexion" %}</a>
+  </form>
+</div>
+{% endblock %}

@@ -1085,3 +1085,39 @@ msgstr "تم إغلاق %(n)s حادث(ة)."
 
 msgid "%(n)s sinistre(s) pris en charge."
 msgstr "تم التكفل بـ %(n)s حادث(ة)."
+
+msgid "titulaire"
+msgstr "صاحب العقد"
+
+msgid "Connexion back-office"
+msgstr "الدخول إلى لوحة الإدارة"
+
+msgid "Connexion"
+msgstr "تسجيل الدخول"
+
+msgid "Code de connexion"
+msgstr "رمز الدخول"
+
+msgid "Patientez %(n)s secondes avant de demander un nouveau code."
+msgstr "انتظر %(n)s ثانية قبل طلب رمز جديد."
+
+msgid "Nouveau code envoyé."
+msgstr "تم إرسال رمز جديد."
+
+msgid "Code incorrect ou expiré. Vérifiez le SMS ou demandez un nouveau code."
+msgstr "الرمز غير صحيح أو منتهي الصلاحية. تحقق من الرسالة القصيرة أو اطلب رمزا جديدا."
+
+msgid "Un code à 6 chiffres vient d'être envoyé par SMS au numéro du compte :"
+msgstr "تم إرسال رمز من 6 أرقام برسالة قصيرة إلى رقم الحساب:"
+
+msgid "Code reçu par SMS"
+msgstr "الرمز المستلم برسالة قصيرة"
+
+msgid "Valider"
+msgstr "تأكيد"
+
+msgid "Renvoyer le code"
+msgstr "إعادة إرسال الرمز"
+
+msgid "Recommencer la connexion"
+msgstr "إعادة تسجيل الدخول"

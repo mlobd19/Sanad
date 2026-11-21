@@ -47,7 +47,9 @@ compile_translations` ; sinon le test des traductions échoue.
     n'est unique que parmi eux. Comptes pro (`User.PRO_ROLES`) : email + mot de
     passe + code SMS ; le SMS seul n'ouvre jamais qu'un compte particulier.
     Codes SMS liés à un usage (`OtpCode.purpose`). Invitation / mot de passe
-    oublié par email (lien 72 h). Back-office : `backends.PhonePasswordBackend`
+    oublié par email (lien 72 h). Back-office : téléphone + mot de passe
+    (`backends.PhonePasswordBackend`, verrouillage après 5 échecs) puis code SMS
+    (`backoffice/site.py`, `BACKOFFICE_SMS_CODE`, obligatoire en production).
     Identité : `identity.py` (registre national ANRPTS derrière une interface ;
     `simulated` en développement, interdit en production ; adaptateur réel à
     écrire avec la documentation de l'ANRPTS). Un désaccord ne refuse jamais
@@ -91,7 +93,8 @@ compile_translations` ; sinon le test des traductions échoue.
   `paid → refused` (remboursement automatique), `active → cancelled`
   (attestation révoquée). Toute transition passe par `policies/services.py`.
 - Un véhicule ne peut pas être couvert deux fois sur la même période.
-- Sinistre : déclaré par le client sur un contrat actif ou échu, date dans la
+- Sinistre : déclaré par le client (ou, pour un véhicule de flotte, par tout
+  membre de l'entreprise, qui reçoit les messages) sur un contrat actif ou échu, date dans la
   période couverte ; `submitted → in_review → closed` (note de clôture
   obligatoire, envoyée au client). Traité par l'assureur dans son portail,
   ou par l'équipe au back-office en renfort. Photos en stockage privé.
@@ -144,10 +147,10 @@ cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
 1. Espace entreprise, suite : **voyage**, puis **santé de groupe** (l'auto de la
    flotte est faite ; un plan par produit)
-2. Adaptateur ANRPTS réel (dépôt de pièce en secours et déclaration de
-   sinistre faits) ; sinistres des véhicules de flotte (espace entreprise)
-3. Mise en ligne (Render : Django + PostgreSQL, Next.js) ; avant : code SMS
-   pour la connexion au back-office `/admin/`
+2. Adaptateur ANRPTS réel (dépôt de pièce en secours, déclaration de
+   sinistre et sinistres de flotte faits)
+3. Mise en ligne (Render : Django + PostgreSQL, Next.js ; code SMS du
+   back-office fait)
 4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
    fournisseur SMS et WhatsApp Business, envoi d'emails (SMTP)
 5. Mode hors ligne (service worker)

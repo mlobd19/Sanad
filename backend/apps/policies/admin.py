@@ -199,10 +199,11 @@ class ClaimPhotoInline(admin.TabularInline):
 class ClaimAdmin(admin.ModelAdmin):
     """Vue d'ensemble des sinistres. L'assureur les traite dans son portail ; l'équipe peut le faire ici en renfort."""
 
-    list_display = ("number_display", "plate", "insurer", "kind", "occurred_on", "injuries", "status_display",
+    list_display = ("number_display", "plate", "holder", "insurer", "kind", "occurred_on", "injuries", "status_display",
                     "created_at")
     list_filter = ("status", "kind", "policy__product__insurer", "injuries")
-    search_fields = ("policy__asset__reference", "description", "place", "policy__customer__phone")
+    search_fields = ("policy__asset__reference", "description", "place", "policy__customer__phone",
+                     "policy__company__legal_name")
     fields = ("policy", "declared_by", "kind", "occurred_on", "place", "description", "third_party_plate", "injuries",
               "status", "closing_note", "handled_by", "created_at", "updated_at")
     readonly_fields = fields
@@ -210,7 +211,8 @@ class ClaimAdmin(admin.ModelAdmin):
     actions = ["take", "close"]
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("policy__asset", "policy__product__insurer")
+        return super().get_queryset(request).select_related("policy__asset", "policy__product__insurer",
+                                                            "policy__customer", "policy__company")
 
     def has_add_permission(self, request):
         return False
@@ -242,6 +244,12 @@ class ClaimAdmin(admin.ModelAdmin):
     @admin.display(description=_("compagnie"), ordering="policy__product__insurer__name")
     def insurer(self, claim):
         return claim.policy.product.insurer.name
+
+    @admin.display(description=_("titulaire"))
+    def holder(self, claim):
+        """Entreprise pour un véhicule de flotte, sinon le client particulier."""
+        policy = claim.policy
+        return policy.company.legal_name if policy.company_id else (policy.customer.full_name or policy.customer.phone)
 
     @admin.display(description=_("statut"), ordering="status")
     def status_display(self, claim):

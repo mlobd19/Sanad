@@ -388,8 +388,11 @@ class InsurerClaimSerializer(ClaimSerializer):
                 "ends_on": policy.ends_on, "insurer_reference": policy.insurer_reference}
 
     def get_customer(self, claim):
-        customer = claim.policy.customer
-        return {"full_name": customer.full_name, "phone": customer.phone}
+        # Le contact du dossier est le déclarant ; pour une flotte, on indique aussi l'entreprise titulaire.
+        person = claim.declared_by or claim.policy.customer
+        company = claim.policy.company
+        return {"full_name": person.full_name, "phone": person.phone,
+                "company": company.legal_name if company else None}
 
     def get_photo_ids(self, claim):
         return [photo.pk for photo in claim.photos.all()]

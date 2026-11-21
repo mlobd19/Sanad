@@ -21,7 +21,7 @@ from apps.accounts.storage import detect_document_type
 from apps.audit.models import record
 from apps.notifications.service import notify
 from apps.policies import services as policy_services
-from apps.policies.models import InsuredAsset, Order, Policy, Quote
+from apps.policies.models import Claim, InsuredAsset, Order, Policy, Quote
 
 from .models import Company, CompanyDocument, Membership, normalize_identifier
 
@@ -342,6 +342,23 @@ def company_policies(user, statuses: list[str] | None = None):
     if statuses:
         qs = qs.filter(status__in=statuses)
     return qs
+
+
+def company_policy(user, policy_id: int) -> Policy:
+    """Contrat de l'entreprise du membre ; Policy.DoesNotExist pour celui d'une autre entreprise."""
+    return company_policies(user).get(pk=policy_id)
+
+
+def company_claims(user):
+    """Sinistres déclarés sur les véhicules de la flotte, les plus récents d'abord."""
+    company, _ = member_company(user)
+    return Claim.objects.filter(policy__company=company).select_related(
+        "policy__asset", "policy__product__insurer", "declared_by").prefetch_related("photos")
+
+
+def declare_fleet_claim(user, policy_id: int, data: dict, photos: list) -> Claim:
+    """Un membre de l'entreprise déclare un sinistre sur un véhicule de la flotte (mêmes règles qu'un particulier)."""
+    return policy_services.declare_claim(user, company_policy(user, policy_id), data, photos)
 
 
 def attestations_zip(user) -> bytes:

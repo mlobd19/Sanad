@@ -1,11 +1,22 @@
-"""Site d'administration de Sanad : accueil « À traiter » et menu organisé par métier."""
+"""Site d'administration de Sanad : connexion en deux étapes (mot de passe puis code SMS),
+accueil « À traiter » et menu organisé par métier."""
+import time
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import login as auth_login
+from django.contrib.auth.views import LoginView
 from django.db.models import Count, Q, Sum
-from django.urls import NoReverseMatch, reverse
+from django.http import HttpResponseRedirect
+from django.template.response import TemplateResponse
+from django.urls import NoReverseMatch, path, reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.cache import never_cache
 
 from .ui import mru
 
@@ -22,12 +33,91 @@ SECTIONS = [
 ]
 
 
+# Connexion en attente du code SMS : {"user": pk, "at": envoi du code, "next": page demandée}.
+PENDING_LOGIN = "sn_backoffice_login"
+RESEND_DELAY = 60  # secondes entre deux envois de code
+
+
+class PasswordThenSmsLoginView(LoginView):
+    """1re étape : téléphone et mot de passe corrects → code SMS envoyé, pas encore de session ouverte."""
+
+    def form_valid(self, form):
+        if not settings.BACKOFFICE_SMS_CODE:  # développement uniquement (interdit en production)
+            return super().form_valid(form)
+        from apps.accounts.services import staff_send_code
+
+        user = form.get_user()
+        staff_send_code(user)
+        self.request.session[PENDING_LOGIN] = {"user": user.pk, "at": int(time.time()), "next": self.get_success_url()}
+        return HttpResponseRedirect(reverse("admin:login_code"))
+
+
 class SanadAdminSite(admin.AdminSite):
     site_header = _("Sanad · back-office")
     site_title = _("Sanad · back-office")
     index_title = _("Tableau de bord")
     index_template = "admin/sanad_index.html"
     enable_nav_sidebar = False  # l'accueil et le fil d'Ariane suffisent : toute la largeur pour les tableaux
+
+    # --- Connexion : mot de passe, puis code SMS ------------------------------------------
+
+    def get_urls(self):
+        return [path("login/code/", self.login_code, name="login_code"), *super().get_urls()]
+
+    @method_decorator(never_cache)
+    def login(self, request, extra_context=None):
+        """Comme AdminSite.login, avec une 2e étape par code SMS (PasswordThenSmsLoginView)."""
+        if request.method == "GET" and self.has_permission(request):
+            return HttpResponseRedirect(reverse("admin:index", current_app=self.name))
+        from django.contrib.admin.forms import AdminAuthenticationForm
+
+        context = {**self.each_context(request), "title": gettext("Connexion"), "subtitle": None,
+                   "app_path": request.get_full_path(), "username": request.user.get_username()}
+        if REDIRECT_FIELD_NAME not in request.GET and REDIRECT_FIELD_NAME not in request.POST:
+            context[REDIRECT_FIELD_NAME] = reverse("admin:index", current_app=self.name)
+        context.update(extra_context or {})
+        request.current_app = self.name
+        return PasswordThenSmsLoginView.as_view(
+            extra_context=context, authentication_form=self.login_form or AdminAuthenticationForm,
+            template_name=self.login_template or "admin/login.html",
+        )(request)
+
+    @method_decorator(never_cache)
+    def login_code(self, request):
+        """2e étape : code reçu par SMS. Valable OTP_TTL_SECONDS ; renvoi possible après une minute."""
+        from apps.accounts.models import User
+        from apps.accounts.services import LoginError, mask_phone, staff_send_code, staff_verify_code
+
+        pending = request.session.get(PENDING_LOGIN)
+        user = User.objects.filter(pk=pending["user"], is_active=True, is_staff=True).first() if pending else None
+        if user is None or time.time() - pending["at"] > settings.OTP_TTL_SECONDS * 3:
+            request.session.pop(PENDING_LOGIN, None)
+            return HttpResponseRedirect(reverse("admin:login", current_app=self.name))
+
+        error = notice = ""
+        if request.method == "POST" and "resend" in request.POST:
+            wait = RESEND_DELAY - int(time.time() - pending["at"])
+            if wait > 0:
+                error = gettext("Patientez %(n)s secondes avant de demander un nouveau code.") % {"n": wait}
+            else:
+                staff_send_code(user)
+                request.session[PENDING_LOGIN] = {**pending, "at": int(time.time())}
+                notice = gettext("Nouveau code envoyé.")
+        elif request.method == "POST":
+            try:
+                user = staff_verify_code(user.pk, request.POST.get("code", ""))
+            except LoginError:
+                error = gettext("Code incorrect ou expiré. Vérifiez le SMS ou demandez un nouveau code.")
+            else:
+                request.session.pop(PENDING_LOGIN, None)
+                auth_login(request, user, backend="apps.accounts.backends.PhonePasswordBackend")
+                return HttpResponseRedirect(pending.get("next") or reverse("admin:index", current_app=self.name))
+
+        request.current_app = self.name
+        return TemplateResponse(request, "admin/sanad_login_code.html", {
+            **self.each_context(request), "title": gettext("Code de connexion"), "subtitle": None,
+            "phone": mask_phone(user.phone), "error": error, "notice": notice,
+        })
 
     def get_app_list(self, request, app_label=None):
         apps = super().get_app_list(request, app_label)

@@ -250,10 +250,14 @@ export type Claim = {
 
 export type InsurerClaim = Claim & {
   policy: { id: number; plate: string; product: string; make: string; starts_on: string; ends_on: string; insurer_reference: string };
-  customer: { full_name: string; phone: string };
+  /** Le déclarant ; `company` : entreprise titulaire pour un véhicule de flotte. */
+  customer: { full_name: string; phone: string; company: string | null };
   photo_ids: number[];
   handled_by: string | null;
 };
+
+/** Sinistre d'un véhicule de la flotte (espace entreprise). */
+export type FleetClaim = Claim & { policy_id: number; plate: string; insurer: string; declared_by: string };
 
 /** Pièce d'identité déposée (le fichier reste privé : jamais d'URL). */
 export type KycDocument = {

@@ -144,7 +144,7 @@ def test_insurer_takes_then_closes_claim(customer_client, mar_agent, outbox, dja
     new = mar_agent.get("/api/insurer/claims?status=submitted").data
     assert [c["id"] for c in new] == [claim_id]
     row = new[0]
-    assert row["customer"] == {"full_name": "Sidi Mohamed", "phone": "+22236000001"}
+    assert row["customer"] == {"full_name": "Sidi Mohamed", "phone": "+22236000001", "company": None}
     assert row["policy"]["plate"] == "1234AB00" and len(row["photo_ids"]) == 1
 
     with django_capture_on_commit_callbacks(execute=True):

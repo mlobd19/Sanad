@@ -345,15 +345,29 @@ CLAIM_MAX_DESCRIPTION = 2000
 
 
 def _notify_claim(claim: Claim, template: str, **context):
-    customer = claim.policy.customer
+    # Prévenir celui qui a déclaré (pour une flotte : le membre de l'entreprise, pas forcément le souscripteur).
+    person = claim.declared_by if claim.declared_by and claim.declared_by.is_active else claim.policy.customer
     context = {"number": claim.number, "insurer": claim.policy.product.insurer.name, **context}
-    transaction.on_commit(lambda: notify("whatsapp", customer.phone, template, context, language=customer.language))
+    transaction.on_commit(lambda: notify("whatsapp", person.phone, template, context, language=person.language))
+
+
+def may_declare_claim(user, policy: Policy) -> bool:
+    """Contrat de particulier : son titulaire. Contrat de flotte : tout membre actif de l'entreprise titulaire."""
+    if not user.is_active:
+        return False
+    if policy.company_id:
+        membership = getattr(user, "membership", None) if user.role == user.Role.COMPANY_MEMBER else None
+        return membership is not None and membership.company_id == policy.company_id
+    return policy.customer_id == user.pk
 
 
 def declare_claim(customer, policy: Policy, data: dict, photos: list) -> Claim:
-    """Déclaration d'un sinistre survenu pendant la période couverte, avec photos ou constat (6 au plus)."""
-    if policy.customer_id != customer.pk:
-        raise PermissionDenied("Cette police n'appartient pas à ce client.")
+    """Déclaration d'un sinistre survenu pendant la période couverte, avec photos ou constat (6 au plus).
+
+    `customer` est le déclarant : le client particulier, ou un membre de l'entreprise pour un véhicule de flotte.
+    """
+    if not may_declare_claim(customer, policy):
+        raise PermissionDenied("Ce contrat n'appartient pas à ce compte.")
     if policy.status not in (Policy.Status.ACTIVE, Policy.Status.EXPIRED):
         raise ValidationError("Un sinistre se déclare sur un contrat en cours ou échu.", code="policy_inactive")
 
@@ -412,7 +426,7 @@ def insurer_claims(agent, statuses: list[str] | None = None):
     """Sinistres de la compagnie de l'agent, les plus récents d'abord."""
     insurer = agent_insurer(agent)
     qs = Claim.objects.filter(policy__product__insurer=insurer).select_related(
-        "policy__product__insurer", "policy__asset", "policy__customer", "handled_by"
+        "policy__product__insurer", "policy__asset", "policy__customer", "policy__company", "declared_by", "handled_by"
     ).prefetch_related("photos")
     return qs.filter(status__in=statuses) if statuses else qs
 

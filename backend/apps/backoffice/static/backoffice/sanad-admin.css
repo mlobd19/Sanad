@@ -224,3 +224,22 @@ a.sn-btn-danger:hover { background: #861d1d; color: #fff; }
 .sn-decision input[type="submit"][disabled] { opacity: 0.45; cursor: not-allowed; }
 .sn-kicker { margin: -6px 0 14px; color: var(--body-quiet-color); font-weight: 600; }
 .dashboard #content { width: auto; max-width: 1240px; }  /* l'admin fige le tableau de bord à 600 px */
+
+/* Connexion, 2e étape : code SMS */
+.sn-notice {
+  background: var(--sn-ok-tint);
+  color: var(--sn-deep);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+}
+#id_code { font-size: 1.4rem; letter-spacing: .3em; text-align: center; }
+.sn-resend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.sn-resend .button, .sn-resend a { min-height: 44px; display: inline-flex; align-items: center; }

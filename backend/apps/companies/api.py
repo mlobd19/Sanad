@@ -9,8 +9,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.api import UserSerializer
 from apps.accounts.services import LoginError
-from apps.policies.api import PolicySerializer, django_errors, logo_url
-from apps.policies.models import Order
+from apps.policies.api import ClaimSerializer, PolicySerializer, claim_error, django_errors, logo_url, truthy
+from apps.policies.models import Order, Policy
 from apps.policies.services import parse_duration, parse_statuses
 
 from . import services
@@ -258,3 +258,40 @@ class AttestationZipView(APIView):
         response["Content-Disposition"] = f'attachment; filename="attestations-{company.nif}.zip"'
         return response
 
+
+
+# --- Sinistres de la flotte ----------------------------------------------------------------------------
+
+
+class FleetClaimSerializer(ClaimSerializer):
+    policy_id = serializers.IntegerField(source="policy.pk", read_only=True)
+    plate = serializers.CharField(source="policy.asset.reference", read_only=True)
+    insurer = serializers.CharField(source="policy.product.insurer.name", read_only=True)
+    declared_by = serializers.CharField(source="declared_by.full_name", default="", read_only=True)
+
+    class Meta(ClaimSerializer.Meta):
+        fields = ClaimSerializer.Meta.fields + ["policy_id", "plate", "insurer", "declared_by"]
+
+
+class FleetClaimListView(APIView):
+    permission_classes = [IsCompanyMember]
+
+    def get(self, request):
+        return Response(FleetClaimSerializer(services.company_claims(request.user), many=True).data)
+
+
+class FleetClaimView(APIView):
+    """Déclaration d'un sinistre sur un contrat de la flotte (multipart, champ « photos » répété)."""
+
+    permission_classes = [IsCompanyMember]
+
+    def post(self, request, policy_id):
+        data = {key: request.data.get(key) for key in ("kind", "occurred_on", "place", "description", "third_party_plate")}
+        data["injuries"] = truthy(request.data.get("injuries"))
+        try:
+            claim = services.declare_fleet_claim(request.user, policy_id, data, request.FILES.getlist("photos"))
+        except Policy.DoesNotExist:
+            raise Http404 from None
+        except DjangoValidationError as exc:
+            return claim_error(exc)
+        return Response(FleetClaimSerializer(claim).data, status=status.HTTP_201_CREATED)

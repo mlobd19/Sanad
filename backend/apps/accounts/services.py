@@ -117,6 +117,31 @@ def mask_phone(phone: str) -> str:
     return f"{phone[:4]} •• •• •• {phone[-2:]}"
 
 
+def locked_minutes(user: User) -> int:
+    """Minutes restantes de verrouillage après trop de mots de passe faux ; 0 si le compte est libre."""
+    now = timezone.now()
+    if user.locked_until and user.locked_until > now:
+        return max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
+    return 0
+
+
+def check_password_with_lockout(user: User, password: str) -> bool:
+    """Vérifie le mot de passe ; verrouille le compte après PRO_LOGIN_MAX_FAILURES échecs consécutifs."""
+    if not user.check_password(password or ""):
+        user.failed_logins += 1
+        if user.failed_logins >= settings.PRO_LOGIN_MAX_FAILURES:
+            user.failed_logins = 0
+            user.locked_until = timezone.now() + timedelta(minutes=settings.PRO_LOGIN_LOCK_MINUTES)
+            record("user.locked", user, minutes=settings.PRO_LOGIN_LOCK_MINUTES)
+        user.save(update_fields=["failed_logins", "locked_until"])
+        record("user.login_failed", user, step="password")
+        return False
+    if user.failed_logins or user.locked_until:
+        user.failed_logins, user.locked_until = 0, None
+        user.save(update_fields=["failed_logins", "locked_until"])
+    return True
+
+
 def pro_login(email: str, password: str) -> tuple[str, str]:
     """1re étape : vérifie email et mot de passe, envoie le code SMS.
 
@@ -129,24 +154,11 @@ def pro_login(email: str, password: str) -> tuple[str, str]:
         make_password(password)  # même durée de réponse qu'un compte existant
         raise LoginError(BAD_CREDENTIALS)
 
-    now = timezone.now()
-    if user.locked_until and user.locked_until > now:
-        minutes = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
+    minutes = locked_minutes(user)
+    if minutes:
         raise LoginError(f"Trop de tentatives. Réessayez dans {minutes} minute(s).")
-
-    if not user.check_password(password or ""):
-        user.failed_logins += 1
-        if user.failed_logins >= settings.PRO_LOGIN_MAX_FAILURES:
-            user.failed_logins = 0
-            user.locked_until = now + timedelta(minutes=settings.PRO_LOGIN_LOCK_MINUTES)
-            record("user.locked", user, minutes=settings.PRO_LOGIN_LOCK_MINUTES)
-        user.save(update_fields=["failed_logins", "locked_until"])
-        record("user.login_failed", user, step="password")
+    if not check_password_with_lockout(user, password):
         raise LoginError(BAD_CREDENTIALS)
-
-    if user.failed_logins or user.locked_until:
-        user.failed_logins, user.locked_until = 0, None
-        user.save(update_fields=["failed_logins", "locked_until"])
     send_code(user.phone, OtpCode.Purpose.PRO)
     challenge = signing.dumps({"u": user.pk}, salt=PRO_CHALLENGE_SALT)
     return challenge, mask_phone(user.phone)
@@ -168,6 +180,29 @@ def pro_verify(challenge: str, code: str) -> User:
     user.last_login = timezone.now()
     user.save(update_fields=["last_login"])
     record("user.login", user, actor=user, method="email+password+sms")
+    return user
+
+
+# --- Équipe Sanad (back-office) : téléphone + mot de passe + code SMS ------------------------
+
+
+def staff_send_code(user: User) -> str:
+    """Après le mot de passe : code SMS sur le téléphone du compte équipe. Renvoie le numéro masqué."""
+    send_code(user.phone, OtpCode.Purpose.STAFF)
+    return mask_phone(user.phone)
+
+
+def staff_verify_code(user_id: int, code: str) -> User:
+    """2e étape de la connexion au back-office ; LoginError si le code est faux, expiré ou épuisé."""
+    user = User.objects.filter(pk=user_id, is_active=True, is_staff=True).first()
+    if user is None:
+        raise LoginError("Session de connexion expirée. Saisissez à nouveau téléphone et mot de passe.")
+    try:
+        check_code(user.phone, code, OtpCode.Purpose.STAFF)
+    except OtpError as exc:
+        record("user.login_failed", user, step="sms", backoffice=True)
+        raise LoginError(str(exc)) from None
+    record("user.login", user, actor=user, method="password+sms", backoffice=True)
     return user
 
 
