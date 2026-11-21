@@ -28,9 +28,8 @@ FORMULAS = {
 }
 TIERS, TOUS = "tiers-etendu", "tous-risques"
 
-# Mot de passe des agents démo, posé seulement quand DEBUG est vrai (jamais en production).
-DEMO_AGENT_PASSWORD = "demo-sanad-2026"
-DEMO_STAFF_PHONE = "+22230000000"  # back-office (DEBUG)
+# Comptes démo : seulement avec DEMO_MODE ; mot de passe lu dans DEMO_PASSWORD (jamais dans le code).
+DEMO_STAFF_PHONE = "+22230000000"  # back-office (DEMO_MODE)
 DEMO_COMPANY_NIF, DEMO_COMPANY_EMAIL, DEMO_COMPANY_PHONE = "DEMO00001", "entreprise@demo.test", "+22240000001"
 RC_DEMO_PREMIUM = 10000  # identique partout : tarif RC homologué (montant fictif)
 
@@ -56,6 +55,11 @@ FACTORS = [
 
 # Compagnies des catalogues de démo précédents, à retirer
 OLD_DEMO_SLUGS = ["assureur-a", "assureur-b", "assureur-c", "damane", "cna", "car"]
+
+
+def demo_password() -> str:
+    """Mot de passe des comptes démo : DEMO_PASSWORD, et seulement en DEMO_MODE."""
+    return settings.DEMO_PASSWORD if settings.DEMO_MODE else ""
 
 
 class Command(BaseCommand):
@@ -96,34 +100,43 @@ class Command(BaseCommand):
             "Agents démo : agent@nasr.test, agent@mar.test, agent@medina.test, agent@iman.test "
             "(+22220000001 à +22220000004)."
         ))
-        if settings.DEBUG:
+        if settings.DEMO_MODE:
             self._demo_staff_and_company()
-            self.stdout.write(f"Mot de passe démo des agents (DEBUG uniquement) : {DEMO_AGENT_PASSWORD}")
             self.stdout.write(
-                f"Back-office (DEBUG) : {DEMO_STAFF_PHONE} / {DEMO_AGENT_PASSWORD} puis code SMS (console) · "
-                f"Entreprise démo vérifiée (DEBUG) : {DEMO_COMPANY_EMAIL} / {DEMO_AGENT_PASSWORD}"
+                f"Back-office (démo) : {DEMO_STAFF_PHONE} puis code SMS · Entreprise démo vérifiée : {DEMO_COMPANY_EMAIL}"
             )
+            if demo_password():
+                self.stdout.write("Mot de passe des comptes démo : la valeur de DEMO_PASSWORD.")
+            else:
+                self.stdout.write(self.style.WARNING(
+                    "DEMO_PASSWORD vide : comptes démo sans mot de passe (invitation depuis le back-office)."))
         else:
-            self.stdout.write("Hors DEBUG : pas de mot de passe démo. Envoyez l'invitation depuis le back-office.")
+            self.stdout.write("Hors DEMO_MODE : pas de comptes démo ni de mot de passe. "
+                              "Envoyez l'invitation depuis le back-office.")
 
     def _demo_login(self, agent, slug):
-        """Email agent@<code>.test ; mot de passe démo uniquement en DEBUG, sans jamais écraser un mot de passe choisi."""
+        """Email agent@<code>.test ; mot de passe démo seulement en DEMO_MODE, sans écraser un mot de passe choisi."""
         agent.email = agent.email or f"agent@{slug}.test"
-        if settings.DEBUG and not agent.has_usable_password():
-            agent.set_password(DEMO_AGENT_PASSWORD)
+        if demo_password() and not agent.has_usable_password():
+            agent.set_password(demo_password())
         agent.save()
 
     def _demo_staff_and_company(self):
-        """DEBUG uniquement : un compte équipe (back-office) et une entreprise vérifiée, pour tout essayer."""
+        """DEMO_MODE uniquement : un compte équipe (back-office) et une entreprise vérifiée, pour tout essayer.
+
+        Le compte équipe n'est pas superutilisateur : il reçoit le groupe « Équipe Sanad » (droits métier).
+        """
+        from apps.backoffice.permissions import staff_group
         from apps.companies.models import Company, Membership
 
         staff = User.objects.filter(phone=DEMO_STAFF_PHONE).exclude(role__in=User.PRO_ROLES).first()
         if staff is None:
             staff = User.objects.create_user(DEMO_STAFF_PHONE, role=User.Role.STAFF, full_name="Équipe Sanad (démo)")
-        staff.role, staff.is_staff, staff.is_superuser = User.Role.STAFF, True, True
-        if not staff.has_usable_password():
-            staff.set_password(DEMO_AGENT_PASSWORD)
+        staff.role, staff.is_staff, staff.is_superuser = User.Role.STAFF, True, False
+        if demo_password() and not staff.has_usable_password():
+            staff.set_password(demo_password())
         staff.save()
+        staff.groups.add(staff_group())
 
         company, _ = Company.objects.get_or_create(
             nif=DEMO_COMPANY_NIF,
@@ -137,8 +150,8 @@ class Command(BaseCommand):
         if admin is None:
             admin = User.objects.create_user(DEMO_COMPANY_PHONE, role=User.Role.COMPANY_MEMBER,
                                              email=DEMO_COMPANY_EMAIL, full_name="Admin Entreprise démo")
-        if not admin.has_usable_password():
-            admin.set_password(DEMO_AGENT_PASSWORD)
+        if demo_password() and not admin.has_usable_password():
+            admin.set_password(demo_password())
             admin.save()
         Membership.objects.get_or_create(user=admin, defaults={"company": company, "role": Membership.Role.ADMIN})
 

@@ -9,8 +9,11 @@ from apps.companies import api as companies
 from apps.payments import api as payments
 from apps.policies import api as policies
 
+from .meta import MetaView
+
 
 api = [
+    path("meta", MetaView.as_view()),  # mode démo (bandeau de l'app)
     # Compte et KYC
     path("auth/otp/request", accounts.OtpRequestView.as_view()),
     path("auth/otp/verify", accounts.OtpVerifyView.as_view()),

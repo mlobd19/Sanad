@@ -32,6 +32,8 @@ class InvalidCallback(Exception):
 
 
 class PaymentProvider:
+    # Faux tant que l'adaptateur n'est pas écrit (API de l'opérateur) : refusé en production.
+    implemented = True
     name = ""
     label = ""
 
@@ -88,6 +90,8 @@ class SimulatedProvider(PaymentProvider):
 
 
 class _PendingOperatorAPI(PaymentProvider):
+    implemented = False
+
     def initiate(self, payment):
         raise NotImplementedError(f"API marchande {self.label} non encore intégrée.")
 

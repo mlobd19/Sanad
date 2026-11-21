@@ -10,13 +10,23 @@ signée vérifiable par QR code.
 ## Démarrer en local (sans Docker)
 
 ```bash
+cp .env.example .env                # puis garder DJANGO_DEBUG=1 et choisir DEMO_PASSWORD
 cd backend
 pip install -r requirements-dev.txt
 python manage.py migrate
-python manage.py seed_demo          # 4 compagnies auto (tarifs fictifs) + un agent démo chacune
+python manage.py seed_demo          # 4 compagnies auto (tarifs fictifs) + comptes démo (DEMO_MODE)
 python manage.py createsuperuser    # numéro +222XXXXXXXX
 python manage.py runserver
 ```
+
+**`DJANGO_DEBUG=1` est indispensable en local.** Sans lui, Sanad démarre en
+production et refuse de démarrer tant que la configuration n'est pas complète
+(clé secrète, PostgreSQL, envoi réel des SMS et e-mails, paiement opérationnel,
+clé de signature…) : voir `backend/config/production.py`.
+
+`DEMO_MODE=1` (distinct de DEBUG) active la démonstration : simulateurs de
+paiement et d'identité, comptes démo, `reset_demo` et bandeau « Démonstration »
+dans l'app. Il ne lève aucune autre protection de production.
 
 - Back-office : http://localhost:3000/admin/ (servi à travers l'app ; aussi sur :8000/admin/),
   mot de passe puis code SMS
@@ -61,9 +71,11 @@ seul n'ouvre jamais un compte de l'équipe.
 
 ## Comptes de démonstration
 
-Créés par `python manage.py seed_demo` **uniquement si DEBUG** (jamais en
-production). Mot de passe commun : `demo-sanad-2026`. Les codes SMS et les
-emails s'affichent dans la console du backend.
+Créés par `python manage.py seed_demo` **uniquement si `DEMO_MODE=1`**. Mot de
+passe commun : la valeur de `DEMO_PASSWORD` (dans le `.env`, jamais dans le
+code). Les codes SMS et les emails s'affichent dans la console du backend (en
+clair seulement avec `DJANGO_DEBUG=1`). Le compte équipe démo n'est pas
+superutilisateur : il a les droits métier du groupe « Équipe Sanad ».
 
 | Espace | Connexion | Identifiant | Méthode |
 | --- | --- | --- | --- |
@@ -81,8 +93,8 @@ http://localhost:3000/assureur : l'espace web des agents des compagnies
 reçu par SMS sur le téléphone du compte. Un agent ne peut **pas** se connecter
 par SMS seul : avec son numéro, l'app client n'ouvre qu'un compte particulier,
 distinct. En démo : `agent@mar.test`, mot de
-passe `demo-sanad-2026` (posé par `seed_demo` **uniquement si DEBUG**), code SMS
-dans la console du backend.
+passe `DEMO_PASSWORD` (posé par `seed_demo` **uniquement si DEMO_MODE**), code
+SMS dans la console du backend.
 
 - 5 mots de passe faux bloquent le compte 15 minutes ; même message d'erreur
   que l'email existe ou non.

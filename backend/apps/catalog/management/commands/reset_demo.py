@@ -3,7 +3,7 @@
     python manage.py reset_demo          # demande confirmation
     python manage.py reset_demo --yes    # sans confirmation
 
-Réservé au développement : refuse de s'exécuter quand DEBUG est faux, pour
+Réservé au mode démonstration : refuse de s'exécuter sans DEMO_MODE, pour
 qu'aucune donnée réelle ne puisse être effacée par erreur.
 """
 import shutil
@@ -13,7 +13,7 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
-from .seed_demo import DEMO_AGENT_PASSWORD, DEMO_COMPANY_EMAIL, DEMO_STAFF_PHONE
+from .seed_demo import DEMO_COMPANY_EMAIL, DEMO_STAFF_PHONE
 
 
 def _empty_dir(folder: Path) -> None:
@@ -28,7 +28,7 @@ def _empty_dir(folder: Path) -> None:
 
 
 class Command(BaseCommand):
-    help = "Efface toutes les données locales et recrée la démo (développement uniquement)."
+    help = "Efface toutes les données et recrée la démo (DEMO_MODE uniquement)."
 
     def add_arguments(self, parser):
         parser.add_argument("--yes", action="store_true", help="ne pas demander de confirmation")
@@ -36,8 +36,8 @@ class Command(BaseCommand):
                             help="dossier des logos officiels à réimporter (défaut : backend/logos)")
 
     def handle(self, yes=False, logos="", **options):
-        if not settings.DEBUG:
-            raise CommandError("reset_demo est réservé au développement (DEBUG faux) : rien n'a été effacé.")
+        if not settings.DEMO_MODE:
+            raise CommandError("reset_demo est réservé au mode démonstration (DEMO_MODE faux) : rien n'a été effacé.")
 
         if not yes:
             self.stdout.write(self.style.WARNING(
@@ -61,5 +61,5 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             f"Démo réinitialisée. Agents : agent@<code>.test, équipe : {DEMO_STAFF_PHONE}, "
-            f"entreprise : {DEMO_COMPANY_EMAIL} (mot de passe {DEMO_AGENT_PASSWORD})."
+            f"entreprise : {DEMO_COMPANY_EMAIL} (mot de passe : DEMO_PASSWORD)."
         ))

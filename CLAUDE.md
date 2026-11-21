@@ -15,7 +15,7 @@ en français). Les utilisateurs finaux lisent **français et arabe**.
 cd backend && source .venv/bin/activate
 python manage.py migrate && python manage.py seed_demo
 python manage.py runserver            # API sur :8000 (ne pas ouvrir directement)
-python manage.py reset_demo           # remise à zéro de la démo (DEBUG seulement)
+python manage.py reset_demo           # remise à zéro de la démo (DEMO_MODE seulement)
 
 # Application client
 cd frontend && npm run dev            # http://localhost:3000 : app, /assureur, /entreprise, /admin
@@ -101,6 +101,20 @@ compile_translations` ; sinon le test des traductions échoue.
   - Portail assureur : `/assureur` (web, bureau d'abord, styles `.portal*`),
     réservé au rôle `insurer_agent`.
 
+## Configuration et production
+
+- **DEBUG faux par défaut** : le `.env` local porte `DJANGO_DEBUG=1`. Hors DEBUG,
+  `config/production.py` refuse de démarrer (clé secrète, PostgreSQL, SMS et
+  e-mails réels, paiement opérationnel avec secret, clé de signature, code SMS
+  du back-office…). Toute nouvelle variable indispensable y ajoute sa règle et
+  son test (`tests/test_production_settings.py`).
+- **DEMO_MODE** (distinct de DEBUG) : simulateurs, comptes démo, `reset_demo`,
+  bandeau « Démonstration » (`/api/meta`). Ne lève aucune autre protection.
+- Tests : `config/settings_test.py` (DEBUG, sans démo ni `.env` local).
+- Jamais de code SMS ni de lien de mot de passe dans les journaux hors DEBUG
+  (`notifications/backends.redact`).
+- CI GitHub (`.github/workflows/ci.yml`) : pytest, build, pip-audit, npm audit.
+
 ## Règles métier à respecter
 
 - Cycle de vie d'une police : `draft → paid → active → expired`,
@@ -137,7 +151,8 @@ compile_translations` ; sinon le test des traductions échoue.
 
 - Catalogue démo (`seed_demo`) : **NASR, MAR, MEDINA Assurances, IMAN Assurance**.
   Agents démo `agent@<code>.test` (`+22220000001` à `+22220000004`), mot de
-  passe `demo-sanad-2026` posé **uniquement en DEBUG**. Registre d'identité
+  passe = `DEMO_PASSWORD`, posé **uniquement en DEMO_MODE** (jamais en dur dans
+  le code). Compte équipe démo : groupe « Équipe Sanad », jamais superutilisateur. Registre d'identité
   simulé : NNI `1234567890` = « Sidi Mohamed », `000…` inconnu, `999…`
   injoignable, tout autre NNI à 10 chiffres correspond. **Les primes sont fictives** et
   marquées `is_indicative` (« Indicatif » dans l'app) : ne jamais les présenter

@@ -1,4 +1,4 @@
-"""Commande reset_demo : efface les données locales et recrée la démo, jamais hors DEBUG."""
+"""Commande reset_demo : efface les données et recrée la démo, jamais hors DEMO_MODE."""
 import io
 
 import pytest
@@ -20,7 +20,7 @@ def logos(tmp_path):
 
 @pytest.mark.django_db(transaction=True)
 def test_reset_demo_efface_et_recree(settings, logos):
-    settings.DEBUG = True
+    settings.DEMO_MODE, settings.DEMO_PASSWORD = True, "Mot-de-passe-demo-2026"
     call_command("seed_demo", verbosity=0)
     User.objects.create_user(phone="+22236000000", full_name="Client de test")
     piece = settings.PRIVATE_MEDIA_ROOT / "kyc" / "piece.jpg"
@@ -37,8 +37,9 @@ def test_reset_demo_efface_et_recree(settings, logos):
 
 
 @pytest.mark.django_db
-def test_reset_demo_refuse_hors_debug(settings):
-    settings.DEBUG = False
+def test_reset_demo_refuse_hors_demo_mode(settings):
+    settings.DEMO_MODE = False
+    settings.DEBUG = True  # DEBUG seul ne suffit pas
     call_command("seed_demo", verbosity=0)
     with pytest.raises(CommandError):
         call_command("reset_demo", yes=True)
@@ -47,7 +48,7 @@ def test_reset_demo_refuse_hors_debug(settings):
 
 @pytest.mark.django_db
 def test_reset_demo_annule_sans_oui(settings, monkeypatch):
-    settings.DEBUG = True
+    settings.DEMO_MODE = True
     call_command("seed_demo", verbosity=0)
     monkeypatch.setattr("builtins.input", lambda _: "non")
     with pytest.raises(CommandError):

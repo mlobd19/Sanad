@@ -1,11 +1,16 @@
 """Réglages Django de la plateforme Sanad.
 
 Toute valeur sensible vient de variables d'environnement ; voir .env.example.
+Production par défaut : DEBUG est faux sauf DJANGO_DEBUG=1 (développement local), et
+config/production.py refuse de démarrer si une variable indispensable manque.
 """
 import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
+
+from .production import DEV_SECRET_KEY, DEV_SIMULATED_SECRET, production_errors
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +30,8 @@ def _load_dotenv(path: Path):
         os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
-_load_dotenv(BASE_DIR.parent / ".env")
+# DJANGO_ENV_FILE : autre fichier (ou aucun) ; sert aux tests de démarrage en production.
+_load_dotenv(Path(os.environ.get("DJANGO_ENV_FILE") or BASE_DIR.parent / ".env"))
 
 
 def env(name, default=None):
@@ -36,8 +42,13 @@ def env_bool(name, default=False):
     return env(name, str(default)).lower() in {"1", "true", "yes", "on"}
 
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-me")
-DEBUG = env_bool("DJANGO_DEBUG", True)
+SECRET_KEY = env("DJANGO_SECRET_KEY", DEV_SECRET_KEY)
+# Faux par défaut : une variable oubliée ne doit jamais ouvrir le mode développement en ligne.
+DEBUG = env_bool("DJANGO_DEBUG", False)
+# Démonstration : simulateurs (paiement, registre d'identité), comptes démo, reset_demo et bandeau
+# « Démonstration » dans l'app. Distinct de DEBUG ; ne lève aucune autre protection de production.
+DEMO_MODE = env_bool("DEMO_MODE", False)
+DEMO_PASSWORD = env("DEMO_PASSWORD", "")  # mot de passe des comptes démo : jamais dans le code
 ALLOWED_HOSTS = [h for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 # Le back-office est servi à travers l'app (http://localhost:3000/admin/) : son origine doit être acceptée
 # par la protection CSRF du formulaire de connexion. En production : https://<domaine>.
@@ -177,20 +188,20 @@ ATTESTATION_SPECIMEN = env_bool("ATTESTATION_SPECIMEN", True)
 # Fournisseurs de paiement actifs. "simulated" n'existe que hors production.
 PAYMENT_PROVIDERS = [p for p in env("PAYMENT_PROVIDERS", "simulated").split(",") if p]
 PAYMENT_CALLBACK_SECRETS = {
-    "simulated": env("SIMULATED_CALLBACK_SECRET", "dev-simulated-secret"),
+    "simulated": env("SIMULATED_CALLBACK_SECRET", DEV_SIMULATED_SECRET),
     "bankily": env("BANKILY_CALLBACK_SECRET", ""),
     "masrvi": env("MASRVI_CALLBACK_SECRET", ""),
     "sedad": env("SEDAD_CALLBACK_SECRET", ""),
 }
 
-# Bouton « simuler la confirmation » de l'app client : développement uniquement.
 # Plafond d'une transaction mobile money (MRU) ; 0 = pas de plafond. À renseigner avec les opérateurs.
 PAYMENT_MAX_AMOUNT = int(env("PAYMENT_MAX_AMOUNT", 0))
-ENABLE_PAYMENT_SIMULATOR = DEBUG and "simulated" in PAYMENT_PROVIDERS
+# Bouton « simuler la confirmation » : développement ou démonstration uniquement.
+ENABLE_PAYMENT_SIMULATOR = (DEBUG or DEMO_MODE) and "simulated" in PAYMENT_PROVIDERS
 
 # Vérification d'identité au registre national : "simulated" (développement),
 # "anrpts" quand l'adaptateur existera, vide = désactivée (pièces vérifiées à la main).
-IDENTITY_PROVIDER = env("IDENTITY_PROVIDER", "simulated" if DEBUG else "")
+IDENTITY_PROVIDER = env("IDENTITY_PROVIDER", "simulated" if DEBUG or DEMO_MODE else "")
 
 # Lecture de la carte grise par Claude (vision). Sans clé, le bouton répond
 # « lecture indisponible » et le client saisit les champs à la main.
@@ -211,14 +222,12 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
     SECURE_HSTS_SECONDS = 31536000
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    if "simulated" in PAYMENT_PROVIDERS:
-        raise RuntimeError("Le fournisseur de paiement simulé est interdit en production.")
-    if IDENTITY_PROVIDER == "simulated":
-        raise RuntimeError("Le registre d'identité simulé est interdit en production.")
-    if not BACKOFFICE_SMS_CODE:
-        raise RuntimeError("Le code SMS de connexion au back-office est obligatoire en production.")
-    if not ATTESTATION_SIGNING_KEY:
-        raise RuntimeError("ATTESTATION_SIGNING_KEY est obligatoire en production.")
+    _errors = production_errors(globals())
+    if _errors:
+        raise ImproperlyConfigured(
+            "Configuration de production refusée (DJANGO_DEBUG=1 pour le développement local) :\n- "
+            + "\n- ".join(_errors)
+        )
 
 LOGGING = {
     "version": 1,

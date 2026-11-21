@@ -148,8 +148,9 @@ def test_simulated_registry_is_forbidden_in_production():
     import subprocess
     import sys
     code = "import config.settings"
+    # Sans le .env local (DJANGO_ENV_FILE) ni DEMO_MODE : le registre simulé est refusé en production.
     env = {"DJANGO_DEBUG": "false", "IDENTITY_PROVIDER": "simulated", "PAYMENT_PROVIDERS": "bankily",
-           "ATTESTATION_SIGNING_KEY": "x", "PATH": ""}
+           "ATTESTATION_SIGNING_KEY": "x", "PATH": "", "DJANGO_ENV_FILE": "/nonexistent/.env"}
     proc = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True)
     assert proc.returncode != 0 and "registre d'identité simulé est interdit" in proc.stderr
 

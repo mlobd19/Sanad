@@ -215,17 +215,21 @@ def test_reset_link_expires(mar_agent, settings):
 # --- Démo et migration ----------------------------------------------------------------------
 
 
-def test_seed_sets_demo_password_only_in_debug(db, settings):
-    settings.DEBUG = False
+DEMO_PASSWORD = "Mot-de-passe-demo-2026"
+
+
+def test_seed_sets_demo_password_only_in_demo_mode(db, settings):
+    settings.DEMO_MODE, settings.DEMO_PASSWORD = False, DEMO_PASSWORD
+    settings.DEBUG = True  # DEBUG seul ne suffit pas : il faut DEMO_MODE
     call_command("seed_demo", verbosity=0)
     agent = User.objects.get(phone="+22220000002")
     assert agent.email == "agent@mar.test"
     assert not agent.has_usable_password()
 
-    settings.DEBUG = True
+    settings.DEMO_MODE = True
     call_command("seed_demo", verbosity=0)
     agent.refresh_from_db()
-    assert agent.check_password("demo-sanad-2026")
+    assert agent.check_password(DEMO_PASSWORD)  # lu dans DEMO_PASSWORD, plus jamais en dur
 
     agent.set_password(PASSWORD)  # un mot de passe choisi n'est jamais écrasé
     agent.save()
@@ -245,19 +249,36 @@ def test_migration_closes_agent_sessions_only(mar_agent, customer_client):
     assert Token.objects.count() == customer_tokens >= 1
 
 
-def test_seed_creates_demo_staff_and_company_only_in_debug(db, settings):
+def test_seed_creates_demo_staff_and_company_only_in_demo_mode(db, settings):
+    from apps.backoffice.permissions import STAFF_GROUP
     from apps.companies.models import Company
 
-    settings.DEBUG = False
+    settings.DEMO_MODE, settings.DEMO_PASSWORD = False, DEMO_PASSWORD
     call_command("seed_demo", verbosity=0)
     assert not User.objects.filter(role=User.Role.STAFF).exists()
     assert not Company.objects.exists()
 
-    settings.DEBUG = True
+    settings.DEMO_MODE = True
     call_command("seed_demo", verbosity=0)
     call_command("seed_demo", verbosity=0)  # relançable sans doublon
     staff = User.objects.get(phone="+22230000000", role=User.Role.STAFF)
-    assert staff.is_superuser and staff.check_password("demo-sanad-2026")
+    # Compte équipe démo : droits métier du groupe, jamais superutilisateur.
+    assert staff.is_staff and not staff.is_superuser and staff.check_password(DEMO_PASSWORD)
+    assert staff.groups.filter(name=STAFF_GROUP).exists()
+    assert staff.has_perm("companies.change_company") and not staff.has_perm("auth.change_group")
     company = Company.objects.get(nif="DEMO00001")
     assert company.status == Company.Status.VERIFIED
-    assert step1(APIClient(), email="entreprise@demo.test", password="demo-sanad-2026").status_code == 200
+    assert step1(APIClient(), email="entreprise@demo.test", password=DEMO_PASSWORD).status_code == 200
+
+
+def test_seed_demo_without_password_leaves_accounts_unusable(db, settings):
+    settings.DEMO_MODE, settings.DEMO_PASSWORD = True, ""
+    call_command("seed_demo", verbosity=0)
+    assert not User.objects.get(phone="+22230000000", role=User.Role.STAFF).has_usable_password()
+
+
+def test_demo_staff_was_superuser_is_demoted(db, settings):
+    settings.DEMO_MODE, settings.DEMO_PASSWORD = True, DEMO_PASSWORD
+    User.objects.create_user("+22230000000", role=User.Role.STAFF, is_staff=True, is_superuser=True)
+    call_command("seed_demo", verbosity=0)
+    assert not User.objects.get(phone="+22230000000", role=User.Role.STAFF).is_superuser

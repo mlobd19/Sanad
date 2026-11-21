@@ -101,6 +101,24 @@ class UserAdmin(BaseUserAdmin):
     readonly_fields = ("last_login", "failed_logins")
     actions = ["mark_kyc_verified", "reject_kyc", "send_invitation"]
 
+    # Un compte équipe ordinaire (groupe « Équipe Sanad ») ne peut ni s'accorder plus de droits,
+    # ni modifier un superutilisateur : seuls les superutilisateurs gèrent les accès.
+    ACCESS_FIELDS = ("is_staff", "is_superuser", "groups", "user_permissions")
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = super().get_readonly_fields(request, obj)
+        return fields if request.user.is_superuser else (*fields, *self.ACCESS_FIELDS)
+
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.is_superuser and not request.user.is_superuser:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None and obj.is_superuser and not request.user.is_superuser:
+            return False
+        return super().has_delete_permission(request, obj)
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("insurer", "membership__company")
 
