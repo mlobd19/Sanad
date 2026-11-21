@@ -53,7 +53,7 @@ export default function ControlPage() {
 
       <div className="facts">
         <div><span>{t("validUntil")}</span><strong>{date(policy.ends_on, lang)}</strong></div>
-        <div style={{ alignItems: "center" }}>
+        <div>
           <span>{t("insurer")}</span>
           {policy.insurer_logo && <InsurerLogo name={policy.insurer} logo={policy.insurer_logo} size={40} />}
           <strong>{policy.insurer}</strong>
