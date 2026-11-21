@@ -119,6 +119,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 28px; }
 .overlap { margin-top: -44px; }
 .btn-on-dark { min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1.5px solid #fff; background: transparent; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; }
+.btn-on-dark.icon-only { width: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.head-actions { display: flex; align-items: center; gap: 8px; }
 .success-head { background: var(--green); color: var(--on-green); padding: 14px 16px 22px; display: flex; flex-direction: column; gap: 14px; }
 .success-head .iconbtn { color: var(--on-green); }
 .success-head h1 { margin: 0; font-family: var(--display); font-size: 21px; font-weight: 700; }

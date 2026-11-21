@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type R
 import { ClaimForm } from "@/components/ClaimForm";
 import { DURATION_LABEL, DurationPicker } from "@/components/DurationPicker";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { ThemeToggleButton } from "@/components/ThemeChoice";
+import { ThemeIconButton } from "@/components/ThemeChoice";
 import { ScanRegistration } from "@/components/ScanRegistration";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
 import {
@@ -145,7 +145,7 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
           <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
             {lang === "fr" ? "العربية" : "Français"}
           </button>
-          <ThemeToggleButton />
+          <ThemeIconButton />
           <button type="button" className="btn-on-dark" onClick={logout}>{t("logout")}</button>
         </div>
       </header>

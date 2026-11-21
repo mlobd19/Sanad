@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState, type KeyboardEvent } from "react";
 
 import { Wordmark } from "@/components/Logo";
+import { ThemeIconButton } from "@/components/ThemeChoice";
 import { OtpLogin, type OtpResult } from "@/components/OtpLogin";
 import { ProLoginForm } from "@/components/ProAuth";
 import { api, setToken } from "@/lib/api";
@@ -63,9 +64,12 @@ function Login() {
           <Link href="/" aria-label={t("appName")} style={{ color: "#fff", textDecoration: "none" }}>
             <Wordmark name={t("appName")} size={22} onDark />
           </Link>
-          <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
-            {lang === "fr" ? "العربية" : "Français"}
-          </button>
+          <div className="head-actions">
+            <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
+              {lang === "fr" ? "العربية" : "Français"}
+            </button>
+            <ThemeIconButton />
+          </div>
         </div>
         <h1 className="title" style={{ fontSize: 34, lineHeight: 1.12, color: "#fff" }}>{t("tagline")}</h1>
       </div>

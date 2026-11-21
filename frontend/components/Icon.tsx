@@ -20,6 +20,8 @@ const paths: Record<string, string> = {
   close: "M6 6l12 12 M18 6L6 18",
   camera: "M4 8h3l2-3h6l2 3h3v11H4z M12 13.5m-3.5 0a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0",
   phone: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2",
+  sun: "M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0 M12 2.5v2 M12 19.5v2 M4.6 4.6l1.4 1.4 M18 18l1.4 1.4 M2.5 12h2 M19.5 12h2 M4.6 19.4l1.4-1.4 M18 6l1.4-1.4",
+  moon: "M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z",
 };
 
 export function Icon({ name, size = 22, strokeWidth = 1.8 }: { name: keyof typeof paths | string; size?: number; strokeWidth?: number }) {

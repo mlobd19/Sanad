@@ -154,8 +154,9 @@ dans Claude. Palette dans `globals.css` (`--green #08603F`,
 `--green-deep #062F22`, `--sand #F0A43A`, `--ink #0B1A14`). Contraste élevé,
 cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 
-**Mode sombre** : suit le réglage de l'appareil, ou le choix « Automatique / Clair /
-Sombre » (Profil, bouton « Thème » des espaces pro ; `lib/theme.ts`, posé sur
+**Mode sombre** : suit le réglage de l'appareil ; bouton soleil / lune à côté du
+bouton des langues sur chaque écran (bascule clair ↔ sombre), et choix « Automatique /
+Clair / Sombre » dans le Profil (`components/ThemeChoice.tsx`, `lib/theme.ts`, posé sur
 `<html data-theme>` avant l'affichage). Toutes les couleurs passent par les
 variables de `globals.css`, jamais de couleur en dur dans un écran. Texte sur un
 aplat : `--on-green`, `--on-ink`, `--on-red`, `--on-sand` (le vert devient clair

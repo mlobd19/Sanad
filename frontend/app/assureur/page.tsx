@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { ThemeToggleButton } from "@/components/ThemeChoice";
+import { ThemeIconButton } from "@/components/ThemeChoice";
 import {
   api,
   ApiError,
@@ -159,7 +159,7 @@ function Portal({ me }: { me: InsurerMe }) {
           <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
             {lang === "fr" ? "العربية" : "Français"}
           </button>
-          <ThemeToggleButton />
+          <ThemeIconButton />
           <button type="button" className="btn-on-dark" onClick={logout}>{t("logout")}</button>
         </div>
       </header>

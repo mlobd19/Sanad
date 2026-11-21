@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
+import { Icon } from "@/components/Icon";
 import { useI18n, type Key } from "@/lib/i18n";
 import { THEME_CHOICES, useTheme, type ThemeChoice } from "@/lib/theme";
 
@@ -24,15 +27,27 @@ export function ThemeChoicePicker() {
   );
 }
 
-/** Bouton compact pour les en-têtes des espaces pro : passe d'un choix au suivant. */
-export function ThemeToggleButton() {
+/** Bouton soleil / lune à côté du bouton des langues : bascule entre clair et sombre.
+ *  Lune = passer en sombre, soleil = passer en clair. « Automatique » se choisit dans le Profil. */
+export function ThemeIconButton() {
   const { t } = useI18n();
   const [choice, setChoice] = useTheme();
-  const next = THEME_CHOICES[(THEME_CHOICES.indexOf(choice) + 1) % THEME_CHOICES.length];
+  const [systemDark, setSystemDark] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    setSystemDark(media.matches);
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  const dark = choice === "dark" || (choice === "auto" && systemDark);
+  const label = t(dark ? "themeToLight" : "themeToDark");
   return (
-    <button type="button" className="btn-on-dark" onClick={() => setChoice(next)}
-      aria-label={t("themeButtonLabel", { mode: t(LABELS[choice]), next: t(LABELS[next]) })}>
-      {t("themeButton", { mode: t(LABELS[choice]) })}
+    <button type="button" className="btn-on-dark icon-only" onClick={() => setChoice(dark ? "light" : "dark")}
+      aria-label={label} title={label}>
+      <Icon name={dark ? "sun" : "moon"} size={20} strokeWidth={2} />
     </button>
   );
 }

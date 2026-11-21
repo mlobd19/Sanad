@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { KhaimaMark, Wordmark } from "@/components/Logo";
+import { ThemeIconButton } from "@/components/ThemeChoice";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
 import { api, type Policy } from "@/lib/api";
@@ -78,9 +79,12 @@ function Landing() {
       <header style={{ padding: "24px 24px 32px", display: "flex", flexDirection: "column", gap: 24, color: "#fff" }}>
         <div className="between">
           <Wordmark name={t("appName")} size={22} onDark />
-          <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
-            {lang === "fr" ? "العربية" : "Français"}
-          </button>
+          <div className="head-actions">
+            <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
+              {lang === "fr" ? "العربية" : "Français"}
+            </button>
+            <ThemeIconButton />
+          </div>
         </div>
         <KhaimaMark size={84} color="#fff" />
         <div className="stack" style={{ gap: 10 }}>
@@ -141,9 +145,12 @@ function CustomerHome() {
       <header className="hero">
         <div className="between">
           <Wordmark name={t("appName")} size={17} onDark />
-          <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")} aria-label={t("language")}>
-            FR · ع
-          </button>
+          <div className="head-actions">
+            <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")} aria-label={t("language")}>
+              FR · ع
+            </button>
+            <ThemeIconButton />
+          </div>
         </div>
         <div className="stack" style={{ gap: 4 }}>
           <h1>{firstName ? t("helloName", { name: `⁨${firstName}⁩` }) : t("hello")}</h1>
