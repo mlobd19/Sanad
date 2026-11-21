@@ -6,16 +6,17 @@ import { useEffect } from "react";
 
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { Loading, ErrorBox, useUser } from "@/components/Shell";
+import { Loading, ErrorBox } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
 import { date } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
+import { useSpace } from "@/lib/spaces";
 
 /** Plein écran à montrer lors d'un contrôle routier : grand QR, plaque, validité. */
 export default function ControlPage() {
   const { t, lang } = useI18n();
   const { policyId } = useParams<{ policyId: string }>();
-  const { user } = useUser();
+  const { user } = useSpace("customer");
   const { policy, qr, error, valid } = usePolicyQr(policyId, !!user);
 
   // Garde l'écran allumé pendant le contrôle, quand le navigateur le permet.

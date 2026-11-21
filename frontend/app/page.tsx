@@ -5,11 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { Wordmark } from "@/components/Logo";
-import { App, BottomNav, ErrorBox, Loading, StatusPill, useUser } from "@/components/Shell";
+import { KhaimaMark, Wordmark } from "@/components/Logo";
+import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
 import { api, type Policy } from "@/lib/api";
 import { addDays, date, daysUntil } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
+import { useHasToken, useSpace } from "@/lib/spaces";
 
 const SERVICES: { key: Key; icon: string; on: boolean }[] = [
   { key: "auto", icon: "car", on: true },
@@ -57,9 +58,65 @@ function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
   );
 }
 
+/** Visiteur non connecté : page d'accueil et choix de l'espace. Connecté : l'accueil client
+ *  (un compte d'un autre rôle est renvoyé vers son espace par useSpace). */
 export default function HomePage() {
+  const hasToken = useHasToken();
+  if (hasToken === null) return <App><Loading /></App>;
+  return hasToken ? <CustomerHome /> : <Landing />;
+}
+
+function Landing() {
   const { t, lang, setLang } = useI18n();
-  const { user } = useUser();
+  const entries: { href: string; icon: string; title: Key; hint: Key }[] = [
+    { href: "/connexion", icon: "user", title: "entryPersonal", hint: "entryPersonalHint" },
+    { href: "/connexion?espace=pro", icon: "briefcase", title: "entryCompany", hint: "entryCompanyHint" },
+    { href: "/connexion?espace=pro", icon: "shield", title: "entryInsurer", hint: "entryInsurerHint" },
+  ];
+  return (
+    <div className="app" style={{ background: "var(--green-deep)" }}>
+      <header style={{ padding: "24px 24px 32px", display: "flex", flexDirection: "column", gap: 24, color: "#fff" }}>
+        <div className="between">
+          <Wordmark name={t("appName")} size={22} onDark />
+          <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
+            {lang === "fr" ? "العربية" : "Français"}
+          </button>
+        </div>
+        <KhaimaMark size={84} color="#fff" />
+        <div className="stack" style={{ gap: 10 }}>
+          <h1 className="title" style={{ fontSize: 34, lineHeight: 1.12, color: "#fff" }}>{t("tagline")}</h1>
+          <p style={{ margin: 0, color: "var(--green-soft)", fontSize: 16, lineHeight: 1.5 }}>{t("landingIntro")}</p>
+        </div>
+      </header>
+
+      <main className="sheet" style={{ gap: 14 }}>
+        <h2 className="eyebrow" style={{ margin: 0 }}>{t("landingChoose")}</h2>
+        <nav aria-label={t("loginSpaceLabel")} className="stack" style={{ gap: 12 }}>
+          {entries.map((e) => (
+            <Link key={e.title} href={e.href} className="entry">
+              <span className="iconbox" aria-hidden="true"><Icon name={e.icon} size={24} strokeWidth={2} /></span>
+              <span>
+                <strong>{t(e.title)}</strong>
+                <span className="hint">{t(e.hint)}</span>
+              </span>
+              <span className="chev" aria-hidden="true"><Icon name="back" size={22} strokeWidth={2.4} /></span>
+            </Link>
+          ))}
+        </nav>
+        <p className="small ink2" style={{ margin: 0, textAlign: "center" }}>
+          {t("companyNoAccount")} <Link href="/entreprise/inscription" style={{ fontWeight: 700 }}>{t("createCompanyAccount")}</Link>
+        </p>
+        <div className="grow" />
+        {/* Back-office Django : lien simple (pas le routeur Next.js). */}
+        <a href="/admin/" className="staff-link">{t("staffEntry")}</a>
+      </main>
+    </div>
+  );
+}
+
+function CustomerHome() {
+  const { t, lang, setLang } = useI18n();
+  const { user } = useSpace("customer");
   const [policies, setPolicies] = useState<Policy[] | null>(null);
   const [error, setError] = useState("");
 

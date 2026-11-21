@@ -6,16 +6,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DURATION_LABEL } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
-import { App, ErrorBox, Loading, Stepper, TopBar, useUser } from "@/components/Shell";
+import { App, ErrorBox, Loading, Stepper, TopBar } from "@/components/Shell";
 import { api, ApiError, type PaymentStart, type Policy, type Provider } from "@/lib/api";
 import { date, money } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
+import { useSpace } from "@/lib/spaces";
 
 export default function PaymentPage() {
   const { t, lang } = useI18n();
   const router = useRouter();
   const { policyId } = useParams<{ policyId: string }>();
-  const { user } = useUser();
+  const { user } = useSpace("customer");
   const [kycNeeded, setKycNeeded] = useState(false);
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);

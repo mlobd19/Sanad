@@ -6,9 +6,10 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
 import { ScanRegistration } from "@/components/ScanRegistration";
-import { App, Stepper, TopBar, useUser } from "@/components/Shell";
+import { App, Stepper, TopBar } from "@/components/Shell";
 import { api, ApiError, type Asset, type RegistrationScan } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useSpace } from "@/lib/spaces";
 
 const USAGES = [
   { value: "personal", key: "usagePersonal" },
@@ -19,7 +20,7 @@ const USAGES = [
 export default function VehiclePage() {
   const { t } = useI18n();
   const router = useRouter();
-  const { user } = useUser();
+  const { user } = useSpace("customer");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [plate, setPlate] = useState("");
   const [make, setMake] = useState("");

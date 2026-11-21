@@ -1,12 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { ForgotPasswordForm, AGENT_SPACE } from "@/components/ProAuth";
-import { PortalAuthShell } from "@/components/PortalAuthShell";
-
-export default function ForgotPasswordPage() {
-  return (
-    <PortalAuthShell>
-      <ForgotPasswordForm space={AGENT_SPACE} />
-    </PortalAuthShell>
-  );
+/** Ancienne adresse : page commune aux comptes professionnels. */
+export default function LegacyForgotPasswordPage() {
+  redirect("/connexion/mot-de-passe-oublie");
 }

@@ -128,7 +128,7 @@ export default function CompanySignupPage() {
           {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("signupSubmit")}
         </button>
         <p className="small ink2" style={{ margin: 0, textAlign: "center" }}>
-          {t("companyHasAccount")} <Link href="/entreprise/connexion" style={{ fontWeight: 700 }}>{t("verify")}</Link>
+          {t("companyHasAccount")} <Link href="/connexion?espace=pro" style={{ fontWeight: 700 }}>{t("verify")}</Link>
         </p>
       </form>
     </PortalAuthShell>

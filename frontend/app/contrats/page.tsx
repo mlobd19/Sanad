@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
-import { App, BottomNav, ErrorBox, Loading, StatusPill, TopBar, useUser } from "@/components/Shell";
+import { App, BottomNav, ErrorBox, Loading, StatusPill, TopBar } from "@/components/Shell";
 import { api, type Policy } from "@/lib/api";
 import { date, money } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
+import { useSpace } from "@/lib/spaces";
 
 export default function ContractsPage() {
   const { t, lang } = useI18n();
-  const { user } = useUser();
+  const { user } = useSpace("customer");
   const [policies, setPolicies] = useState<Policy[] | null>(null);
   const [error, setError] = useState("");
 

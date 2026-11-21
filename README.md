@@ -18,7 +18,8 @@ python manage.py createsuperuser    # numéro +222XXXXXXXX
 python manage.py runserver
 ```
 
-- Back-office : http://localhost:3000/admin/ (servi à travers l'app ; aussi sur :8000/admin/)
+- Back-office : http://localhost:3000/admin/ (servi à travers l'app ; aussi sur :8000/admin/),
+  mot de passe puis code SMS
 - Les codes SMS s'affichent dans la console (backend de notification `Console`).
 - Tests : `cd backend && pytest`
 
@@ -40,18 +41,36 @@ codes pointent vers l'app, lancez le backend avec
 En développement, l'écran de paiement propose « Simuler la confirmation » :
 le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 
+## Adresses : une seule porte d'entrée
+
+| Adresse | Pour qui |
+| --- | --- |
+| `/` | Visiteur : page d'accueil (Particulier, Entreprise, Assureur partenaire, lien « Équipe Sanad »). Client connecté : son accueil. |
+| `/connexion` | **Page de connexion unique**, onglet « Particulier » (téléphone + code SMS) |
+| `/connexion?espace=pro` | Même page, onglet « Professionnel » (assureurs et entreprises : email + mot de passe + code SMS) |
+| `/connexion/mot-de-passe-oublie` | Mot de passe oublié (comptes professionnels) |
+| `/entreprise`, `/assureur` | Espaces professionnels ; `/entreprise/inscription` pour créer un compte entreprise |
+| `/admin/` | Back-office de l'équipe (téléphone + mot de passe + code SMS) |
+
+Après connexion, chacun arrive dans son espace selon son rôle (`frontend/lib/spaces.ts`) ;
+un compte qui ouvre l'espace d'un autre rôle est renvoyé dans le sien. Les anciennes
+adresses `/assureur/connexion` et `/entreprise/connexion` redirigent vers
+`/connexion?espace=pro` ; les liens « choisir mon mot de passe » déjà envoyés par email
+(`/assureur/mot-de-passe`, `/entreprise/mot-de-passe`) restent valables. Le code SMS
+seul n'ouvre jamais un compte de l'équipe.
+
 ## Comptes de démonstration
 
 Créés par `python manage.py seed_demo` **uniquement si DEBUG** (jamais en
 production). Mot de passe commun : `demo-sanad-2026`. Les codes SMS et les
 emails s'affichent dans la console du backend.
 
-| Espace | Adresse | Identifiant | Connexion |
+| Espace | Connexion | Identifiant | Méthode |
 | --- | --- | --- | --- |
-| Particulier | `/` | n'importe quel numéro, ex. `36000001` | code SMS (le compte se crée) |
-| Portail assureur | `/assureur` | `agent@mar.test` (ou nasr, medina, iman) | mot de passe + code SMS |
-| Espace entreprise | `/entreprise` | `entreprise@demo.test` (Entreprise démo SARL, vérifiée) | mot de passe + code SMS |
-| Back-office | `/admin` | `+22230000000` | mot de passe |
+| Particulier (`/`) | `/connexion` | n'importe quel numéro, ex. `36000001` | code SMS (le compte se crée) |
+| Portail assureur (`/assureur`) | `/connexion?espace=pro` | `agent@mar.test` (ou nasr, medina, iman) | mot de passe + code SMS |
+| Espace entreprise (`/entreprise`) | `/connexion?espace=pro` | `entreprise@demo.test` (Entreprise démo SARL, vérifiée) | mot de passe + code SMS |
+| Back-office (`/admin/`) | `/admin/` | `+22230000000` | mot de passe + code SMS |
 
 ## Portail assureur
 
@@ -123,8 +142,8 @@ découpée.
 
 ## Back-office de l'équipe
 
-http://localhost:3000/admin/ (téléphone + mot de passe d'un compte équipe ;
-`python manage.py createsuperuser`). En français et en arabe (bouton en haut à
+http://localhost:3000/admin/ (téléphone + mot de passe d'un compte équipe, puis
+code SMS ; `python manage.py createsuperuser`). En français et en arabe (bouton en haut à
 droite), clair ou sombre.
 
 - **Tableau de bord** : ce qui est à traiter (entreprises à vérifier, polices

@@ -8,16 +8,17 @@ import { ClaimsSection } from "@/components/ClaimsSection";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { KhaimaMark } from "@/components/Logo";
-import { App, ErrorBox, Loading, StatusPill, TopBar, useUser } from "@/components/Shell";
+import { App, ErrorBox, Loading, StatusPill, TopBar } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
 import { ApiError, downloadFile } from "@/lib/api";
 import { date } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
+import { useSpace } from "@/lib/spaces";
 
 export default function ContractPage() {
   const { t, lang } = useI18n();
   const { policyId } = useParams<{ policyId: string }>();
-  const { user } = useUser();
+  const { user } = useSpace("customer");
   const { policy, qr, error } = usePolicyQr(policyId, !!user);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState("");

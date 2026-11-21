@@ -6,10 +6,11 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { DURATION_LABEL, DurationPicker, parseMonths } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { App, ErrorBox, Loading, Stepper, TopBar, useUser } from "@/components/Shell";
+import { App, ErrorBox, Loading, Stepper, TopBar } from "@/components/Shell";
 import { api, ApiError, type Asset, type Months, type Policy, type Quote } from "@/lib/api";
 import { date, money } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
+import { useSpace } from "@/lib/spaces";
 
 const FORMULA_ORDER = ["rc", "tiers-etendu", "tous-risques"];
 
@@ -21,7 +22,7 @@ function QuotesScreen() {
   const { assetId } = useParams<{ assetId: string }>();
   const search = useSearchParams();
   const renewalOf = search.get("renouvellement");
-  const { user } = useUser();
+  const { user } = useSpace("customer");
   const [asset, setAsset] = useState<Asset | null>(null);
   const [quotes, setQuotes] = useState<Quote[] | null>(null);
   const [picked, setPicked] = useState<number | null>(null);

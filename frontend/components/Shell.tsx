@@ -1,34 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
-import { api, getToken, type User } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 import { Icon } from "./Icon";
-
-/** Charge l'utilisateur connecté ; renvoie vers /connexion sinon. */
-export function useUser() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  useEffect(() => {
-    if (!getToken()) {
-      router.replace("/connexion");
-      return;
-    }
-    api<User>("me")
-      .then((me) => {
-        // Un compte pro n'a rien à faire dans l'espace client : direction son propre espace.
-        if (me.role === "insurer_agent") router.replace("/assureur");
-        else if (me.role === "company_member") router.replace("/entreprise");
-        else setUser(me);
-      })
-      .catch(() => router.replace("/connexion"));
-  }, [router]);
-  return { user, setUser };
-}
 
 export function TopBar({ title, back, children }: { title: string; back?: string; children?: ReactNode }) {
   const { t } = useI18n();

@@ -12,8 +12,6 @@ import {
   ApiError,
   apiUpload,
   downloadFile,
-  getToken,
-  setToken,
   type CompanyMe,
   type CompanyMember,
   type CompanyOrder,
@@ -29,6 +27,7 @@ import {
 } from "@/lib/api";
 import { date, daysUntil, money, num } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
+import { logout as signOut, useSpace } from "@/lib/spaces";
 import { useLoad } from "@/lib/useLoad";
 
 type Tab = "fleet" | "quotes" | "contracts" | "claims" | "company";
@@ -56,26 +55,23 @@ function message(err: unknown, fallback: string) {
 
 export default function CompanySpacePage() {
   const { t } = useI18n();
-  const router = useRouter();
+  // Garde-fou commun : non connecté → /connexion (onglet pro) ; autre rôle → son propre espace.
+  const { user } = useSpace("company_member");
   const [me, setMe] = useState<CompanyMe | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "notMember" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
   async function load() {
     try {
       setMe(await api<CompanyMe>("company/me"));
       setState("ready");
-    } catch (err) {
-      setState(err instanceof ApiError && err.status === 403 ? "notMember" : "error");
+    } catch {
+      setState("error");
     }
   }
 
   useEffect(() => {
-    if (!getToken()) {
-      router.replace("/entreprise/connexion");
-      return;
-    }
-    load();
-  }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (user) load();
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (state === "ready" && me) return <Space me={me} refreshMe={load} />;
 
@@ -84,12 +80,6 @@ export default function CompanySpacePage() {
       <div className="box">
         <main className="sheet center" style={{ color: "var(--ink)", minHeight: 280 }}>
           {state === "loading" && <span className="spinner" aria-label={t("loading")} />}
-          {state === "notMember" && (
-            <>
-              <p className="error" role="alert">{t("companyNotMember")}</p>
-              <a className="btn primary" href="/entreprise/connexion">{t("companyLoginTitle")}</a>
-            </>
-          )}
           {state === "error" && (
             <>
               <p className="error" role="alert">{t("error")}</p>
@@ -120,8 +110,7 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
   }, []);
 
   function logout() {
-    setToken(null);
-    router.replace("/entreprise/connexion");
+    signOut(router, "company_member");
   }
 
   function onTabKey(e: KeyboardEvent<HTMLButtonElement>) {

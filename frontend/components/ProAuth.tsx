@@ -7,21 +7,13 @@ import { Suspense, useState, type FormEvent, type ReactNode } from "react";
 import { OtpCodeForm, type OtpResult } from "@/components/OtpLogin";
 import { api, ApiError, setToken } from "@/lib/api";
 import { useI18n, type Key } from "@/lib/i18n";
+import { enterSpace, loginUrl } from "@/lib/spaces";
 
-/** Un espace professionnel : portail assureur ou espace entreprise. */
-export type ProSpace = { role: string; home: string; nameKey: Key; notAllowedKey: Key };
-
-export const AGENT_SPACE: ProSpace = {
-  role: "insurer_agent", home: "/assureur", nameKey: "portalName", notAllowedKey: "portalNotAgent",
-};
-export const COMPANY_SPACE: ProSpace = {
-  role: "company_member", home: "/entreprise", nameKey: "companySpace", notAllowedKey: "companyNotMember",
-};
+/** Pages communes aux comptes professionnels (assureurs et entreprises). */
+export const FORGOT_PASSWORD_URL = "/connexion/mot-de-passe-oublie";
+const PRO_LOGIN_URL = loginUrl("company_member"); // /connexion?espace=pro
 
 type Challenge = { challenge: string; phone: string };
-
-/** Espace de chaque compte pro : un compte bien authentifié arrive toujours dans le sien. */
-const PRO_HOMES: Record<string, string> = { insurer_agent: "/assureur", company_member: "/entreprise" };
 
 function PasswordField({ id, label, value, onChange, autoComplete, show, onToggle, minLength }: {
   id: string; label: string; value: string; onChange: (v: string) => void; autoComplete: string;
@@ -45,10 +37,8 @@ function PasswordField({ id, label, value, onChange, autoComplete, show, onToggl
   );
 }
 
-/** Email + mot de passe, puis code SMS. Ouvre la session uniquement pour le rôle de l'espace. */
-export function ProLoginForm({ space, titleKey, introKey, footer }: {
-  space: ProSpace; titleKey: Key; introKey: Key; footer?: ReactNode;
-}) {
+/** Email + mot de passe, puis code SMS. Le compte arrive ensuite dans son espace (assureur ou entreprise). */
+export function ProLoginForm({ titleKey, introKey, footer }: { titleKey: Key; introKey: Key; footer?: ReactNode }) {
   const { t, lang } = useI18n();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -73,12 +63,9 @@ export function ProLoginForm({ space, titleKey, introKey, footer }: {
 
   async function verify(code: string) {
     const res = await api<OtpResult>("auth/pro/verify", { body: { challenge: pending?.challenge, code } });
-    // Ex. un compte entreprise saisi sur le portail assureur : il est authentifié, on l'envoie dans son espace.
-    const home = PRO_HOMES[res.user.role];
-    if (!home) throw new Error(t(space.notAllowedKey));
     setToken(res.token);
     if (res.user.language !== lang) await api("me", { method: "PATCH", body: { language: lang } });
-    router.replace(home);
+    enterSpace(router, res.user);
   }
 
   async function resend() {
@@ -112,7 +99,7 @@ export function ProLoginForm({ space, titleKey, introKey, footer }: {
       <PasswordField id="password" label={t("proPassword")} value={password} onChange={setPassword}
         autoComplete="current-password" show={showPassword} onToggle={() => setShowPassword((v) => !v)} />
       {error && <p className="error" role="alert">{error}</p>}
-      <Link href={`${space.home}/mot-de-passe-oublie`} className="small" style={{ fontWeight: 700, alignSelf: "flex-start" }}>
+      <Link href={FORGOT_PASSWORD_URL} className="small" style={{ fontWeight: 700, alignSelf: "flex-start" }}>
         {t("forgotPassword")}
       </Link>
       <div className="grow" />
@@ -124,7 +111,7 @@ export function ProLoginForm({ space, titleKey, introKey, footer }: {
   );
 }
 
-export function ForgotPasswordForm({ space }: { space: ProSpace }) {
+export function ForgotPasswordForm() {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -167,21 +154,21 @@ export function ForgotPasswordForm({ space }: { space: ProSpace }) {
           {busy ? <span className="spinner sm" style={{ borderTopColor: "#fff" }} /> : t("sendLink")}
         </button>
       )}
-      <Link href={`${space.home}/connexion`} className="btn link" style={{ alignSelf: "center" }}>{t("backToLogin")}</Link>
+      <Link href={PRO_LOGIN_URL} className="btn link" style={{ alignSelf: "center" }}>{t("backToLogin")}</Link>
     </form>
   );
 }
 
 /** Lien reçu par email (invitation ou mot de passe oublié) : …/mot-de-passe?uid=…&token=… */
-export function SetPasswordForm({ space }: { space: ProSpace }) {
+export function SetPasswordForm() {
   return (
     <Suspense fallback={<span className="spinner" />}>
-      <SetPasswordInner space={space} />
+      <SetPasswordInner />
     </Suspense>
   );
 }
 
-function SetPasswordInner({ space }: { space: ProSpace }) {
+function SetPasswordInner() {
   const { t } = useI18n();
   const params = useSearchParams();
   const uid = params.get("uid") ?? "";
@@ -216,7 +203,7 @@ function SetPasswordInner({ space }: { space: ProSpace }) {
       <div className="stack" style={{ gap: 16 }}>
         <h2 className="title">{t("resetTitle")}</h2>
         <p className="error" role="alert">{t("linkInvalid")}</p>
-        <Link href={`${space.home}/mot-de-passe-oublie`} className="btn primary block">{t("sendLink")}</Link>
+        <Link href={FORGOT_PASSWORD_URL} className="btn primary block">{t("sendLink")}</Link>
       </div>
     );
   }
@@ -226,7 +213,7 @@ function SetPasswordInner({ space }: { space: ProSpace }) {
       <div className="stack" style={{ gap: 16 }}>
         <h2 className="title">{t("resetTitle")}</h2>
         <div className="banner green" role="status"><strong>{t("passwordSaved")}</strong></div>
-        <Link href={`${space.home}/connexion`} className="btn primary block tall">{t("verify")}</Link>
+        <Link href={PRO_LOGIN_URL} className="btn primary block tall">{t("verify")}</Link>
       </div>
     );
   }

@@ -59,11 +59,10 @@ export async function api<T = unknown>(path: string, options: { method?: string;
   if (response.status === 401) {
     setToken(null);
     if (typeof window !== "undefined") {
+      // Session expirée : retour à la page de connexion unique, sur l'onglet de l'espace (cf. lib/spaces.ts).
       const path = window.location.pathname;
-      const login = path.startsWith("/assureur")
-        ? "/assureur/connexion"
-        : path.startsWith("/entreprise") ? "/entreprise/connexion" : "/connexion";
-      if (path !== login) window.location.href = login;
+      const pro = path.startsWith("/assureur") || path.startsWith("/entreprise");
+      if (!path.startsWith("/connexion")) window.location.href = pro ? "/connexion?espace=pro" : "/connexion";
     }
   }
   const data = response.status === 204 ? null : await response.json().catch(() => null);

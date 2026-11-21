@@ -31,6 +31,7 @@ from .models import IdentityCheck, KycDocument, OtpCode, User, normalize_phone
 
 PRO_CHALLENGE_SALT = "sanad.pro-login"
 BAD_CREDENTIALS = "Email ou mot de passe incorrect."
+STAFF_USE_BACKOFFICE = "Compte de l'équipe Sanad : connectez-vous au back-office (/admin/)."
 
 
 class OtpError(Exception):
@@ -102,6 +103,10 @@ def verify_otp(raw_phone: str, code: str) -> tuple[User, bool]:
     check_code(phone, code, OtpCode.Purpose.CUSTOMER)
     # Jamais un compte pro, même s'il partage ce numéro.
     user = User.objects.filter(phone=phone).exclude(role__in=User.PRO_ROLES).first()
+    # Ni un compte de l'équipe : le SMS seul ne suffit pas, le back-office exige mot de passe + code.
+    if user is not None and (user.is_staff or user.role == User.Role.STAFF):
+        record("user.login_failed", user, step="sms_only", backoffice=True)
+        raise OtpError(STAFF_USE_BACKOFFICE)
     created = user is None
     if created:
         user = User.objects.create_user(phone)

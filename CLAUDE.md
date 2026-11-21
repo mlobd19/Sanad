@@ -21,7 +21,10 @@ python manage.py reset_demo           # remise à zéro de la démo (DEBUG seule
 cd frontend && npm run dev            # http://localhost:3000 : app, /assureur, /entreprise, /admin
 ```
 
-Dans VS Code : tâche **« Lancer Sanad »** (les deux serveurs). Les codes SMS
+Dans VS Code : tâche **« Lancer Sanad »** (les deux serveurs).
+Adresses : `/` (accueil visiteur ou espace client), `/connexion` (connexion
+unique ; `?espace=pro` pour assureurs et entreprises), `/entreprise`,
+`/assureur`, `/admin/` (équipe). Les codes SMS
 s'affichent dans la console du backend (backend de notification `Console`).
 
 ## Vérifier avant de dire « fini »
@@ -45,7 +48,8 @@ compile_translations` ; sinon le test des traductions échoue.
   - `accounts` : utilisateurs, OTP, KYC, rôles `customer` / `insurer_agent` /
     `company_member` / `staff`. Particuliers : téléphone + code SMS ; le numéro
     n'est unique que parmi eux. Comptes pro (`User.PRO_ROLES`) : email + mot de
-    passe + code SMS ; le SMS seul n'ouvre jamais qu'un compte particulier.
+    passe + code SMS ; le SMS seul n'ouvre jamais qu'un compte particulier
+    (ni compte pro, ni compte équipe).
     Codes SMS liés à un usage (`OtpCode.purpose`). Invitation / mot de passe
     oublié par email (lien 72 h). Back-office : téléphone + mot de passe
     (`backends.PhonePasswordBackend`, verrouillage après 5 échecs) puis code SMS
@@ -81,9 +85,15 @@ compile_translations` ; sinon le test des traductions échoue.
     (l'arabe s'affiche en RTL). Jamais de texte en dur dans les écrans.
   - API : `lib/api.ts` ; `/api`, `/v` et `/media` sont relayés vers Django
     (`next.config.ts`).
+  - **Porte d'entrée unique** : `lib/spaces.ts` (`homeFor(rôle)` : customer →
+    `/`, company_member → `/entreprise`, insurer_agent → `/assureur`, staff →
+    `/admin/` ; `useSpace(rôle)`, garde-fou de chaque espace ; `logout`). Ne
+    jamais coder une redirection liée au rôle ailleurs. `/connexion` a deux
+    onglets (Particulier : `OtpLogin` ; Professionnel : `ProAuth`) ; les
+    anciennes `/assureur/connexion` et `/entreprise/connexion` redirigent.
   - Composants partagés : `components/Shell.tsx` (TopBar, Stepper, BottomNav…),
-    `Logo.tsx` (logo khaïma), `InsurerLogo.tsx`, `OtpLogin.tsx` (connexion SMS
-    partagée par `/connexion` et `/assureur/connexion`).
+    `Logo.tsx` (logo khaïma), `InsurerLogo.tsx`, `OtpLogin.tsx`, `ProAuth.tsx`,
+    `ClaimForm.tsx`.
   - Portail assureur : `/assureur` (web, bureau d'abord, styles `.portal*`),
     réservé au rôle `insurer_agent`.
 

@@ -9,8 +9,6 @@ import {
   ApiError,
   apiBlobUrl,
   downloadFile,
-  getToken,
-  setToken,
   type ClaimStatus,
   type InsurerClaim,
   type InsurerCommissions,
@@ -19,6 +17,7 @@ import {
 } from "@/lib/api";
 import { date, money, month, num, percent } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
+import { logout as signOut, useSpace } from "@/lib/spaces";
 import { useLoad } from "@/lib/useLoad";
 
 type Tab = "pending" | "issued" | "claims" | "commissions";
@@ -58,22 +57,20 @@ function intlPhone(phone: string) {
 
 export default function InsurerPortalPage() {
   const { t } = useI18n();
-  const router = useRouter();
+  // Garde-fou commun : non connecté → /connexion (onglet pro) ; autre rôle → son propre espace.
+  const { user } = useSpace("insurer_agent");
   const [me, setMe] = useState<InsurerMe | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "notAgent" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
-    if (!getToken()) {
-      router.replace("/assureur/connexion");
-      return;
-    }
+    if (!user) return;
     api<InsurerMe>("insurer/me")
       .then((data) => {
         setMe(data);
         setState("ready");
       })
-      .catch((err) => setState(err instanceof ApiError && err.status === 403 ? "notAgent" : "error"));
-  }, [router]);
+      .catch(() => setState("error"));
+  }, [user]);
 
   if (state === "ready" && me) return <Portal me={me} />;
 
@@ -82,12 +79,6 @@ export default function InsurerPortalPage() {
       <div className="box">
         <main className="sheet center" style={{ color: "var(--ink)", minHeight: 280 }}>
           {state === "loading" && <span className="spinner" aria-label={t("loading")} />}
-          {state === "notAgent" && (
-            <>
-              <p className="error" role="alert">{t("portalNotAgent")}</p>
-              <a className="btn primary" href="/assureur/connexion">{t("portalAgentLogin")}</a>
-            </>
-          )}
           {state === "error" && (
             <>
               <p className="error" role="alert">{t("error")}</p>
@@ -114,8 +105,7 @@ function Portal({ me }: { me: InsurerMe }) {
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ pending: null, issued: null, claims: null, commissions: null });
 
   function logout() {
-    setToken(null);
-    router.replace("/assureur/connexion");
+    signOut(router, "insurer_agent");
   }
 
   function onTabKey(e: KeyboardEvent<HTMLButtonElement>) {

@@ -5,14 +5,15 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ClaimForm } from "@/components/ClaimForm";
-import { App, ErrorBox, Loading, TopBar, useUser } from "@/components/Shell";
+import { App, ErrorBox, Loading, TopBar } from "@/components/Shell";
 import { api, type Claim, type Policy } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useSpace } from "@/lib/spaces";
 
 export default function DeclareClaimPage() {
   const { t } = useI18n();
   const { policyId } = useParams<{ policyId: string }>();
-  const { user } = useUser();
+  const { user } = useSpace("customer");
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [loadError, setLoadError] = useState("");
   const [sent, setSent] = useState<Claim | null>(null);

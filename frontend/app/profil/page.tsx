@@ -6,9 +6,10 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
 import { IdentityDocument } from "@/components/IdentityDocument";
-import { App, BottomNav, Loading, TopBar, useUser } from "@/components/Shell";
-import { api, ApiError, setToken, type User } from "@/lib/api";
+import { App, BottomNav, Loading, TopBar } from "@/components/Shell";
+import { api, ApiError, type User } from "@/lib/api";
 import { useI18n, type Key, type Lang } from "@/lib/i18n";
+import { logout as signOut, useSpace } from "@/lib/spaces";
 
 type IdOutcome = "match" | "mismatch" | "not_found";
 
@@ -29,7 +30,7 @@ const ID_ERRORS: Record<string, Key> = {
 export default function ProfilePage() {
   const { t, lang, setLang } = useI18n();
   const router = useRouter();
-  const { user, setUser } = useUser();
+  const { user, setUser } = useSpace("customer");
   const [fullName, setFullName] = useState("");
   const [nni, setNni] = useState("");
   const [message, setMessage] = useState("");
@@ -96,8 +97,7 @@ export default function ProfilePage() {
   }
 
   function logout() {
-    setToken(null);
-    router.replace("/connexion");
+    signOut(router);
   }
 
   if (!user) return <App><Loading /></App>;
