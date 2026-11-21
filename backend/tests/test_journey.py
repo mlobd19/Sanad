@@ -91,7 +91,11 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     assert check["holder"] == "S*** M***"  # nom masqué pour l'agent de contrôle
 
     page = APIClient().get(f"/v/{token}")
-    assert page.status_code == 200 and "Attestation valide" in page.content.decode()
+    html = page.content.decode()
+    assert page.status_code == 200 and html.count("Attestation valide") == 1  # pas de mention répétée
+    assert "/" not in check["valid_from"]  # API : format ISO conservé
+    day, month, year = check["valid_from"][8:10], check["valid_from"][5:7], check["valid_from"][:4]
+    assert f"{day}/{month}/{year}" in html  # page : « 21/11/2026 »
 
     qr = customer_client.get(f"/api/attestations/{att['id']}/qr.png")
     assert qr.status_code == 200 and qr.content[:8] == b"\x89PNG\r\n\x1a\n"
@@ -182,6 +186,8 @@ def test_cancellation_revokes_attestation(customer_client, agent_client):
     att = Attestation.objects.get(policy_id=policy["id"])
     cancel_policy(Policy.objects.get(pk=policy["id"]), User.objects.get(phone="+22220000002"), "Fraude constatée")
     assert APIClient().get(f"/api/verify/{att.token}").data["status"] == "revoked"
+    html = APIClient().get(f"/v/{att.token}").content.decode()
+    assert html.count("Attestation révoquée") == 1 and "Attestation valide" not in html
 
 
 def test_tampered_token_is_not_authentic(customer_client, agent_client):
@@ -192,6 +198,7 @@ def test_tampered_token_is_not_authentic(customer_client, agent_client):
     body, sig = token.split(".")
     forged = body[:-2] + ("AA" if body[-2:] != "AA" else "BB") + "." + sig
     assert APIClient().get(f"/api/verify/{forged}").data["status"] == "invalid"
+    assert APIClient().get(f"/v/{forged}").content.decode().count("Attestation non authentique") == 1
 
 
 def test_offline_verification_with_public_key_only(customer_client, agent_client):

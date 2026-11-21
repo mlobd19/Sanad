@@ -1,4 +1,5 @@
 import base64
+from datetime import date
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -56,6 +57,17 @@ class AttestationPdfView(APIView):
         return response
 
 
+def _day(iso: str) -> str:
+    """« 2026-11-21 » → « 21/11/2026 » pour l'agent de contrôle (l'API garde le format ISO)."""
+    try:
+        return date.fromisoformat(iso).strftime("%d/%m/%Y")
+    except (TypeError, ValueError):
+        return iso or ""
+
+
 def verify_page(request, token):
     """Page web ouverte en scannant le QR avec n'importe quel téléphone."""
-    return render(request, "attestations/verify.html", {"result": check(token)})
+    result = check(token)
+    if result.get("valid_from"):
+        result = {**result, "valid_from": _day(result["valid_from"]), "valid_to": _day(result["valid_to"])}
+    return render(request, "attestations/verify.html", {"result": result})

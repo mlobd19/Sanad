@@ -12,7 +12,7 @@
   .valid { background: #0B6E4F; }
   .warn { background: #8A5A12; }
   .bad { background: #9B2C2C; }
-  h1 { font-size: 26px; margin: 8px 0; }
+  h1 { font-size: 26px; margin: 0; }
   dl { background: #1C2F28; border-radius: 16px; padding: 16px; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; }
   dt { color: #B9C8C2; } dd { margin: 0; font-weight: 600; text-align: right; }
   p.note { color: #B9C8C2; font-size: 13px; line-height: 1.5; }
@@ -21,12 +21,19 @@
 <body>
 <main>
   <p style="margin:0;color:#B9C8C2">Contrôle d'attestation d'assurance</p>
+  {# Un seul titre par cas, précis : pas de message répété en dessous. #}
   {% if result.status == "valid" %}
-    <div class="result valid"><h1>Attestation valide</h1><div>{{ result.message }}</div></div>
-  {% elif result.status == "expired" or result.status == "not_yet_valid" %}
-    <div class="result warn"><h1>Non valable aujourd'hui</h1><div>{{ result.message }}</div></div>
+    <div class="result valid"><h1>Attestation valide</h1></div>
+  {% elif result.status == "expired" %}
+    <div class="result warn"><h1>Attestation expirée</h1></div>
+  {% elif result.status == "not_yet_valid" %}
+    <div class="result warn"><h1>Pas encore en vigueur</h1></div>
+  {% elif result.status == "revoked" %}
+    <div class="result bad"><h1>Attestation révoquée</h1></div>
+  {% elif result.status == "unknown" %}
+    <div class="result bad"><h1>Attestation inconnue</h1></div>
   {% else %}
-    <div class="result bad"><h1>Attestation non valable</h1><div>{{ result.message }}</div></div>
+    <div class="result bad"><h1>Attestation non authentique</h1></div>
   {% endif %}
   {% if result.number %}
   <dl>
