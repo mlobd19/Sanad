@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from apps.accounts.models import normalize_phone
 from apps.audit.models import record
 from apps.policies.models import Order, Policy
 
@@ -15,6 +16,11 @@ logger = logging.getLogger("payments")
 
 
 @transaction.atomic
+def _payer(payer_phone: str) -> str:
+    """Numéro qui paie (facultatif) : forme +222XXXXXXXX, ou ValidationError s'il est invalide."""
+    return normalize_phone(payer_phone) if (payer_phone or "").strip() else ""
+
+
 def initiate_payment(customer, policy: Policy, provider_name: str, payer_phone: str = "") -> tuple[Payment, str]:
     policy = Policy.objects.select_for_update().get(pk=policy.pk)
     if policy.customer_id != customer.pk:
@@ -35,7 +41,7 @@ def initiate_payment(customer, policy: Policy, provider_name: str, payer_phone: 
         status=Payment.Status.FAILED, failure_reason="Remplacé par une nouvelle tentative"
     )
     payment = Payment.objects.create(
-        policy=policy, provider=provider.name, amount=policy.premium, payer_phone=payer_phone
+        policy=policy, provider=provider.name, amount=policy.premium, payer_phone=_payer(payer_phone)
     )
     result = provider.initiate(payment)
     payment.external_ref = result.external_ref
@@ -69,7 +75,7 @@ def initiate_order_payment(member, order: Order, provider_name: str, payer_phone
     order.payments.filter(status=Payment.Status.PENDING).update(
         status=Payment.Status.FAILED, failure_reason="Remplacé par une nouvelle tentative"
     )
-    payment = Payment.objects.create(order=order, provider=provider.name, amount=amount, payer_phone=payer_phone)
+    payment = Payment.objects.create(order=order, provider=provider.name, amount=amount, payer_phone=_payer(payer_phone))
     result = provider.initiate(payment)
     payment.external_ref = result.external_ref
     payment.save(update_fields=["external_ref"])

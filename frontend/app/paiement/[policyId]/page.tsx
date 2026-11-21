@@ -7,8 +7,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DURATION_LABEL } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
 import { App, ErrorBox, Loading, Stepper, TopBar } from "@/components/Shell";
+import { PhoneInput } from "@/components/PhoneInput";
 import { api, ApiError, type PaymentStart, type Policy, type Provider } from "@/lib/api";
-import { date, formatPlate, money } from "@/lib/format";
+import { date, formatPhone, formatPlate, localPhone, money } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
 
@@ -29,7 +30,7 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (!user) return;
-    setPayer(user.phone);
+    setPayer(localPhone(user.phone));
     setKycNeeded(user.kyc_status !== "verified");
     Promise.all([api<Policy>(`policies/${policyId}`), api<Provider[]>("payments/providers")])
       .then(([p, list]) => {
@@ -58,7 +59,7 @@ export default function PaymentPage() {
     setBusy(true);
     setError("");
     try {
-      const started = await api<PaymentStart>(`policies/${policyId}/pay`, { body: { provider, payer_phone: payer } });
+      const started = await api<PaymentStart>(`policies/${policyId}/pay`, { body: { provider, payer_phone: payer ? `+222${payer}` : "" } });
       setPayment(started);
       stopPolling();
       timer.current = setInterval(() => poll().catch(() => undefined), 3000);
@@ -125,7 +126,7 @@ export default function PaymentPage() {
               </span>
               <div className="stack" style={{ gap: 2 }}>
                 <strong style={{ fontSize: 17 }}>{t("confirmOnPhone")}</strong>
-                <span className="ink2" style={{ fontSize: 14 }}>{providerLabel} · <bdi>{payer}</bdi></span>
+                <span className="ink2" style={{ fontSize: 14 }}>{providerLabel} · <bdi dir="ltr">{formatPhone(payer)}</bdi></span>
               </div>
             </div>
             <ol className="steps-num">
@@ -181,8 +182,8 @@ export default function PaymentPage() {
               </section>
               <div className="field">
                 <label htmlFor="payer">{t("payerPhone")}</label>
-                <input id="payer" className="input" type="tel" value={payer} onChange={(e) => setPayer(e.target.value)} dir="ltr" />
-                <span className="small ink2">{t("payHint")}</span>
+                <PhoneInput id="payer" value={payer} onChange={setPayer} describedBy="payer-hint" required={false} />
+                <span id="payer-hint" className="small ink2">{t("payHint")}</span>
               </div>
             </>
           )

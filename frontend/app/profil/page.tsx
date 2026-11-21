@@ -9,6 +9,7 @@ import { IdentityDocument } from "@/components/IdentityDocument";
 import { ThemeChoicePicker } from "@/components/ThemeChoice";
 import { App, BottomNav, Loading, TopBar } from "@/components/Shell";
 import { api, ApiError, type User } from "@/lib/api";
+import { formatPhone } from "@/lib/format";
 import { useI18n, type Key, type Lang } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
 
@@ -110,7 +111,7 @@ export default function ProfilePage() {
         <form className="card" onSubmit={save}>
           <div className="field">
             <label htmlFor="phone">{t("phoneLabel")}</label>
-            <input id="phone" className="input" value={user.phone} disabled dir="ltr" />
+            <input id="phone" className="input" value={formatPhone(user.phone)} disabled dir="ltr" />
           </div>
           <div className="field">
             <label htmlFor="name">{t("fullName")}</label>

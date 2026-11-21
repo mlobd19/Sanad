@@ -7,6 +7,7 @@ import { useState, type FormEvent } from "react";
 import { OtpCodeForm, type OtpResult } from "@/components/OtpLogin";
 import { PasswordField } from "@/components/ProAuth";
 import { PortalAuthShell } from "@/components/PortalAuthShell";
+import { PhoneInput } from "@/components/PhoneInput";
 import { api, ApiError, setToken } from "@/lib/api";
 import { useI18n, type Key } from "@/lib/i18n";
 
@@ -105,13 +106,8 @@ export default function CompanySignupPage() {
             {text("email", "proEmail", { type: "email", autoComplete: "username", dir: "ltr", inputMode: "email" })}
             <div className="field">
               <label htmlFor="signup-phone">{t("phoneLabel")}</label>
-              <div className="row" style={{ gap: 8 }} dir="ltr">
-                <span className="input" style={{ width: "auto", display: "flex", alignItems: "center", background: "var(--bg)", fontWeight: 700 }}>+222</span>
-                <input id="signup-phone" className="input" type="tel" inputMode="numeric" autoComplete="tel-national"
-                  placeholder={t("phonePlaceholder")} value={form.phone}
-                  onChange={(e) => set("phone")(e.target.value.replace(/\D/g, "").slice(0, 8))} required />
-              </div>
-              <span className="small muted">{t("signupPhoneHint")}</span>
+              <PhoneInput id="signup-phone" value={form.phone} onChange={set("phone")} describedBy="signup-phone-hint" />
+              <span id="signup-phone-hint" className="small muted">{t("signupPhoneHint")}</span>
             </div>
             <div />
             <PasswordField id="signup-password" label={t("proPassword")} value={form.password} onChange={set("password")}

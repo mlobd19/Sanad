@@ -2,16 +2,14 @@
 
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 
+import { PhoneInput } from "@/components/PhoneInput";
 import { api, ApiError, type User } from "@/lib/api";
+import { formatPhone } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
 const RESEND_DELAY = 30;
 
 export type OtpResult = { token: string; user: User };
-
-function formatPhone(digits: string) {
-  return digits.replace(/\D/g, "").slice(0, 8).replace(/(\d{2})(?=\d)/g, "$1 ");
-}
 
 function message(err: unknown, fallback: string) {
   return err instanceof Error && err.message ? err.message : fallback;
@@ -205,7 +203,7 @@ export function OtpLogin({ title, intro, onVerified }: Props) {
   if (step === "code") {
     return (
       <OtpCodeForm
-        sentTo={`+222 ${formatPhone(phone)}`}
+        sentTo={formatPhone(phone)}
         onSubmit={verify}
         onResend={() => api("auth/otp/request", { body: { phone } }).then(() => undefined)}
         onBack={() => { setStep("phone"); setError(""); }}
@@ -222,23 +220,7 @@ export function OtpLogin({ title, intro, onVerified }: Props) {
       </div>
       <div className="field">
         <label htmlFor="phone">{t("phoneLabel")}</label>
-        <div className="row" style={{ gap: 8 }} dir="ltr">
-          <span className="input" style={{ width: "auto", display: "flex", alignItems: "center", background: "var(--bg)", fontWeight: 700 }}>
-            +222
-          </span>
-          <input
-            id="phone"
-            className="input"
-            type="tel"
-            inputMode="numeric"
-            autoComplete="tel-national"
-            placeholder={t("phonePlaceholder")}
-            value={formatPhone(phone)}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
-            style={{ fontWeight: 600, letterSpacing: "0.04em" }}
-            required
-          />
-        </div>
+        <PhoneInput id="phone" value={phone} onChange={setPhone} />
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       <div className="grow" />

@@ -68,3 +68,24 @@ export function plateInput(raw: string): string {
     && (m[4] === "" || m[3].length === 2);
   return fits ? m.slice(1).filter(Boolean).join(" ") : raw.toUpperCase();
 }
+
+// --- Téléphones ----------------------------------------------------------------------------
+// Numéros mauritaniens : enregistrés « +22236000001 », affichés « +222 36 00 00 01 ».
+
+/** Les 8 chiffres locaux d'un numéro mauritanien (« +222 36 00 00 01 » → « 36000001 »). */
+export function localPhone(value: string): string {
+  const digits = (value ?? "").replace(/\D/g, "");
+  return (digits.length === 11 && digits.startsWith("222") ? digits.slice(3) : digits).slice(0, 8);
+}
+
+/** Chiffres locaux groupés par deux, pendant la saisie : « 3600000 » → « 36 00 00 0 ». */
+export function groupPhone(local: string): string {
+  return localPhone(local).replace(/(\d{2})(?=\d)/g, "$1 ");
+}
+
+/** Affichage : « +22236000001 » ou « 36000001 » → « +222 36 00 00 01 ». Tout autre format reste tel quel. */
+export function formatPhone(value: string): string {
+  const digits = (value ?? "").replace(/\D/g, "");
+  const local = digits.length === 11 && digits.startsWith("222") ? digits.slice(3) : digits.length === 8 ? digits : "";
+  return local ? `+222 ${local.replace(/(\d{2})(?=\d)/g, "$1 ")}` : value ?? "";
+}

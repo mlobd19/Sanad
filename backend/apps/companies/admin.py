@@ -7,6 +7,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
+from apps.accounts.models import format_phone
 from apps.accounts.storage import private_file_response
 from apps.audit.models import record
 from apps.backoffice.actions import reason_page
@@ -55,7 +56,7 @@ class MembershipInline(admin.TabularInline):
 
     @admin.display(description=_("téléphone"))
     def phone(self, m):
-        return m.user.phone
+        return format_phone(m.user.phone)
 
 
 @admin.register(Company)

@@ -7,6 +7,7 @@ import { ClaimForm } from "@/components/ClaimForm";
 import { DURATION_LABEL, DurationPicker } from "@/components/DurationPicker";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
+import { PhoneInput } from "@/components/PhoneInput";
 import { ScanRegistration } from "@/components/ScanRegistration";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
 import {
@@ -581,7 +582,8 @@ function OrderPayment({ order, verified, onPaid, onCancel }: {
     setBusy(true);
     setError("");
     try {
-      setPayment(await api<PaymentStart>(`company/orders/${order.id}/pay`, { body: { provider, payer_phone: payer } }));
+      setPayment(await api<PaymentStart>(`company/orders/${order.id}/pay`,
+        { body: { provider, payer_phone: payer ? `+222${payer}` : "" } }));
     } catch (err) {
       setError(message(err, t("error")));
     } finally {
@@ -661,7 +663,7 @@ function OrderPayment({ order, verified, onPaid, onCancel }: {
               </div>
               <div className="field">
                 <label htmlFor="payer">{t("payerPhone")}</label>
-                <input id="payer" className="input" type="tel" dir="ltr" value={payer} onChange={(e) => setPayer(e.target.value)} />
+                <PhoneInput id="payer" value={payer} onChange={setPayer} required={false} />
               </div>
               <button type="button" className="btn primary block tall" onClick={pay} disabled={busy || !provider}>
                 {t("pay", { amount: money(order.total, lang) })}
@@ -987,7 +989,7 @@ function MembersCard({ admin }: { admin: boolean }) {
     setError("");
     setSent("");
     try {
-      await api("company/members", { body: { ...form, phone: `+222${form.phone.replace(/\D/g, "")}` } });
+      await api("company/members", { body: { ...form, phone: `+222${form.phone}` } });
       setSent(form.email);
       setForm({ full_name: "", email: "", phone: "", role: "manager" });
       reload();
@@ -1028,11 +1030,8 @@ function MembersCard({ admin }: { admin: boolean }) {
             </div>
             <div className="field">
               <label htmlFor="m-phone">{t("phoneLabel")}</label>
-              <div className="row" style={{ gap: 8 }} dir="ltr">
-                <span className="input" style={{ width: "auto", display: "flex", alignItems: "center", background: "var(--bg)", fontWeight: 700 }}>+222</span>
-                <input id="m-phone" className="input" type="tel" inputMode="numeric" value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 8) })} required />
-              </div>
+              <PhoneInput id="m-phone" value={form.phone} autoComplete="off"
+                onChange={(phone) => setForm({ ...form, phone })} />
             </div>
             <div className="field">
               <label htmlFor="m-role">{t("colRole")}</label>

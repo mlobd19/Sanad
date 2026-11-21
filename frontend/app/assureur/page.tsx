@@ -16,7 +16,7 @@ import {
   type InsurerMe,
   type InsurerPolicy,
 } from "@/lib/api";
-import { date, formatPlate, money, month, num, percent } from "@/lib/format";
+import { date, formatPhone, formatPlate, money, month, num, percent } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
 import { useLoad } from "@/lib/useLoad";
@@ -50,9 +50,6 @@ const PROVIDERS: Record<string, Key> = {
   sedad: "provider_sedad",
 };
 
-function intlPhone(phone: string) {
-  return phone.replace(/^\+222(\d{2})(\d{2})(\d{2})(\d{2})$/, "+222 $1 $2 $3 $4");
-}
 
 // --- Page ---------------------------------------------------------------------------
 
@@ -139,7 +136,7 @@ function Portal({ me }: { me: InsurerMe }) {
 
   const pendingCount = pending.data?.length ?? 0;
   const newClaimsCount = newClaims.data?.length ?? 0;
-  const agentName = me.agent.full_name || intlPhone(me.agent.phone);
+  const agentName = me.agent.full_name || formatPhone(me.agent.phone);
 
   return (
     <div className="portal">
@@ -154,7 +151,7 @@ function Portal({ me }: { me: InsurerMe }) {
           </div>
           <div className="agent">
             <strong><bdi>{agentName}</bdi></strong>
-            {me.agent.full_name && <bdi dir="ltr">{intlPhone(me.agent.phone)}</bdi>}
+            {me.agent.full_name && <bdi dir="ltr">{formatPhone(me.agent.phone)}</bdi>}
           </div>
           <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
             {lang === "fr" ? "العربية" : "Français"}
@@ -271,11 +268,11 @@ function CustomerCell({ p }: { p: InsurerPolicy }) {
         <>
           <strong>{p.company.legal_name}</strong>
           <span className="sub"><bdi dir="ltr">{t("nifShort", { nif: p.company.nif })}</bdi></span>
-          <span className="sub">{t("subscribedBy", { name: p.customer.full_name || p.customer.phone })}</span>
+          <span className="sub">{t("subscribedBy", { name: p.customer.full_name || formatPhone(p.customer.phone) })}</span>
         </>
       )}
       {!p.company && <strong>{p.customer.full_name || <span className="muted">{t("noName")}</span>}</strong>}
-      <span className="sub"><bdi dir="ltr">{intlPhone(p.customer.phone)}</bdi></span>
+      <span className="sub"><bdi dir="ltr">{formatPhone(p.customer.phone)}</bdi></span>
       {p.customer.nni && <span className="sub">{t("nniShort", { nni: p.customer.nni })}</span>}
     </td>
   );
@@ -739,12 +736,12 @@ function ClaimsTab({ onTaken, onClose }: { onTaken: (claim: InsurerClaim) => voi
                     {c.customer.company ? (
                       <>
                         <strong><bdi>{c.customer.company}</bdi></strong>
-                        <span className="sub">{t("declaredBy", { name: c.customer.full_name || c.customer.phone })}</span>
+                        <span className="sub">{t("declaredBy", { name: c.customer.full_name || formatPhone(c.customer.phone) })}</span>
                       </>
                     ) : (
                       <strong>{c.customer.full_name || <span className="muted">{t("noName")}</span>}</strong>
                     )}
-                    <span className="sub"><bdi dir="ltr">{intlPhone(c.customer.phone)}</bdi></span>
+                    <span className="sub"><bdi dir="ltr">{formatPhone(c.customer.phone)}</bdi></span>
                   </td>
                   <td data-label={t("vehicle")}>
                     <bdi className="plate" dir="ltr">{formatPlate(c.policy.plate)}</bdi>

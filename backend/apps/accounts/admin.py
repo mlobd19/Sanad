@@ -11,7 +11,7 @@ from apps.audit.models import record
 from apps.backoffice.actions import reason_page
 from apps.backoffice.ui import pill, status_pill
 
-from .models import IdentityCheck, KycDocument, User
+from .models import IdentityCheck, KycDocument, User, format_phone
 from .services import send_password_email
 from .storage import private_file_response
 
@@ -122,7 +122,7 @@ class UserAdmin(BaseUserAdmin):
 
     @admin.display(description=_("téléphone"), ordering="phone")
     def phone_display(self, user):
-        return format_html('<span class="sn-mono">{}</span>', user.phone)
+        return format_html('<span class="sn-mono">{}</span>', format_phone(user.phone))
 
     @admin.display(description=_("rôle"), ordering="role")
     def role_display(self, user):

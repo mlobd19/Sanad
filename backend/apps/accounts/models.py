@@ -13,6 +13,15 @@ from .storage import PrivateStorage
 PHONE_RE = re.compile(r"^\+222\d{8}$")
 
 
+def format_phone(value: str) -> str:
+    """Affichage : « +22236000001 » → « +222 36 00 00 01 » (autre format : inchangé)."""
+    digits = re.sub(r"\D", "", value or "")
+    if len(digits) == 11 and digits.startswith("222"):
+        local = digits[3:]
+        return "+222 " + " ".join(local[i:i + 2] for i in range(0, 8, 2))
+    return value or ""
+
+
 def normalize_phone(raw: str) -> str:
     """Ramène un numéro mauritanien à la forme +222XXXXXXXX."""
     digits = re.sub(r"[^\d+]", "", raw or "")
