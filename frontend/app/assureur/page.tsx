@@ -15,7 +15,7 @@ import {
   type InsurerMe,
   type InsurerPolicy,
 } from "@/lib/api";
-import { date, money, month, num, percent } from "@/lib/format";
+import { date, formatPlate, money, month, num, percent } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
 import { useLoad } from "@/lib/useLoad";
@@ -123,8 +123,8 @@ function Portal({ me }: { me: InsurerMe }) {
     setDecision(null);
     setToast(
       kind === "validate"
-        ? { key: "validatedToast", vars: { plate: policy.plate, number: policy.attestation?.number ?? "" } }
-        : { key: "refusedToast", vars: { plate: policy.plate } },
+        ? { key: "validatedToast", vars: { plate: formatPlate(policy.plate), number: policy.attestation?.number ?? "" } }
+        : { key: "refusedToast", vars: { plate: formatPlate(policy.plate) } },
     );
     pending.reload();
   }
@@ -288,7 +288,7 @@ function VehicleCell({ p }: { p: InsurerPolicy }) {
   ].filter(Boolean);
   return (
     <td data-label={t("vehicle")}>
-      <bdi className="plate" dir="ltr">{p.plate}</bdi>
+      <bdi className="plate" dir="ltr">{formatPlate(p.plate)}</bdi>
       {details.length > 0 && (
         <span className="sub">
           {details.map((d, i) => (
@@ -346,7 +346,7 @@ function PendingTab({ policies, error, reload, onDecide }: {
                         type="button"
                         className="btn primary"
                         onClick={() => onDecide(p, "validate")}
-                        aria-label={`${t("validate")} · ${p.plate}`}
+                        aria-label={`${t("validate")} · ${formatPlate(p.plate)}`}
                       >
                         {t("validate")}
                       </button>
@@ -354,7 +354,7 @@ function PendingTab({ policies, error, reload, onDecide }: {
                         type="button"
                         className="btn danger"
                         onClick={() => onDecide(p, "refuse")}
-                        aria-label={`${t("refuse")} · ${p.plate}`}
+                        aria-label={`${t("refuse")} · ${formatPlate(p.plate)}`}
                       >
                         {t("refuse")}
                       </button>
@@ -544,7 +544,7 @@ function CommissionsTab() {
               {rows.map((c) => (
                 <tr key={c.id}>
                   <td data-label={t("colPolicy")}>
-                    <bdi className="plate" dir="ltr">{c.plate}</bdi>
+                    <bdi className="plate" dir="ltr">{formatPlate(c.plate)}</bdi>
                     <span className="sub">{t("policyNo", { id: num(c.policy_id, lang) })}</span>
                   </td>
                   <td data-label={t("formula")}>{c.product}</td>
@@ -609,7 +609,7 @@ function DecisionDialog({ decision, onClose, onDone }: {
     <dialog ref={ref} className="pdialog" aria-labelledby="decision-title" onClose={onClose}>
       <form onSubmit={submit} noValidate>
         <h2 id="decision-title">
-          {t(validate ? "validateTitle" : "refuseTitle")} <bdi dir="ltr">{policy.plate}</bdi>
+          {t(validate ? "validateTitle" : "refuseTitle")} <bdi dir="ltr">{formatPlate(policy.plate)}</bdi>
         </h2>
         <p className="ink2" style={{ margin: 0 }}>{t(validate ? "validateText" : "refuseText")}</p>
         <div className="card" style={{ background: "var(--bg)", border: "none", gap: 4 }}>
@@ -745,7 +745,7 @@ function ClaimsTab({ onTaken, onClose }: { onTaken: (claim: InsurerClaim) => voi
                     <span className="sub"><bdi dir="ltr">{intlPhone(c.customer.phone)}</bdi></span>
                   </td>
                   <td data-label={t("vehicle")}>
-                    <bdi className="plate" dir="ltr">{c.policy.plate}</bdi>
+                    <bdi className="plate" dir="ltr">{formatPlate(c.policy.plate)}</bdi>
                     <span className="sub">{[c.policy.make, c.policy.product].filter(Boolean).join(" · ")}</span>
                   </td>
                   <td data-label={t("colOccurred")} className="num">
@@ -841,7 +841,7 @@ function CloseClaimDialog({ claim, onClose, onDone }: {
         <p className="ink2" style={{ margin: 0 }}>{t("closeClaimText")}</p>
         <div className="card" style={{ background: "var(--bg)", border: "none", gap: 4 }}>
           <strong><bdi>{claim.customer.company || claim.customer.full_name || t("noName")}</bdi></strong>
-          <span className="ink2 small"><bdi dir="ltr">{claim.policy.plate}</bdi> · {t(`claimKind_${claim.kind}` as Key)}</span>
+          <span className="ink2 small"><bdi dir="ltr">{formatPlate(claim.policy.plate)}</bdi> · {t(`claimKind_${claim.kind}` as Key)}</span>
         </div>
         <div className="field">
           <label htmlFor="close-note">{t("closeNoteLabel")}</label>

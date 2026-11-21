@@ -10,6 +10,8 @@ from pathlib import Path
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
+from apps.policies.models import format_plate
+
 FONTS = Path(__file__).parent / "fonts"
 
 # Palette de l'app (globals.css)
@@ -144,7 +146,7 @@ def render(attestation, *, specimen: bool) -> bytes:
     rows = [
         ("Assuré", "المؤمَّن له", customer.full_name or "—", False),
         ("NNI", "الرقم الوطني", customer.nni or "—", False),
-        ("Immatriculation", "رقم اللوحة", payload["p"], True),
+        ("Immatriculation", "رقم اللوحة", format_plate(payload["p"]), True),
         ("Véhicule", "السيارة", vehicle or "—", False),
         ("Formule", "الصيغة", product.name, True),
         ("Garanties", "الضمانات", ", ".join(product.coverages) or "—", False),

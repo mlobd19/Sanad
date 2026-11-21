@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
 import { ApiError, apiUpload, type Claim, type ClaimKind, type Policy } from "@/lib/api";
+import { formatPlate, plateInput } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 
 const KINDS: ClaimKind[] = ["accident", "theft", "fire", "glass", "other"];
@@ -69,7 +70,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
   return (
     <form className="stack" style={{ gap: 18 }} onSubmit={submit} noValidate>
       <p className="small ink2" style={{ margin: 0 }}>
-        <bdi dir="ltr">{policy.plate}</bdi> · {policy.insurer} · {policy.product}
+        <bdi dir="ltr">{formatPlate(policy.plate)}</bdi> · {policy.insurer} · {policy.product}
       </p>
 
       <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
@@ -119,7 +120,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
       <div className="field">
         <label htmlFor={`${ids}-third-party`}>{t("claimThirdParty")}</label>
         <input id={`${ids}-third-party`} className="input" dir="ltr" value={thirdParty} maxLength={40}
-          onChange={(e) => setThirdParty(e.target.value.toUpperCase())} autoCapitalize="characters" />
+          onChange={(e) => setThirdParty(plateInput(e.target.value))} autoCapitalize="characters" autoComplete="off" spellCheck={false} />
       </div>
 
       <div className="field">

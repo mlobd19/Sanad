@@ -52,7 +52,7 @@ def test_customer_downloads_bilingual_pdf(customer_client, attestation):
     assert f'filename="attestation-{attestation.number}.pdf"' in resp["Content-Disposition"]
     assert resp.content.startswith(b"%PDF")
     text = pdf_text(resp.content)
-    for expected in (attestation.number, "4321AB01", "Sidi Mohamed", "1234567890", "MAR",
+    for expected in (attestation.number, "43 21 AB 01", "Sidi Mohamed", "1234567890", "MAR",
                      "Mauritanienne d'Assurance et de Réassurance", "ATTESTATION D'ASSURANCE AUTOMOBILE"):
         assert expected in text, expected
     policy = attestation.policy

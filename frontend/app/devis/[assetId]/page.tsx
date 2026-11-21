@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { App, ErrorBox, Loading, Stepper, TopBar } from "@/components/Shell";
 import { api, ApiError, type Asset, type Months, type Policy, type Quote } from "@/lib/api";
-import { date, money } from "@/lib/format";
+import { date, formatPlate, money } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
 
@@ -119,7 +119,7 @@ function QuotesScreen() {
       <main className="content">
         {asset && (
           <div className="row ink2" style={{ gap: 10, fontSize: 14, flexWrap: "wrap" }}>
-            <span className="chip"><bdi>{asset.reference}</bdi></span>
+            <span className="chip"><bdi dir="ltr">{formatPlate(asset.reference)}</bdi></span>
             <span>
               {[asset.attributes.make, `${asset.attributes.fiscal_power} CV`, USAGE[String(asset.attributes.usage)] && t(USAGE[String(asset.attributes.usage)])]
                 .filter(Boolean)

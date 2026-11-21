@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { App, BottomNav, ErrorBox, Loading, StatusPill, TopBar } from "@/components/Shell";
 import { api, type Policy } from "@/lib/api";
-import { date, money } from "@/lib/format";
+import { date, formatPlate, money } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
 
@@ -32,7 +32,7 @@ export default function ContractsPage() {
             <div className="row">
               <div className="iconbox"><Icon name="car" /></div>
               <div className="grow stack" style={{ gap: 2 }}>
-                <strong>{p.product} · <bdi>{p.plate}</bdi></strong>
+                <strong>{p.product} · <bdi dir="ltr">{formatPlate(p.plate)}</bdi></strong>
                 <span className="small muted">{p.insurer} · {money(p.premium, lang)}</span>
               </div>
               <StatusPill status={p.status} />

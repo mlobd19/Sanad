@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { Loading, ErrorBox } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
-import { date } from "@/lib/format";
+import { date, formatPlate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
 
@@ -46,7 +46,7 @@ export default function ControlPage() {
         <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           {t("attestationShort")}
         </span>
-        <span className="plate"><bdi>{policy.plate}</bdi></span>
+        <span className="plate"><bdi dir="ltr">{formatPlate(policy.plate)}</bdi></span>
       </div>
 
       {qr ? <img className="qr" src={qr} alt="QR code" /> : <div className="qr" aria-hidden="true" />}

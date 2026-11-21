@@ -17,7 +17,7 @@ from apps.audit.models import record
 from apps.catalog.models import DEFAULT_DURATION, DURATIONS, Product
 from apps.notifications.service import notify
 
-from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Policy, Quote
+from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Policy, Quote, normalize_plate
 
 QUOTE_VALIDITY = timedelta(hours=48)
 REQUIRED_VEHICLE_ATTRIBUTES = {"fiscal_power", "usage"}
@@ -94,7 +94,7 @@ def scan_registration_card(user, upload) -> dict:
     data = registration_scan.read_card(jpeg)
     if not data.get("is_registration_card"):
         raise ValidationError("Ce document ne ressemble pas à une carte grise.", code="not_card")
-    plate = " ".join(str(data.get("plate") or "").upper().split())[:40]
+    plate = normalize_plate(str(data.get("plate") or ""))[:40]
     make = " ".join(" ".join(str(data.get(k) or "") for k in ("make", "model")).split())[:80]
     try:
         power = int(data.get("fiscal_power") or 0)

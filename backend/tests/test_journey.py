@@ -51,7 +51,7 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     quotes_asset = customer_client.post(
         "/api/assets", {"reference": "5678 ab 00", "attributes": {"fiscal_power": 8, "usage": "personal"}}, format="json"
     ).data
-    assert quotes_asset["reference"] == "5678 AB 00"
+    assert quotes_asset["reference"] == "5678AB00"  # enregistrée sans espaces
     quotes = customer_client.post(f"/api/assets/{quotes_asset['id']}/quotes").data
     assert [q["premium"] for q in quotes] == sorted(q["premium"] for q in quotes)
     b = next(q for q in quotes if q["product_code"] == "tiers-etendu" and q["insurer_slug"] == "mar")
@@ -87,7 +87,7 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     token = att["verify_url"].rsplit("/", 1)[-1]
     check = APIClient().get(f"/api/verify/{token}").data
     assert check["status"] == "valid"
-    assert check["plate"] == "5678 AB 00"
+    assert check["plate"] == "56 78 AB 00"  # affichée par groupes
     assert check["holder"] == "S*** M***"  # nom masqué pour l'agent de contrôle
 
     page = APIClient().get(f"/v/{token}")

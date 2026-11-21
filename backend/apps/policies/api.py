@@ -14,7 +14,7 @@ from apps.attestations.models import Attestation
 from apps.audit.models import record
 
 from . import registration_scan, services
-from .models import Claim, Commission, InsuredAsset, Policy, Quote
+from .models import Claim, Commission, InsuredAsset, Policy, Quote, normalize_plate
 
 
 def django_errors(fn):
@@ -42,7 +42,10 @@ class AssetSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
     def validate_reference(self, value):
-        return value.strip().upper()
+        plate = normalize_plate(value)
+        if not plate:
+            raise serializers.ValidationError("Indiquez l'immatriculation.")
+        return plate
 
     def validate_attributes(self, value):
         if not isinstance(value, dict):

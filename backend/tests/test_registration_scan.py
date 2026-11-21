@@ -56,7 +56,7 @@ def claude(settings, monkeypatch):
 def test_scan_prefills_vehicle_fields(customer_client, claude, settings):
     resp = scan(customer_client, photo())
     assert resp.status_code == 200, resp.data
-    assert resp.data == {"reference": "1234 AB 00", "make": "Toyota Hilux", "fiscal_power": 9}
+    assert resp.data == {"reference": "1234AB00", "make": "Toyota Hilux", "fiscal_power": 9}
 
     request = claude.calls[0]
     assert request["model"] == "claude-opus-5-5"

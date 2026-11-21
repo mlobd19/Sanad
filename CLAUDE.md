@@ -103,6 +103,10 @@ compile_translations` ; sinon le test des traductions échoue.
   `paid → refused` (remboursement automatique), `active → cancelled`
   (attestation révoquée). Toute transition passe par `policies/services.py`.
 - Un véhicule ne peut pas être couvert deux fois sur la même période.
+- Immatriculation : enregistrée sous une seule forme (`normalize_plate` : majuscules,
+  sans espaces, ex. `6602BA00`), sinon la règle précédente ne reconnaît pas le
+  véhicule ; affichée par groupes « 66 02 BA 00 » (`formatPlate` dans
+  `lib/format.ts`, `format_plate` pour le PDF et la vérification publique).
 - Sinistre : déclaré par le client (ou, pour un véhicule de flotte, par tout
   membre de l'entreprise, qui reçoit les messages) sur un contrat actif ou échu, date dans la
   période couverte ; `submitted → in_review → closed` (note de clôture

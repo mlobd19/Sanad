@@ -25,7 +25,7 @@ import {
   type RegistrationScan,
   type Vehicle,
 } from "@/lib/api";
-import { date, daysUntil, money, num } from "@/lib/format";
+import { cleanPlate, date, daysUntil, formatPlate, money, num, plateInput } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
 import { useLoad } from "@/lib/useLoad";
@@ -282,9 +282,9 @@ function FleetTab({ selection, setSelection, onCompare }: {
                 <tr key={v.id} className={selection.includes(v.id) ? "selected" : undefined}>
                   <td className="act">
                     <input type="checkbox" className="check" checked={selection.includes(v.id)} disabled={!selectable(v)}
-                      onChange={() => toggle(v.id)} aria-label={t("selectVehicle", { plate: v.reference })} />
+                      onChange={() => toggle(v.id)} aria-label={t("selectVehicle", { plate: formatPlate(v.reference) })} />
                   </td>
-                  <td data-label={t("plate")}><bdi className="plate" dir="ltr">{v.reference}</bdi></td>
+                  <td data-label={t("plate")}><bdi className="plate" dir="ltr">{formatPlate(v.reference)}</bdi></td>
                   <td data-label={t("vehicle")}>
                     {vehicleDetails(v.attributes, t, lang).map((d, i) => (
                       <span key={i}>{i > 0 && " · "}<bdi>{d}</bdi></span>
@@ -331,7 +331,7 @@ function AddVehicleCard({ onAdded }: { onAdded: () => void }) {
     setBusy(true);
     setError("");
     try {
-      await api("company/fleet", { body: { reference: plate, attributes: { make, fiscal_power: power, usage } } });
+      await api("company/fleet", { body: { reference: cleanPlate(plate), attributes: { make, fiscal_power: power, usage } } });
       setPlate("");
       setMake("");
       setPower("");
@@ -347,14 +347,15 @@ function AddVehicleCard({ onAdded }: { onAdded: () => void }) {
     <form className="card" onSubmit={submit}>
       <h3 className="card-title">{t("addVehicleTitle")}</h3>
       <ScanRegistration onRead={(f: RegistrationScan) => {
-        if (f.reference) setPlate(f.reference);
+        if (f.reference) setPlate(plateInput(f.reference));
         if (f.make) setMake(f.make);
         if (f.fiscal_power) setPower(String(f.fiscal_power));
       }} />
       <div className="form-grid">
         <div className="field">
           <label htmlFor="v-plate">{t("plate")}</label>
-          <input id="v-plate" className="input" dir="ltr" value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} required />
+          <input id="v-plate" className="input plate-input" dir="ltr" value={plate} onChange={(e) => setPlate(plateInput(e.target.value))}
+            required autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="66 02 BA 00" />
         </div>
         <div className="field">
           <label htmlFor="v-make">{t("make")}</label>
@@ -425,7 +426,7 @@ function ImportCard({ onImported }: { onImported: () => void }) {
             <ul className="import-errors">
               {result.errors.map((e) => (
                 <li key={e.line}><strong>{t("lineN", { line: num(e.line, lang) })}</strong>
-                  {e.plate && <> · <bdi dir="ltr">{e.plate}</bdi></>} : {e.message}</li>
+                  {e.plate && <> · <bdi dir="ltr">{formatPlate(e.plate)}</bdi></>} : {e.message}</li>
               ))}
             </ul>
           )}
@@ -540,7 +541,7 @@ function QuotesTab({ selection, verified, onBackToFleet, onPaid }: {
               <table className="mini">
                 <tbody>
                   {o.lines.map((l) => (
-                    <tr key={l.asset_id}><td><bdi dir="ltr">{l.plate}</bdi></td><td className="num">{money(l.premium, lang)}</td></tr>
+                    <tr key={l.asset_id}><td><bdi dir="ltr">{formatPlate(l.plate)}</bdi></td><td className="num">{money(l.premium, lang)}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -608,7 +609,7 @@ function OrderPayment({ order, verified, onPaid, onCancel }: {
             <tbody>
               {order.policies.map((p) => (
                 <tr key={p.id}>
-                  <td><bdi dir="ltr">{p.plate}</bdi><span className="sub">{p.insurer} · {p.product}</span></td>
+                  <td><bdi dir="ltr">{formatPlate(p.plate)}</bdi><span className="sub">{p.insurer} · {p.product}</span></td>
                   <td className="num">{money(p.premium, lang)}</td>
                 </tr>
               ))}
@@ -723,7 +724,7 @@ function ContractsTab({ onDeclare }: { onDeclare: (policyId: number) => void }) 
                 const left = daysUntil(p.ends_on);
                 return (
                   <tr key={p.id}>
-                    <td data-label={t("plate")}><bdi className="plate" dir="ltr">{p.plate}</bdi></td>
+                    <td data-label={t("plate")}><bdi className="plate" dir="ltr">{formatPlate(p.plate)}</bdi></td>
                     <td data-label={t("insurer")}><strong>{p.insurer}</strong><span className="sub">{p.product}</span></td>
                     <td data-label={t("colPremium")}><strong className="num">{money(p.premium, lang)}</strong></td>
                     <td data-label={t("colStatus")}>
@@ -747,7 +748,7 @@ function ContractsTab({ onDeclare }: { onDeclare: (policyId: number) => void }) 
                     <td data-label={t("colActions")}>
                       {claimable(p) && (
                         <button type="button" className="btn outline small-btn" onClick={() => onDeclare(p.id)}
-                          aria-label={t("declareClaimFor", { plate: p.plate })}>
+                          aria-label={t("declareClaimFor", { plate: formatPlate(p.plate) })}>
                           {t("declareClaim")}
                         </button>
                       )}
@@ -812,7 +813,7 @@ function ClaimsTab({ declareFor, setDeclareFor }: {
                 <option value="">{t("claimPickVehicle")}</option>
                 {eligible.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.plate} · {p.insurer} · {p.product}{p.status === "expired" ? ` (${t("status_expired")})` : ""}
+                    {formatPlate(p.plate)} · {p.insurer} · {p.product}{p.status === "expired" ? ` (${t("status_expired")})` : ""}
                   </option>
                 ))}
               </select>
@@ -852,7 +853,7 @@ function ClaimsTab({ declareFor, setDeclareFor }: {
                     {c.declared_by && <span className="sub">{t("declaredBy", { name: c.declared_by })}</span>}
                   </td>
                   <td data-label={t("vehicle")}>
-                    <bdi className="plate" dir="ltr">{c.plate}</bdi>
+                    <bdi className="plate" dir="ltr">{formatPlate(c.plate)}</bdi>
                     <span className="sub">{c.insurer}</span>
                   </td>
                   <td data-label={t("colOccurred")} className="num">

@@ -313,3 +313,7 @@ table.mini .sub, .doc-row .sub { display: block; color: var(--muted); font-size:
 .entry .chev { margin-inline-start: auto; color: var(--green); flex-shrink: 0; transform: scaleX(-1); }
 [dir="rtl"] .entry .chev { transform: none; }
 .staff-link { align-self: center; color: var(--muted); font-size: 13px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; }
+
+/* Saisie d'une immatriculation : capitales et groupes bien visibles (66 02 BA 00). */
+.plate-input { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.04em; text-transform: uppercase; }
+.plate-input::placeholder { font-weight: 600; letter-spacing: 0.04em; }

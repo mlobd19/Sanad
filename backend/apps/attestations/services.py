@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.models import record
+from apps.policies.models import format_plate
 
 from . import signing
 from .models import Attestation, AttestationCounter
@@ -88,7 +89,7 @@ def check(token: str) -> dict:
         "status": status,
         "message": message,
         "number": payload["n"],
-        "plate": payload["p"],
+        "plate": format_plate(payload["p"]),
         "insurer": policy.product.insurer.name,
         "cover": policy.product.name,
         "valid_from": payload["f"],

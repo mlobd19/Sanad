@@ -11,7 +11,7 @@ import { KhaimaMark } from "@/components/Logo";
 import { App, ErrorBox, Loading, StatusPill, TopBar } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
 import { ApiError, downloadFile } from "@/lib/api";
-import { date } from "@/lib/format";
+import { date, formatPlate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
 
@@ -92,7 +92,7 @@ export default function ContractPage() {
               <div className="body">
                 {qr ? <img className="qr" src={qr} alt="QR code" /> : <div className="qr" aria-hidden="true" />}
                 <div className="kv">
-                  <div><span>{t("plate")}</span><strong><bdi>{policy.plate}</bdi></strong></div>
+                  <div><span>{t("plate")}</span><strong><bdi dir="ltr">{formatPlate(policy.plate)}</bdi></strong></div>
                   <div><span>{t("validUntil")}</span><strong>{date(policy.ends_on, lang)}</strong></div>
                   <div>
                     <span>{t("insurer")}</span>
@@ -135,7 +135,7 @@ export default function ContractPage() {
           policy && (
             <section className="card">
               <div className="between">
-                <span className="plate"><bdi>{policy.plate}</bdi></span>
+                <span className="plate"><bdi dir="ltr">{formatPlate(policy.plate)}</bdi></span>
                 <StatusPill status={policy.status} />
               </div>
               <span className="ink2">{policy.insurer} · {policy.product}</span>

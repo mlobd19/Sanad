@@ -1,4 +1,5 @@
 import calendar
+import re
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -14,6 +15,22 @@ def add_months(start: date, months: int) -> date:
     month = month_index % 12 + 1
     day = min(start.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
+
+
+# Immatriculation mauritanienne : 4 chiffres, 2 lettres, 2 chiffres (wilaya), ex. 6602BA00.
+MAURITANIAN_PLATE = re.compile(r"^(\d{2})(\d{2})([A-Z]{2})(\d{2})$")
+
+
+def normalize_plate(value: str) -> str:
+    """Forme enregistrée d'une plaque : majuscules, sans espaces ni tirets (« 6602 ba-00 » → « 6602BA00 »).
+    Une seule forme par véhicule : sinon la règle « pas deux contrats sur la même période » ne le reconnaîtrait pas."""
+    return re.sub(r"[\s\-.·/]+", "", (value or "").upper())
+
+
+def format_plate(value: str) -> str:
+    """Affichage : « 6602BA00 » → « 66 02 BA 00 ». Les autres formats (plaque étrangère, provisoire…) restent tels quels."""
+    match = MAURITANIAN_PLATE.match(normalize_plate(value))
+    return " ".join(match.groups()) if match else (value or "")
 
 
 class InsuredAsset(models.Model):

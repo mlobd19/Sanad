@@ -44,3 +44,27 @@ export function month(period: string, lang: Lang): string {
 export function percent(rate: string | number, lang: Lang): string {
   return new Intl.NumberFormat(lang === "ar" ? "ar-MR" : "fr-FR", { style: "percent", maximumFractionDigits: 2 }).format(Number(rate));
 }
+
+// --- Immatriculations ----------------------------------------------------------------------
+// Mauritanie : 4 chiffres, 2 lettres, 2 chiffres (wilaya). Enregistrée « 6602BA00 », affichée « 66 02 BA 00 ».
+
+/** Forme enregistrée : majuscules, sans espaces ni tirets. */
+export function cleanPlate(value: string): string {
+  return (value ?? "").toUpperCase().replace(/[\s\-.·/]+/g, "");
+}
+
+/** Affichage : « 6602BA00 » → « 66 02 BA 00 » ; tout autre format reste tel quel. */
+export function formatPlate(value: string): string {
+  const m = cleanPlate(value).match(/^(\d{2})(\d{2})([A-Z]{2})(\d{2})$/);
+  return m ? m.slice(1).join(" ") : value ?? "";
+}
+
+/** Pendant la saisie : lettres en capitales et groupes posés au fil de la frappe (« 6602ba0 » → « 66 02 BA 0 »).
+ *  Une plaque d'un autre format est seulement mise en capitales. */
+export function plateInput(raw: string): string {
+  const value = cleanPlate(raw).replace(/[^0-9A-Z]/g, "");
+  const m = value.match(/^(\d{0,2})(\d{0,2})([A-Z]{0,2})(\d{0,2})$/);
+  const fits = m && (m[2] === "" || m[1].length === 2) && (m[3] === "" || m[2].length === 2)
+    && (m[4] === "" || m[3].length === 2);
+  return fits ? m.slice(1).filter(Boolean).join(" ") : raw.toUpperCase();
+}

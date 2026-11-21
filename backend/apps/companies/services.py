@@ -21,7 +21,7 @@ from apps.accounts.storage import detect_document_type
 from apps.audit.models import record
 from apps.notifications.service import notify
 from apps.policies import services as policy_services
-from apps.policies.models import Claim, InsuredAsset, Order, Policy, Quote
+from apps.policies.models import Claim, InsuredAsset, Order, Policy, Quote, normalize_plate
 
 from .models import Company, CompanyDocument, Membership, normalize_identifier
 
@@ -207,7 +207,7 @@ def fleet(user):
 
 def add_vehicle(user, reference: str, attributes: dict) -> InsuredAsset:
     company, _ = member_company(user)
-    plate = (reference or "").strip().upper().replace(" ", "")
+    plate = normalize_plate(reference)
     if not 4 <= len(plate) <= 20:
         raise ValidationError("Immatriculation manquante ou invalide.")
     try:

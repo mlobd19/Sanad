@@ -8,7 +8,7 @@ import { InsurerLogo } from "@/components/InsurerLogo";
 import { KhaimaMark, Wordmark } from "@/components/Logo";
 import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
 import { api, type Policy } from "@/lib/api";
-import { addDays, date, daysUntil } from "@/lib/format";
+import { addDays, date, daysUntil, formatPlate } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useHasToken, useSpace } from "@/lib/spaces";
 
@@ -32,7 +32,7 @@ function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
           <div className="iconbox"><Icon name="car" size={24} strokeWidth={2} /></div>
         )}
         <div className="grow stack" style={{ gap: 2 }}>
-          <span className="plate"><bdi>{p.plate}</bdi></span>
+          <span className="plate"><bdi dir="ltr">{formatPlate(p.plate)}</bdi></span>
           <span className="ink2" style={{ fontSize: 14 }}>{p.insurer} · {p.product}</span>
         </div>
         <StatusPill status={p.status} />

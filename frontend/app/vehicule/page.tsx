@@ -8,6 +8,7 @@ import { Icon } from "@/components/Icon";
 import { ScanRegistration } from "@/components/ScanRegistration";
 import { App, Stepper, TopBar } from "@/components/Shell";
 import { api, ApiError, type Asset, type RegistrationScan } from "@/lib/api";
+import { cleanPlate, formatPlate, plateInput } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
 
@@ -35,7 +36,7 @@ export default function VehiclePage() {
 
   // Champs lus sur la carte grise : seuls les champs trouvés remplacent la saisie.
   function prefill(fields: RegistrationScan) {
-    if (fields.reference) setPlate(fields.reference);
+    if (fields.reference) setPlate(plateInput(fields.reference));
     if (fields.make) setMake(fields.make);
     if (fields.fiscal_power) setPower(String(fields.fiscal_power));
   }
@@ -46,7 +47,7 @@ export default function VehiclePage() {
     setError("");
     try {
       const asset = await api<Asset>("assets", {
-        body: { kind: "vehicle", reference: plate, attributes: { fiscal_power: Number(power), usage, make } },
+        body: { kind: "vehicle", reference: cleanPlate(plate), attributes: { fiscal_power: Number(power), usage, make } },
       });
       router.push(`/devis/${asset.id}`);
     } catch (err) {
@@ -70,7 +71,7 @@ export default function VehiclePage() {
                 <div className="row">
                   <div className="iconbox"><Icon name="car" size={24} strokeWidth={2} /></div>
                   <div className="grow stack" style={{ gap: 2 }}>
-                    <span className="plate"><bdi>{a.reference}</bdi></span>
+                    <span className="plate"><bdi dir="ltr">{formatPlate(a.reference)}</bdi></span>
                     <span className="small muted">{String(a.attributes.make || "")} {a.attributes.fiscal_power} CV</span>
                   </div>
                   <span style={{ color: "var(--green)", fontWeight: 700, fontSize: 14 }}>{t("seeQuotes")}</span>
@@ -85,8 +86,10 @@ export default function VehiclePage() {
           <ScanRegistration onRead={prefill} />
           <div className="field">
             <label htmlFor="plate">{t("plate")}</label>
-            <input id="plate" className="input" value={plate} onChange={(e) => setPlate(e.target.value)} required dir="ltr" autoCapitalize="characters" />
-            <span className="small muted">{t("plateHint")}</span>
+            <input id="plate" className="input plate-input" value={plate} onChange={(e) => setPlate(plateInput(e.target.value))}
+              required dir="ltr" autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="66 02 BA 00"
+              aria-describedby="plate-hint" />
+            <span id="plate-hint" className="small muted">{t("plateHint")}</span>
           </div>
           <div className="field">
             <label htmlFor="make">{t("make")}</label>
