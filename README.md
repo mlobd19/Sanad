@@ -45,12 +45,12 @@ le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 
 | Adresse | Pour qui |
 | --- | --- |
-| `/` | Visiteur : page d'accueil (Particulier, Entreprise, Assureur partenaire, lien « Équipe Sanad »). Client connecté : son accueil. |
+| `/` | Visiteur : page d'accueil (Particulier, Entreprise, Assureur partenaire, lien « Espace admin »). Client connecté : son accueil. |
 | `/connexion` | **Page de connexion unique**, onglet « Particulier » (téléphone + code SMS) |
 | `/connexion?espace=pro` | Même page, onglet « Professionnel » (assureurs et entreprises : email + mot de passe + code SMS) |
 | `/connexion/mot-de-passe-oublie` | Mot de passe oublié (comptes professionnels) |
 | `/entreprise`, `/assureur` | Espaces professionnels ; `/entreprise/inscription` pour créer un compte entreprise |
-| `/admin/` | Back-office de l'équipe (téléphone + mot de passe + code SMS) |
+| `/admin/` | Back-office de l'équipe, « Espace admin » (téléphone + mot de passe + code SMS) ; après déconnexion, retour à `/` |
 
 Après connexion, chacun arrive dans son espace selon son rôle (`frontend/lib/spaces.ts`) ;
 un compte qui ouvre l'espace d'un autre rôle est renvoyé dans le sien. Les anciennes

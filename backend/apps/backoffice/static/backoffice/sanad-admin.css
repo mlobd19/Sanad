@@ -243,3 +243,5 @@ a.sn-btn-danger:hover { background: #861d1d; color: #fff; }
   margin-top: 16px;
 }
 .sn-resend .button, .sn-resend a { min-height: 44px; display: inline-flex; align-items: center; }
+.sn-back { text-align: center; margin: 16px 0 0; }
+.sn-back a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }

@@ -122,6 +122,19 @@ def test_staff_account_locks_after_repeated_bad_passwords(staff, settings):
     assert not [m for m in MemoryBackend.outbox if m["to"] == "+22230000000"]
 
 
+def test_logout_returns_to_sanad_home(admin_client):
+    resp = admin_client.post("/admin/logout/")
+    assert resp.status_code == 302 and resp.url == "/"
+    assert admin_client.get("/admin/").status_code == 302  # session bien fermée
+
+
+def test_login_pages_link_back_to_sanad(staff):
+    client = Client()
+    assert b'href="/">' in client.get("/admin/login/").content
+    client.post("/admin/login/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
+    assert b'href="/">' in client.get("/admin/login/code/").content
+
+
 def test_sms_step_can_be_disabled_in_development_only(staff, settings):
     settings.BACKOFFICE_SMS_CODE = False
     resp = Client().post("/admin/login/?next=/admin/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})

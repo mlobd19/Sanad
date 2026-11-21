@@ -57,6 +57,7 @@ class SanadAdminSite(admin.AdminSite):
     site_title = _("Sanad · back-office")
     index_title = _("Tableau de bord")
     index_template = "admin/sanad_index.html"
+    login_template = "admin/sanad_login.html"  # connexion Django + lien « Retour à Sanad »
     enable_nav_sidebar = False  # l'accueil et le fil d'Ariane suffisent : toute la largeur pour les tableaux
 
     # --- Connexion : mot de passe, puis code SMS ------------------------------------------
@@ -81,6 +82,14 @@ class SanadAdminSite(admin.AdminSite):
             extra_context=context, authentication_form=self.login_form or AdminAuthenticationForm,
             template_name=self.login_template or "admin/login.html",
         )(request)
+
+    @method_decorator(never_cache)
+    def logout(self, request, extra_context=None):
+        """Déconnexion : retour à l'accueil de Sanad (lien « Espace admin »), pas la page générique de Django."""
+        from django.contrib.auth.views import LogoutView
+
+        request.current_app = self.name
+        return LogoutView.as_view(next_page="/")(request)
 
     @method_decorator(never_cache)
     def login_code(self, request):

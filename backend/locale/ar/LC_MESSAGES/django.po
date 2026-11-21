@@ -1121,3 +1121,6 @@ msgstr "إعادة إرسال الرمز"
 
 msgid "Recommencer la connexion"
 msgstr "إعادة تسجيل الدخول"
+
+msgid "Retour à Sanad"
+msgstr "العودة إلى سند"
