@@ -91,6 +91,10 @@ compile_translations` ; sinon le test des traductions échoue.
     jamais coder une redirection liée au rôle ailleurs. `/connexion` a deux
     onglets (Particulier : `OtpLogin` ; Professionnel : `ProAuth`) ; les
     anciennes `/assureur/connexion` et `/entreprise/connexion` redirigent.
+  - Illustration du véhicule : `VehicleIllustration.tsx` (7 silhouettes originales,
+    toujours gris métallisé, aucun logo de constructeur) ; type de carrosserie
+    déduit de « marque et modèle » côté backend (`policies/body_types.py`,
+    champ `body_type` de l'API), sans aucun champ de plus dans le formulaire.
   - Composants partagés : `components/Shell.tsx` (TopBar, Stepper, BottomNav…),
     `Logo.tsx` (logo khaïma), `InsurerLogo.tsx`, `OtpLogin.tsx`, `ProAuth.tsx`,
     `ClaimForm.tsx`.

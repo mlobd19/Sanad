@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from apps.accounts.api import UserSerializer
 from apps.accounts.services import LoginError
 from apps.policies.api import ClaimSerializer, PolicySerializer, claim_error, django_errors, logo_url, truthy
+from apps.policies.body_types import body_type
 from apps.policies.models import Order, Policy
 from apps.policies.services import parse_duration, parse_statuses
 
@@ -136,6 +137,7 @@ class VehicleSerializer(serializers.Serializer):
             "id": asset.pk,
             "reference": asset.reference,
             "attributes": asset.attributes,
+            "body_type": body_type((asset.attributes or {}).get("make")),
             "policy": None if current is None else {
                 "id": current.pk, "status": current.status, "insurer": current.product.insurer.name,
                 "product": current.product.name, "ends_on": current.ends_on,

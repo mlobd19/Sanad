@@ -7,6 +7,7 @@ import { DURATION_LABEL, DurationPicker, parseMonths } from "@/components/Durati
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { App, ErrorBox, Loading, Stepper, TopBar } from "@/components/Shell";
+import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { api, ApiError, type Asset, type Months, type Policy, type Quote } from "@/lib/api";
 import { date, formatPlate, money } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
@@ -118,13 +119,16 @@ function QuotesScreen() {
       {header}
       <main className="content">
         {asset && (
-          <div className="row ink2" style={{ gap: 10, fontSize: 14, flexWrap: "wrap" }}>
-            <span className="chip"><bdi dir="ltr">{formatPlate(asset.reference)}</bdi></span>
-            <span>
-              {[asset.attributes.make, `${asset.attributes.fiscal_power} CV`, USAGE[String(asset.attributes.usage)] && t(USAGE[String(asset.attributes.usage)])]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
+          <div className="row ink2" style={{ gap: 12, fontSize: 14 }}>
+            <VehicleIllustration type={asset.body_type} width={96} />
+            <div className="stack" style={{ gap: 6, alignItems: "flex-start", minWidth: 0 }}>
+              <span className="chip"><bdi dir="ltr">{formatPlate(asset.reference)}</bdi></span>
+              <span>
+                {[asset.attributes.make, `${asset.attributes.fiscal_power} CV`, USAGE[String(asset.attributes.usage)] && t(USAGE[String(asset.attributes.usage)])]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </div>
           </div>
         )}
         {error && <ErrorBox message={error} onRetry={quotes ? undefined : load} />}

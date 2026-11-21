@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { KhaimaMark, Wordmark } from "@/components/Logo";
+import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
 import { api, type Policy } from "@/lib/api";
 import { addDays, date, daysUntil, formatPlate } from "@/lib/format";
@@ -25,17 +26,16 @@ function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
   const renew = p.status === "active" && !p.renewed && days <= 30;
   return (
     <div className={`card${raised ? " raised" : ""}`}>
-      <div className="row">
-        {p.insurer_logo ? (
-          <InsurerLogo name={p.insurer} logo={p.insurer_logo} size={48} />
-        ) : (
-          <div className="iconbox"><Icon name="car" size={24} strokeWidth={2} /></div>
-        )}
-        <div className="grow stack" style={{ gap: 2 }}>
+      <div className="row" style={{ alignItems: "center" }}>
+        <VehicleIllustration type={p.body_type} width={108} />
+        <div className="grow stack" style={{ gap: 4, minWidth: 0 }}>
           <span className="plate"><bdi dir="ltr">{formatPlate(p.plate)}</bdi></span>
-          <span className="ink2" style={{ fontSize: 14 }}>{p.insurer} · {p.product}</span>
+          <span className="row ink2" style={{ fontSize: 14, gap: 6 }}>
+            <InsurerLogo name={p.insurer} logo={p.insurer_logo} size={24} />
+            <span>{p.insurer} · {p.product}</span>
+          </span>
+          <span><StatusPill status={p.status} /></span>
         </div>
-        <StatusPill status={p.status} />
       </div>
       {renew && (
         <div className="banner sand">

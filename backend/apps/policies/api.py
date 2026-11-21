@@ -14,6 +14,7 @@ from apps.attestations.models import Attestation
 from apps.audit.models import record
 
 from . import registration_scan, services
+from .body_types import body_type
 from .models import Claim, Commission, InsuredAsset, Policy, Quote, normalize_plate
 
 
@@ -36,10 +37,16 @@ def django_errors(fn):
 
 
 class AssetSerializer(serializers.ModelSerializer):
+    # Carrosserie déduite de « marque et modèle », pour l'illustration (aucune question de plus à l'utilisateur).
+    body_type = serializers.SerializerMethodField()
+
     class Meta:
         model = InsuredAsset
-        fields = ["id", "kind", "reference", "attributes", "created_at"]
+        fields = ["id", "kind", "reference", "attributes", "body_type", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+    def get_body_type(self, asset):
+        return body_type((asset.attributes or {}).get("make"))
 
     def validate_reference(self, value):
         plate = normalize_plate(value)
@@ -103,16 +110,20 @@ class PolicySerializer(serializers.ModelSerializer):
     renewed = serializers.SerializerMethodField()
     insurer_logo = serializers.SerializerMethodField()
     duration_months = serializers.IntegerField(source="quote.duration_months", read_only=True)
+    body_type = serializers.SerializerMethodField()
 
     class Meta:
         model = Policy
         fields = [
-            "id", "insurer", "insurer_logo", "product", "plate", "premium", "status", "status_label",
+            "id", "insurer", "insurer_logo", "product", "plate", "body_type", "premium", "status", "status_label",
             "starts_on", "ends_on", "duration_months", "refusal_reason", "attestation", "asset_id", "renewed", "created_at",
         ]
 
     def get_insurer_logo(self, policy):
         return logo_url(policy.product.insurer)
+
+    def get_body_type(self, policy):
+        return body_type((policy.asset.attributes or {}).get("make"))
 
     def get_renewed(self, policy):
         return policy.renewals.exclude(status__in=["refused", "cancelled"]).exists()

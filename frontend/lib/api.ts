@@ -125,7 +125,12 @@ export type User = {
 export const DURATIONS = [3, 6, 12] as const;
 export type Months = (typeof DURATIONS)[number];
 
-export type Asset = { id: number; kind: string; reference: string; attributes: Record<string, string | number> };
+/** Carrosserie déduite de « marque et modèle » (backend : policies/body_types.py), pour l'illustration. */
+export type BodyType = "sedan" | "city" | "suv" | "pickup" | "van" | "minibus" | "generic";
+
+export type Asset = {
+  id: number; kind: string; reference: string; attributes: Record<string, string | number>; body_type: BodyType;
+};
 
 export type Quote = {
   id: number;
@@ -152,6 +157,7 @@ export type Policy = {
   insurer_logo: string | null;
   product: string;
   plate: string;
+  body_type: BodyType;
   premium: number;
   status: PolicyStatus;
   status_label: string;
@@ -226,6 +232,7 @@ export type Vehicle = {
   id: number;
   reference: string;
   attributes: { fiscal_power?: number; usage?: string; make?: string };
+  body_type: BodyType;
   policy: { id: number; status: PolicyStatus; insurer: string; product: string; ends_on: string } | null;
 };
 

@@ -7,6 +7,7 @@ import { ClaimForm } from "@/components/ClaimForm";
 import { DURATION_LABEL, DurationPicker } from "@/components/DurationPicker";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { ScanRegistration } from "@/components/ScanRegistration";
+import { VehicleIllustration } from "@/components/VehicleIllustration";
 import {
   api,
   ApiError,
@@ -284,7 +285,12 @@ function FleetTab({ selection, setSelection, onCompare }: {
                     <input type="checkbox" className="check" checked={selection.includes(v.id)} disabled={!selectable(v)}
                       onChange={() => toggle(v.id)} aria-label={t("selectVehicle", { plate: formatPlate(v.reference) })} />
                   </td>
-                  <td data-label={t("plate")}><bdi className="plate" dir="ltr">{formatPlate(v.reference)}</bdi></td>
+                  <td data-label={t("plate")}>
+                    <span className="row" style={{ gap: 10 }}>
+                      <VehicleIllustration type={v.body_type} width={64} />
+                      <bdi className="plate" dir="ltr">{formatPlate(v.reference)}</bdi>
+                    </span>
+                  </td>
                   <td data-label={t("vehicle")}>
                     {vehicleDetails(v.attributes, t, lang).map((d, i) => (
                       <span key={i}>{i > 0 && " · "}<bdi>{d}</bdi></span>

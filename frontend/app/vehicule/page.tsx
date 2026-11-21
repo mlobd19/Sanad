@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { Icon } from "@/components/Icon";
 import { ScanRegistration } from "@/components/ScanRegistration";
 import { App, Stepper, TopBar } from "@/components/Shell";
+import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { api, ApiError, type Asset, type RegistrationScan } from "@/lib/api";
 import { cleanPlate, formatPlate, plateInput } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -69,7 +69,7 @@ export default function VehiclePage() {
             {assets.map((a) => (
               <Link key={a.id} href={`/devis/${a.id}`} className="card" style={{ textDecoration: "none", color: "inherit" }}>
                 <div className="row">
-                  <div className="iconbox"><Icon name="car" size={24} strokeWidth={2} /></div>
+                  <VehicleIllustration type={a.body_type} width={92} />
                   <div className="grow stack" style={{ gap: 2 }}>
                     <span className="plate"><bdi dir="ltr">{formatPlate(a.reference)}</bdi></span>
                     <span className="small muted">{String(a.attributes.make || "")} {a.attributes.fiscal_power} CV</span>
