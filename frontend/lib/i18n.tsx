@@ -46,6 +46,8 @@ const fr = {
   // Accueil
   hello: "Bonjour",
   helloName: "Bonjour, {name}",
+  evening: "Bonsoir",
+  eveningName: "Bonsoir, {name}",
   myContracts: "Mes contrats",
   noContracts: "Aucun contrat pour l'instant. Assurez votre véhicule en quelques minutes.",
   subscribe: "Souscrire une assurance",
@@ -504,6 +506,8 @@ const ar: Record<Key, string> = {
   resend: "إعادة إرسال الرمز",
   hello: "مرحبا",
   helloName: "مرحبا، {name}",
+  evening: "مساء الخير",
+  eveningName: "مساء الخير، {name}",
   myContracts: "عقودي",
   noContracts: "لا توجد عقود بعد. أمّن سيارتك في دقائق.",
   subscribe: "اشترك في تأمين",

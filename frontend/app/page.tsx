@@ -118,8 +118,30 @@ function Landing() {
   );
 }
 
+/** « Bonsoir » de 19 h à 5 h (heure du téléphone), « Bonjour » le reste de la journée. */
+const EVENING_FROM = 19;
+const MORNING_FROM = 5;
+
+function isEvening(now: Date = new Date()): boolean {
+  const hour = now.getHours();
+  return hour >= EVENING_FROM || hour < MORNING_FROM;
+}
+
+/** Suit l'heure : la salutation change d'elle-même si l'écran reste ouvert à 19 h ou à 5 h. */
+function useEvening(): boolean {
+  const [evening, setEvening] = useState(false);
+  useEffect(() => {
+    const update = () => setEvening(isEvening());
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return evening;
+}
+
 function CustomerHome() {
   const { t, lang, setLang } = useI18n();
+  const evening = useEvening();
   const { user } = useSpace("customer");
   const [policies, setPolicies] = useState<Policy[] | null>(null);
   const [error, setError] = useState("");
@@ -153,7 +175,7 @@ function CustomerHome() {
           </div>
         </div>
         <div className="stack" style={{ gap: 4 }}>
-          <h1>{firstName ? t("helloName", { name: `⁨${firstName}⁩` }) : t("hello")}</h1>
+          <h1>{firstName ? t(evening ? "eveningName" : "helloName", { name: `⁨${firstName}⁩` }) : t(evening ? "evening" : "hello")}</h1>
           {active.length > 0 && (
             <span className="sub">
               {t("activeCount", { count: active.length })}
