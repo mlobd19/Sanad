@@ -7,7 +7,7 @@ qrcode[pil]==8.2
 pillow==13.0.0
 celery==5.7.0
 redis==8.1.0
-gunicorn==23.0.0
+gunicorn==27.0.1
 fpdf2==2.9.0
 uharfbuzz==0.57.0
 anthropic==2.12.0
