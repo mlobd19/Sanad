@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from .models import KycDocument, User
 from . import identity, services
-from .services import LoginError, OtpError, request_otp, verify_otp
+from .services import LoginError, OtpError, OtpRateLimited, request_otp, verify_otp
 
 
 
@@ -36,6 +36,8 @@ class OtpRequestView(APIView):
     def post(self, request):
         try:
             request_otp(request.data.get("phone", ""))
+        except OtpRateLimited as exc:
+            return Response({"detail": exc.messages[0], "code": "sms_rate_limited"}, status=429)
         except DjangoValidationError as exc:
             return Response({"detail": exc.messages[0]}, status=400)
         return Response({"detail": "Code envoyé par SMS."}, status=202)

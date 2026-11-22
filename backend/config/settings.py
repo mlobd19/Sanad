@@ -142,6 +142,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.TokenAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    # Adresse IP des limites de débit : nombre de relais de confiance devant Django. 0 = l'en-tête
+    # X-Forwarded-For est ignoré (impossible à falsifier). En ligne : le nombre exact de relais
+    # (hébergeur, Next.js…) ; DRF lit alors l'adresse ajoutée par le dernier relais, jamais celle du client.
+    "NUM_PROXIES": int(env("NUM_PROXIES", 0)),
     "DEFAULT_THROTTLE_RATES": {
         "otp": env("OTP_THROTTLE_RATE", "5/hour"),
         "verify": "120/minute",
@@ -159,6 +163,8 @@ CURRENCY = "MRU"
 
 OTP_TTL_SECONDS = int(env("OTP_TTL_SECONDS", 300))
 OTP_MAX_ATTEMPTS = int(env("OTP_MAX_ATTEMPTS", 5))
+# Codes SMS envoyés à un même numéro par heure, tous parcours confondus (en plus de la limite par IP).
+OTP_MAX_SMS_PER_PHONE_PER_HOUR = int(env("OTP_MAX_SMS_PER_PHONE_PER_HOUR", 5))
 
 # Comptes professionnels (agents assureurs) : email + mot de passe + code SMS.
 PRO_LOGIN_MAX_FAILURES = int(env("PRO_LOGIN_MAX_FAILURES", 5))

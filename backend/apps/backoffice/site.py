@@ -44,10 +44,14 @@ class PasswordThenSmsLoginView(LoginView):
     def form_valid(self, form):
         if not settings.BACKOFFICE_SMS_CODE:  # développement uniquement (interdit en production)
             return super().form_valid(form)
-        from apps.accounts.services import staff_send_code
+        from apps.accounts.services import OtpRateLimited, staff_send_code
 
         user = form.get_user()
-        staff_send_code(user)
+        try:
+            staff_send_code(user)
+        except OtpRateLimited:
+            form.add_error(None, gettext("Trop de codes demandés pour ce numéro. Réessayez dans une heure."))
+            return self.form_invalid(form)
         self.request.session[PENDING_LOGIN] = {"user": user.pk, "at": int(time.time()), "next": self.get_success_url()}
         return HttpResponseRedirect(reverse("admin:login_code"))
 
@@ -95,7 +99,7 @@ class SanadAdminSite(admin.AdminSite):
     def login_code(self, request):
         """2e étape : code reçu par SMS. Valable OTP_TTL_SECONDS ; renvoi possible après une minute."""
         from apps.accounts.models import User
-        from apps.accounts.services import LoginError, mask_phone, staff_send_code, staff_verify_code
+        from apps.accounts.services import LoginError, OtpRateLimited, mask_phone, staff_send_code, staff_verify_code
 
         pending = request.session.get(PENDING_LOGIN)
         user = User.objects.filter(pk=pending["user"], is_active=True, is_staff=True).first() if pending else None
@@ -109,9 +113,13 @@ class SanadAdminSite(admin.AdminSite):
             if wait > 0:
                 error = gettext("Patientez %(n)s secondes avant de demander un nouveau code.") % {"n": wait}
             else:
-                staff_send_code(user)
-                request.session[PENDING_LOGIN] = {**pending, "at": int(time.time())}
-                notice = gettext("Nouveau code envoyé.")
+                try:
+                    staff_send_code(user)
+                except OtpRateLimited:
+                    error = gettext("Trop de codes demandés pour ce numéro. Réessayez dans une heure.")
+                else:
+                    request.session[PENDING_LOGIN] = {**pending, "at": int(time.time())}
+                    notice = gettext("Nouveau code envoyé.")
         elif request.method == "POST":
             try:
                 user = staff_verify_code(user.pk, request.POST.get("code", ""))

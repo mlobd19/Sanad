@@ -165,12 +165,12 @@ def _refund(payment: Payment, note: str, actor=None, amount: int | None = None, 
     return refund
 
 
-def refund_policy(policy: Policy, actor=None):
-    """Refus de l'assureur : rembourse la police, seule, même si elle a été payée dans une commande."""
+def refund_policy(policy: Policy, actor=None, note: str = "Refus de l'assureur"):
+    """Police refusée : la rembourse, seule, même si elle a été payée dans une commande."""
     for payment in policy.payments.select_for_update().filter(status=Payment.Status.SUCCEEDED):
-        _refund(payment, note="Refus de l'assureur", actor=actor, policy=policy)
+        _refund(payment, note=note, actor=actor, policy=policy)
     if policy.order_id:
         for payment in Payment.objects.select_for_update().filter(order_id=policy.order_id,
                                                                    status=Payment.Status.SUCCEEDED):
-            _refund(payment, note=f"Refus de l'assureur · police #{policy.pk}", actor=actor,
+            _refund(payment, note=f"{note} · police #{policy.pk}", actor=actor,
                     amount=policy.premium, policy=policy)

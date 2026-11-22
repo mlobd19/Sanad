@@ -151,6 +151,9 @@ def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal
     return policy
 
 
+OVERLAP_REFUSAL = "Véhicule déjà couvert sur cette période : paiement remboursé."
+
+
 def on_payment_confirmed(policy: Policy):
     """Appelé par le module paiements, dans sa transaction."""
     policy = Policy.objects.select_for_update().get(pk=policy.pk)
@@ -159,6 +162,14 @@ def on_payment_confirmed(policy: Policy):
     policy.status = Policy.Status.PAID
     policy.save(update_fields=["status", "updated_at"])
     record("policy.paid", policy)
+    # Un véhicule ne peut pas être couvert deux fois. Vérifié au devis, mais deux brouillons du même
+    # véhicule peuvent être payés l'un après l'autre (ou un particulier et une flotte) : on revérifie ici.
+    # Verrou sur toutes les fiches de cette immatriculation : deux confirmations simultanées passent
+    # l'une après l'autre, et la seconde voit la première.
+    list(InsuredAsset.objects.select_for_update().filter(reference=policy.asset.reference))
+    if _has_overlapping_cover(policy.asset, policy.starts_on, policy.ends_on, exclude=policy):
+        return _refuse(policy, actor=None, reason=OVERLAP_REFUSAL, refund_note="Véhicule déjà couvert",
+                       template="policy_refused_overlap")
     if policy.product.insurer.auto_validate:
         return _activate(policy, actor=None)
     return policy
@@ -214,26 +225,32 @@ def validate_policy(policy: Policy, agent, insurer_reference: str = "") -> Polic
 
 @transaction.atomic
 def refuse_policy(policy: Policy, agent, reason: str) -> Policy:
-    from apps.payments.services import refund_policy
-
     policy = Policy.objects.select_for_update().get(pk=policy.pk)
     _check_agent(agent, policy)
     if policy.status != Policy.Status.PAID:
         raise ValidationError("Seule une police payée peut être refusée.")
     if not reason.strip():
         raise ValidationError("Le motif du refus est obligatoire.")
+    return _refuse(policy, actor=agent, reason=reason.strip())
+
+
+def _refuse(policy: Policy, actor, reason: str, refund_note: str = "Refus de l'assureur",
+            template: str = "policy_refused") -> Policy:
+    """Transition paid → refused, remboursement automatique, client prévenu."""
+    from apps.payments.services import refund_policy
+
     policy.status = Policy.Status.REFUSED
-    policy.decided_by = agent
+    policy.decided_by = actor
     policy.decided_at = timezone.now()
-    policy.refusal_reason = reason.strip()
+    policy.refusal_reason = reason
     policy.save()
-    record("policy.refused", policy, actor=agent, reason=policy.refusal_reason)
-    refund_policy(policy, actor=agent)
+    record("policy.refused", policy, actor=actor, reason=policy.refusal_reason)
+    refund_policy(policy, actor=actor, note=refund_note)
     transaction.on_commit(
         lambda: notify(
             "whatsapp",
             policy.customer.phone,
-            "policy_refused",
+            template,
             {"amount": policy.premium},
             language=policy.customer.language,
         )

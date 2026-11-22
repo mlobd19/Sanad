@@ -42,12 +42,24 @@ class LoginError(Exception):
     pass
 
 
+class OtpRateLimited(ValidationError):
+    """Trop de codes SMS envoyés à ce numéro dans l'heure (protection contre l'envoi massif de SMS)."""
+
+    def __init__(self):
+        super().__init__("Trop de codes demandés pour ce numéro. Réessayez dans une heure.", code="sms_rate_limited")
+
+
 def _hash(phone: str, code: str) -> str:
     key = settings.SECRET_KEY.encode()
     return hmac.new(key, f"{phone}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
 def send_code(phone: str, purpose: str) -> OtpCode:
+    # Limite par numéro, tous parcours confondus (connexion, compte pro, inscription, back-office),
+    # en plus de la limite par adresse IP des API : un numéro ne peut pas être inondé de SMS.
+    since = timezone.now() - timedelta(hours=1)
+    if OtpCode.objects.filter(phone=phone, created_at__gte=since).count() >= settings.OTP_MAX_SMS_PER_PHONE_PER_HOUR:
+        raise OtpRateLimited()
     code = f"{secrets.randbelow(10**6):06d}"
     with transaction.atomic():
         OtpCode.objects.filter(phone=phone, purpose=purpose, used=False).update(used=True)
@@ -164,7 +176,10 @@ def pro_login(email: str, password: str) -> tuple[str, str]:
         raise LoginError(f"Trop de tentatives. Réessayez dans {minutes} minute(s).")
     if not check_password_with_lockout(user, password):
         raise LoginError(BAD_CREDENTIALS)
-    send_code(user.phone, OtpCode.Purpose.PRO)
+    try:
+        send_code(user.phone, OtpCode.Purpose.PRO)
+    except OtpRateLimited as exc:
+        raise LoginError(exc.messages[0]) from None
     challenge = signing.dumps({"u": user.pk}, salt=PRO_CHALLENGE_SALT)
     return challenge, mask_phone(user.phone)
 

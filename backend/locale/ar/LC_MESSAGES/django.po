@@ -1124,3 +1124,6 @@ msgstr "إعادة تسجيل الدخول"
 
 msgid "Retour à Sanad"
 msgstr "العودة إلى سند"
+
+msgid "Trop de codes demandés pour ce numéro. Réessayez dans une heure."
+msgstr "تم طلب رموز كثيرة لهذا الرقم. أعد المحاولة بعد ساعة."

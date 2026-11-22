@@ -20,6 +20,10 @@ TEMPLATES = {
         "fr": "L'assureur n'a pas pu valider votre demande. Vous êtes remboursé de {amount} MRU.",
         "ar": "لم تتمكن شركة التأمين من قبول طلبك. سيتم رد مبلغ {amount} أوقية.",
     },
+    "policy_refused_overlap": {
+        "fr": "Ce véhicule est déjà assuré sur cette période : contrat non émis. Vous êtes remboursé de {amount} MRU.",
+        "ar": "هذه المركبة مؤمَّنة بالفعل خلال هذه الفترة: لم يصدر العقد. سيتم رد مبلغ {amount} أوقية.",
+    },
     "renewal_reminder": {
         "fr": "Votre assurance auto ({plate}) expire dans {days} jour(s). Renouvelez-la sur {platform}.",
         "ar": "ينتهي تأمين سيارتك ({plate}) خلال {days} يوم. جدده على {platform}.",

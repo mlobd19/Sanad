@@ -111,6 +111,10 @@ compile_translations` ; sinon le test des traductions échoue.
 - **DEMO_MODE** (distinct de DEBUG) : simulateurs, comptes démo, `reset_demo`.
   Ne lève aucune autre protection.
 - Tests : `config/settings_test.py` (DEBUG, sans démo ni `.env` local).
+- Codes SMS : 5 par numéro et par heure, tous parcours confondus
+  (`OTP_MAX_SMS_PER_PHONE_PER_HOUR`, dans `accounts.services.send_code`), en plus
+  des limites par adresse IP ; `NUM_PROXIES` = relais de confiance devant Django
+  (0 par défaut : `X-Forwarded-For` ignoré).
 - Jamais de code SMS ni de lien de mot de passe dans les journaux hors DEBUG
   (`notifications/backends.redact`).
 - CI GitHub (`.github/workflows/ci.yml`) : pytest, build, pip-audit, npm audit.
@@ -120,7 +124,9 @@ compile_translations` ; sinon le test des traductions échoue.
 - Cycle de vie d'une police : `draft → paid → active → expired`,
   `paid → refused` (remboursement automatique), `active → cancelled`
   (attestation révoquée). Toute transition passe par `policies/services.py`.
-- Un véhicule ne peut pas être couvert deux fois sur la même période.
+- Un véhicule ne peut pas être couvert deux fois sur la même période : vérifié au
+  devis **et revérifié à la confirmation du paiement** (sinon paid → refused,
+  remboursement automatique).
 - Immatriculation : enregistrée sous une seule forme (`normalize_plate` : majuscules,
   sans espaces, ex. `6602BA00`), sinon la règle précédente ne reconnaît pas le
   véhicule ; affichée par groupes « 66 02 BA 00 » (`formatPlate` dans
