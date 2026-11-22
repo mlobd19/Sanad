@@ -48,7 +48,13 @@ export function enterSpace(router: Navigate, user: Pick<User, "role">) {
 }
 
 /** Déconnexion depuis n'importe quel espace : retour à la page de connexion unique. */
-export function logout(router: Navigate, role?: Role) {
+export async function logout(router: Navigate, role?: Role) {
+  // Le jeton est d'abord supprimé côté serveur : même copié, il ne vaut plus rien.
+  const token = getToken();
+  if (token) {
+    await fetch("/api/auth/logout", { method: "POST", headers: { Authorization: `Token ${token}` } })
+      .catch(() => undefined); // hors ligne : il expirera de lui-même
+  }
   setToken(null);
   router.replace(loginUrl(role));
 }

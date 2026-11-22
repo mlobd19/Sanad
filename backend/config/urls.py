@@ -18,6 +18,8 @@ api = [
     path("auth/pro/verify", accounts.ProVerifyView.as_view()),
     path("auth/pro/password/forgot", accounts.PasswordForgotView.as_view()),
     path("auth/pro/password/reset", accounts.PasswordResetView.as_view()),
+    path("auth/logout", accounts.LogoutView.as_view()),
+    path("auth/logout-others", accounts.LogoutOthersView.as_view()),
     path("me", accounts.MeView.as_view()),
     path("me/documents", accounts.KycDocumentView.as_view()),
     path("me/identity", accounts.IdentityCheckView.as_view()),

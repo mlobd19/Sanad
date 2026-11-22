@@ -1,5 +1,5 @@
-"""Site d'administration de Sanad : connexion en deux étapes (mot de passe puis code SMS),
-accueil « À traiter » et menu organisé par métier."""
+"""Site d'administration de Sanad : connexion en deux étapes (mot de passe puis code de
+l'application d'authentification ; code SMS en DEBUG seulement), accueil « À traiter » et menu par métier."""
 import time
 from datetime import timedelta
 
@@ -29,31 +29,40 @@ SECTIONS = [
     ("money", _("Paiements"), ["payments.Payment", "payments.Refund", "policies.Commission"]),
     ("catalog", _("Catalogue"), ["catalog.Insurer", "catalog.Product"]),
     ("technical", _("Technique"), ["audit.AuditEvent", "payments.CallbackLog", "policies.Quote", "auth.Group",
-                                   "authtoken.TokenProxy"]),
+                                   "accounts.AuthToken"]),
 ]
 
 
-# Connexion en attente du code SMS : {"user": pk, "at": envoi du code, "next": page demandée}.
+# Connexion en attente du second facteur : {"user": pk, "at": début, "next": page demandée, "method": …}.
 PENDING_LOGIN = "sn_backoffice_login"
-RESEND_DELAY = 60  # secondes entre deux envois de code
+RESEND_DELAY = 60  # secondes entre deux envois de code SMS (DEBUG)
+TOTP_PENDING_SECONDS = 15 * 60  # temps laissé pour scanner le QR code ou saisir le code
+TOTP_MAX_TRIES = 5  # codes faux avant de devoir ressaisir le mot de passe
 
 
-class PasswordThenSmsLoginView(LoginView):
-    """1re étape : téléphone et mot de passe corrects → code SMS envoyé, pas encore de session ouverte."""
+class PasswordThenSecondFactorLoginView(LoginView):
+    """1re étape : téléphone et mot de passe corrects → second facteur, pas encore de session ouverte."""
 
     def form_valid(self, form):
-        if not settings.BACKOFFICE_SMS_CODE:  # développement uniquement (interdit en production)
-            return super().form_valid(form)
-        from apps.accounts.services import OtpRateLimited, staff_send_code
+        from apps.accounts.totp import second_factor
 
+        method = second_factor()
+        if method == "off":  # DEBUG seulement (refusé en production)
+            return super().form_valid(form)
         user = form.get_user()
-        try:
-            staff_send_code(user)
-        except OtpRateLimited:
-            form.add_error(None, gettext("Trop de codes demandés pour ce numéro. Réessayez dans une heure."))
-            return self.form_invalid(form)
-        self.request.session[PENDING_LOGIN] = {"user": user.pk, "at": int(time.time()), "next": self.get_success_url()}
-        return HttpResponseRedirect(reverse("admin:login_code"))
+        pending = {"user": user.pk, "at": int(time.time()), "next": self.get_success_url(), "method": method}
+        if method == "sms":  # DEBUG seulement : code affiché dans la console du backend
+            from apps.accounts.services import OtpRateLimited, staff_send_code
+
+            try:
+                staff_send_code(user)
+            except OtpRateLimited:
+                form.add_error(None, gettext("Trop de codes demandés pour ce numéro. Réessayez dans une heure."))
+                return self.form_invalid(form)
+            self.request.session[PENDING_LOGIN] = pending
+            return HttpResponseRedirect(reverse("admin:login_code"))
+        self.request.session[PENDING_LOGIN] = {**pending, "tries": 0}
+        return HttpResponseRedirect(reverse("admin:login_totp"))
 
 
 class SanadAdminSite(admin.AdminSite):
@@ -64,14 +73,18 @@ class SanadAdminSite(admin.AdminSite):
     login_template = "admin/sanad_login.html"  # connexion Django + lien « Retour à Sanad »
     enable_nav_sidebar = False  # l'accueil et le fil d'Ariane suffisent : toute la largeur pour les tableaux
 
-    # --- Connexion : mot de passe, puis code SMS ------------------------------------------
+    # --- Connexion : mot de passe, puis application d'authentification ---------------------
 
     def get_urls(self):
-        return [path("login/code/", self.login_code, name="login_code"), *super().get_urls()]
+        return [
+            path("login/totp/", self.login_totp, name="login_totp"),
+            path("login/code/", self.login_code, name="login_code"),
+            *super().get_urls(),
+        ]
 
     @method_decorator(never_cache)
     def login(self, request, extra_context=None):
-        """Comme AdminSite.login, avec une 2e étape par code SMS (PasswordThenSmsLoginView)."""
+        """Comme AdminSite.login, avec une 2e étape (PasswordThenSecondFactorLoginView)."""
         if request.method == "GET" and self.has_permission(request):
             return HttpResponseRedirect(reverse("admin:index", current_app=self.name))
         from django.contrib.admin.forms import AdminAuthenticationForm
@@ -82,7 +95,7 @@ class SanadAdminSite(admin.AdminSite):
             context[REDIRECT_FIELD_NAME] = reverse("admin:index", current_app=self.name)
         context.update(extra_context or {})
         request.current_app = self.name
-        return PasswordThenSmsLoginView.as_view(
+        return PasswordThenSecondFactorLoginView.as_view(
             extra_context=context, authentication_form=self.login_form or AdminAuthenticationForm,
             template_name=self.login_template or "admin/login.html",
         )(request)
@@ -95,15 +108,60 @@ class SanadAdminSite(admin.AdminSite):
         request.current_app = self.name
         return LogoutView.as_view(next_page="/")(request)
 
-    @method_decorator(never_cache)
-    def login_code(self, request):
-        """2e étape : code reçu par SMS. Valable OTP_TTL_SECONDS ; renvoi possible après une minute."""
+    def _pending_user(self, request, method: str, max_age: int):
+        """Équipier en cours de connexion (mot de passe déjà vérifié), ou None s'il faut recommencer."""
         from apps.accounts.models import User
-        from apps.accounts.services import LoginError, OtpRateLimited, mask_phone, staff_send_code, staff_verify_code
 
         pending = request.session.get(PENDING_LOGIN)
-        user = User.objects.filter(pk=pending["user"], is_active=True, is_staff=True).first() if pending else None
-        if user is None or time.time() - pending["at"] > settings.OTP_TTL_SECONDS * 3:
+        if not pending or pending.get("method") != method or time.time() - pending["at"] > max_age:
+            return pending, None
+        return pending, User.objects.filter(pk=pending["user"], is_active=True, is_staff=True).first()
+
+    def _finish_login(self, request, user, pending):
+        request.session.pop(PENDING_LOGIN, None)
+        auth_login(request, user, backend="apps.accounts.backends.PhonePasswordBackend")
+        return HttpResponseRedirect(pending.get("next") or reverse("admin:index", current_app=self.name))
+
+    @method_decorator(never_cache)
+    def login_totp(self, request):
+        """2e étape : code de l'application d'authentification ; au premier accès, QR code à scanner."""
+        from apps.accounts import totp
+        from apps.audit.models import record
+
+        pending, user = self._pending_user(request, "totp", TOTP_PENDING_SECONDS)
+        if user is None:
+            request.session.pop(PENDING_LOGIN, None)
+            return HttpResponseRedirect(reverse("admin:login", current_app=self.name))
+
+        enrolled = totp.is_enrolled(user)
+        error = ""
+        if request.method == "POST":
+            if totp.verify(user, request.POST.get("code", "")):
+                record("user.login", user, actor=user, method="password+totp", backoffice=True)
+                return self._finish_login(request, user, pending)
+            tries = pending.get("tries", 0) + 1
+            record("user.login_failed", user, step="totp", backoffice=True)
+            if tries >= TOTP_MAX_TRIES:
+                request.session.pop(PENDING_LOGIN, None)
+                return HttpResponseRedirect(reverse("admin:login", current_app=self.name))
+            request.session[PENDING_LOGIN] = {**pending, "tries": tries}
+            error = gettext("Code incorrect. Vérifiez l'heure de votre téléphone et saisissez le code affiché.")
+
+        context = {**self.each_context(request), "title": gettext("Application d'authentification"),
+                   "subtitle": None, "enrolled": enrolled, "error": error}
+        if not enrolled:
+            device = totp.start_enrollment(user)
+            context.update(qr=totp.qr_data_uri(totp.provisioning_uri(device)), secret=device.secret)
+        request.current_app = self.name
+        return TemplateResponse(request, "admin/sanad_login_totp.html", context)
+
+    @method_decorator(never_cache)
+    def login_code(self, request):
+        """2e étape en DEBUG seulement : code reçu par SMS (console). Renvoi possible après une minute."""
+        from apps.accounts.services import LoginError, OtpRateLimited, mask_phone, staff_send_code, staff_verify_code
+
+        pending, user = self._pending_user(request, "sms", settings.OTP_TTL_SECONDS * 3)
+        if user is None:
             request.session.pop(PENDING_LOGIN, None)
             return HttpResponseRedirect(reverse("admin:login", current_app=self.name))
 
@@ -126,9 +184,7 @@ class SanadAdminSite(admin.AdminSite):
             except LoginError:
                 error = gettext("Code incorrect ou expiré. Vérifiez le SMS ou demandez un nouveau code.")
             else:
-                request.session.pop(PENDING_LOGIN, None)
-                auth_login(request, user, backend="apps.accounts.backends.PhonePasswordBackend")
-                return HttpResponseRedirect(pending.get("next") or reverse("admin:index", current_app=self.name))
+                return self._finish_login(request, user, pending)
 
         request.current_app = self.name
         return TemplateResponse(request, "admin/sanad_login_code.html", {

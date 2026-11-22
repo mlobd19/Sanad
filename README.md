@@ -29,7 +29,8 @@ paiement et d'identité, comptes démo et `reset_demo`. Il ne lève aucune autre
 protection de production.
 
 - Back-office : http://localhost:3000/admin/ (servi à travers l'app ; aussi sur :8000/admin/),
-  mot de passe puis code SMS
+  mot de passe puis code d'une application d'authentification (QR code au premier accès ;
+  `BACKOFFICE_2FA=sms` pour un code SMS dans la console, en développement seulement)
 - Les codes SMS s'affichent dans la console (backend de notification `Console`).
 - Tests : `cd backend && pytest`
 
@@ -60,7 +61,7 @@ le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 | `/connexion?espace=pro` | Même page, onglet « Professionnel » (assureurs et entreprises : email + mot de passe + code SMS) |
 | `/connexion/mot-de-passe-oublie` | Mot de passe oublié (comptes professionnels) |
 | `/entreprise`, `/assureur` | Espaces professionnels ; `/entreprise/inscription` pour créer un compte entreprise |
-| `/admin/` | Back-office de l'équipe, « Espace admin » (téléphone + mot de passe + code SMS) ; après déconnexion, retour à `/` |
+| `/admin/` | Back-office de l'équipe, « Espace admin » (téléphone + mot de passe + application d'authentification) ; après déconnexion, retour à `/` |
 
 Après connexion, chacun arrive dans son espace selon son rôle (`frontend/lib/spaces.ts`) ;
 un compte qui ouvre l'espace d'un autre rôle est renvoyé dans le sien. Les anciennes
@@ -82,7 +83,7 @@ superutilisateur : il a les droits métier du groupe « Équipe Sanad ».
 | Particulier (`/`) | `/connexion` | n'importe quel numéro, ex. `36000001` | code SMS (le compte se crée) |
 | Portail assureur (`/assureur`) | `/connexion?espace=pro` | `agent@mar.test` (ou nasr, medina, iman) | mot de passe + code SMS |
 | Espace entreprise (`/entreprise`) | `/connexion?espace=pro` | `entreprise@demo.test` (Entreprise démo SARL, vérifiée) | mot de passe + code SMS |
-| Back-office (`/admin/`) | `/admin/` | `+22230000000` | mot de passe + code SMS |
+| Back-office (`/admin/`) | `/admin/` | `+22230000000` | mot de passe + application d'authentification |
 
 ## Portail assureur
 
@@ -155,8 +156,12 @@ découpée.
 ## Back-office de l'équipe
 
 http://localhost:3000/admin/ (téléphone + mot de passe d'un compte équipe, puis
-code SMS ; `python manage.py createsuperuser`). En français et en arabe (bouton en haut à
-droite), clair ou sombre.
+code à 6 chiffres d'une application d'authentification : Google Authenticator,
+Microsoft Authenticator… ; `python manage.py createsuperuser`). Au premier accès,
+un QR code est à scanner, puis un premier code confirme. Téléphone perdu :
+`python manage.py reset_totp +222XXXXXXXX` (journalisé), un nouveau QR code sera
+proposé. Session de 8 h au plus, fermée avec le navigateur. En français et en
+arabe (bouton en haut à droite), clair ou sombre.
 
 - **Tableau de bord** : ce qui est à traiter (entreprises à vérifier, polices
   payées en attente de l'assureur, remboursements en échec, identités KYC,

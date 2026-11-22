@@ -11,7 +11,7 @@ from apps.audit.models import record
 from apps.backoffice.actions import reason_page
 from apps.backoffice.ui import pill, status_pill
 
-from .models import IdentityCheck, KycDocument, User, format_phone
+from .models import AuthToken, IdentityCheck, KycDocument, User, format_phone
 from .services import send_password_email
 from .storage import private_file_response
 
@@ -203,3 +203,37 @@ class UserAdmin(BaseUserAdmin):
                 self.message_user(request, f"{user} : {exc.messages[0]}", messages.ERROR)
         if sent:
             self.message_user(request, gettext("Invitation envoyée à %(n)s compte(s).") % {"n": sent}, messages.SUCCESS)
+
+
+@admin.register(AuthToken)
+class AuthTokenAdmin(admin.ModelAdmin):
+    """Connexions ouvertes à l'app (un appareil chacune). Lecture seule ; « Fermer » révoque le jeton."""
+
+    list_display = ("user", "created_at", "last_used_at", "expires_at", "user_agent")
+    list_filter = ("user__role",)
+    search_fields = ("user__phone", "user__email", "user__full_name")
+    fields = ("user", "created_at", "last_used_at", "expires_at", "user_agent")
+    readonly_fields = fields
+    actions = ["close_sessions"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description=_("Fermer les connexions sélectionnées"))
+    def close_sessions(self, request, queryset):
+        for token in queryset.select_related("user"):
+            record("user.session_closed", token.user, actor=request.user)
+        count = queryset.delete()[0]
+        self.message_user(request, gettext("%(n)s connexion(s) fermée(s).") % {"n": count}, messages.SUCCESS)
+
+
+# Ancien jeton DRF (sans fin) : remplacé par AuthToken, plus affiché.
+try:
+    from rest_framework.authtoken.models import TokenProxy
+
+    admin.site.unregister(TokenProxy)
+except (ImportError, admin.sites.NotRegistered):
+    pass

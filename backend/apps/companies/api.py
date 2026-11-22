@@ -2,13 +2,13 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import Http404, HttpResponse
 from rest_framework import serializers, status
-from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.api import UserSerializer
 from apps.accounts.services import LoginError
+from apps.accounts.tokens import issue_token
 from apps.policies.api import ClaimSerializer, PolicySerializer, claim_error, django_errors, logo_url, truthy
 from apps.policies.body_types import body_type
 from apps.policies.models import Order, Policy
@@ -54,8 +54,7 @@ class SignupVerifyView(APIView):
             user = services.verify_signup(request.data.get("challenge", ""), request.data.get("code", ""))
         except LoginError as exc:
             return Response({"detail": str(exc)}, status=400)
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({"token": token.key, "user": UserSerializer(user).data})
+        return Response({"token": issue_token(user, request), "user": UserSerializer(user).data})
 
 
 # --- Entreprise, pièces, membres ------------------------------------------------------------------

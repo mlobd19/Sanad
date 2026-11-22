@@ -7,9 +7,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 app = Celery("sanad")
 app.config_from_object("django.conf:settings", namespace="CELERY")
-app.autodiscover_tasks(["apps.policies"])
+app.autodiscover_tasks(["apps.policies", "apps.accounts"])
 
 app.conf.beat_schedule = {
     "rappels-renouvellement": {"task": "apps.policies.tasks.send_renewal_reminders", "schedule": crontab(hour=9, minute=0)},
     "expiration-polices": {"task": "apps.policies.tasks.expire_due_policies", "schedule": crontab(hour=0, minute=5)},
+    "nettoyage-connexions": {"task": "apps.accounts.tasks.purge_expired_tokens", "schedule": crontab(hour=3, minute=0)},
 }

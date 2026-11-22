@@ -1,15 +1,16 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers, status
 from rest_framework.parsers import MultiPartParser
-from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.models import record
 
-from .models import KycDocument, User
 from . import identity, services
+from .models import KycDocument, User
 from .services import LoginError, OtpError, OtpRateLimited, request_otp, verify_otp
+from .tokens import issue_token, revoke_others
 
 
 
@@ -53,8 +54,7 @@ class OtpVerifyView(APIView):
         except (OtpError, DjangoValidationError) as exc:
             message = exc.messages[0] if isinstance(exc, DjangoValidationError) else str(exc)
             return Response({"detail": message}, status=400)
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({"token": token.key, "created": created, "user": UserSerializer(user).data})
+        return Response({"token": issue_token(user, request), "created": created, "user": UserSerializer(user).data})
 
 
 class ProLoginView(APIView):
@@ -84,8 +84,7 @@ class ProVerifyView(APIView):
             user = services.pro_verify(request.data.get("challenge", ""), request.data.get("code", ""))
         except LoginError as exc:
             return Response({"detail": str(exc)}, status=400)
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({"token": token.key, "user": UserSerializer(user).data})
+        return Response({"token": issue_token(user, request), "user": UserSerializer(user).data})
 
 
 class PasswordForgotView(APIView):
@@ -173,3 +172,21 @@ class KycDocumentView(CustomerOnly, APIView):
         except DjangoValidationError as exc:
             return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
         return Response(KycDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
+
+
+class LogoutView(APIView):
+    """Déconnexion : le jeton de cet appareil est supprimé côté serveur (il ne vaut plus rien, même copié)."""
+
+    def post(self, request):
+        if request.auth is not None:
+            request.auth.delete()
+        return Response(status=204)
+
+
+class LogoutOthersView(APIView):
+    """« Déconnecter mes autres appareils » : toutes les connexions du compte sauf celle-ci."""
+
+    def post(self, request):
+        closed = revoke_others(request.user, keep=request.auth)
+        record("user.logout_others", request.user, actor=request.user, closed=closed)
+        return Response({"closed": closed})

@@ -21,7 +21,7 @@ def good_conf(**overrides) -> dict:
         "PAYMENT_PROVIDERS": ["simulated"],
         "PAYMENT_CALLBACK_SECRETS": {"simulated": "secret-de-production-solide"},
         "IDENTITY_PROVIDER": "",
-        "BACKOFFICE_SMS_CODE": True,
+        "BACKOFFICE_2FA": "totp",
         "ATTESTATION_SIGNING_KEY": "graine",
         "DEMO_MODE": True,  # seul fournisseur prêt aujourd'hui : le simulateur, permis en démonstration
         "DEMO_PASSWORD": "Mot-de-passe-demo-2026",
@@ -101,8 +101,9 @@ def test_refuses_simulated_identity_outside_demo_mode():
     assert production_errors(good_conf(IDENTITY_PROVIDER="simulated")) == []  # permis en démonstration
 
 
-def test_refuses_backoffice_without_sms_code():
-    assert refused(good_conf(BACKOFFICE_SMS_CODE=False), "code SMS")
+@pytest.mark.parametrize("method", ["sms", "off", ""])
+def test_totp_is_mandatory_for_the_backoffice_in_production(method):
+    assert refused(good_conf(BACKOFFICE_2FA=method), "BACKOFFICE_2FA")
 
 
 def test_refuses_missing_signing_key():

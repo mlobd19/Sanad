@@ -1,0 +1,38 @@
+{% extends "admin/login.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block content %}
+{% if error %}<p class="errornote" role="alert">{{ error }}</p>{% endif %}
+
+<div id="content-main">
+  {% if enrolled %}
+    <p>{% translate "Saisissez le code à 6 chiffres affiché par votre application d'authentification." %}</p>
+  {% else %}
+    <p><strong>{% translate "Premier accès : protégez votre compte avec une application d'authentification." %}</strong></p>
+    <ol class="sn-totp-steps">
+      <li>{% translate "Ouvrez une application d'authentification (Google Authenticator, Microsoft Authenticator…)." %}</li>
+      <li>{% translate "Scannez ce QR code avec l'application." %}</li>
+      <li>{% translate "Saisissez le code à 6 chiffres qu'elle affiche pour confirmer." %}</li>
+    </ol>
+    <p class="sn-totp-qr"><img src="{{ qr }}" width="200" height="200" alt="{% translate 'QR code à scanner avec l’application d’authentification' %}"></p>
+    <p class="sn-totp-secret">{% translate "Impossible de scanner ? Saisissez cette clé dans l'application :" %}
+      <code dir="ltr">{{ secret }}</code></p>
+  {% endif %}
+
+  <form method="post" id="login-form">{% csrf_token %}
+    <div class="form-row">
+      <label for="id_code" class="required">{% translate "Code de l'application" %}</label>
+      <input type="text" name="code" id="id_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+             autocomplete="one-time-code" dir="ltr" required autofocus>
+    </div>
+    <div class="submit-row">
+      <input type="submit" value="{% translate 'Valider' %}">
+    </div>
+  </form>
+
+  <p class="sn-resend"><a href="{% url 'admin:login' %}">{% translate "Recommencer la connexion" %}</a></p>
+</div>
+<p class="sn-back"><a href="/">{% translate "Retour à Sanad" %}</a></p>
+{% endblock %}

@@ -20,7 +20,6 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from rest_framework.authtoken.models import Token
 
 from apps.audit.models import record
 from apps.notifications.service import notify
@@ -273,8 +272,7 @@ def reset_password(uidb64: str, token: str, password: str) -> User:
     validate_password(password or "", user)
     user.set_password(password)
     user.failed_logins, user.locked_until = 0, None
-    user.save(update_fields=["password", "failed_logins", "locked_until"])
-    Token.objects.filter(user=user).delete()  # ferme les sessions ouvertes avec l'ancien mot de passe
+    user.save(update_fields=["password", "failed_logins", "locked_until"])  # ferme aussi toutes ses connexions
     record("user.password_set", user, actor=user)
     return user
 

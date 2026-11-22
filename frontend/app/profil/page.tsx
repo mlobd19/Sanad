@@ -37,6 +37,8 @@ export default function ProfilePage() {
   const [nni, setNni] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [othersMessage, setOthersMessage] = useState("");
   const [registry, setRegistry] = useState(false);
   const [checking, setChecking] = useState(false);
   const [idResult, setIdResult] = useState<{ tone: "green" | "sand" | "red"; key: Key } | null>(null);
@@ -100,6 +102,20 @@ export default function ProfilePage() {
 
   function logout() {
     signOut(router);
+  }
+
+  // Ferme les connexions des autres téléphones et ordinateurs ; celle-ci reste ouverte.
+  async function logoutOthers() {
+    setClosing(true);
+    setOthersMessage("");
+    try {
+      const r = await api<{ closed: number }>("auth/logout-others", { method: "POST" });
+      setOthersMessage(r.closed > 0 ? t("logoutOthersDone", { n: r.closed }) : t("logoutOthersNone"));
+    } catch {
+      setOthersMessage(t("error"));
+    } finally {
+      setClosing(false);
+    }
   }
 
   if (!user) return <App><Loading /></App>;
@@ -174,6 +190,18 @@ export default function ProfilePage() {
         <section className="card" aria-labelledby="theme-title">
           <h2 id="theme-title" className="eyebrow">{t("theme")}</h2>
           <ThemeChoicePicker />
+        </section>
+
+        <section className="card" aria-labelledby="devices-title">
+          <h2 id="devices-title" className="eyebrow">{t("devicesTitle")}</h2>
+          <p className="small ink2" style={{ margin: 0 }}>{t("devicesHint")}</p>
+          <button type="button" className="btn outline block" onClick={logoutOthers} disabled={closing}>
+            {closing ? <span className="spinner sm" aria-hidden="true" /> : null}
+            {t("logoutOthers")}
+          </button>
+          <div aria-live="polite">
+            {othersMessage && <p className="small" role="status" style={{ margin: 0 }}>{othersMessage}</p>}
+          </div>
         </section>
 
         <button type="button" className="btn outline block" onClick={logout}>{t("logout")}</button>

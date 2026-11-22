@@ -41,8 +41,9 @@ def production_errors(conf: dict) -> list[str]:
 
     if conf.get("IDENTITY_PROVIDER") == "simulated" and not demo:
         errors.append("Le registre d'identité simulé est interdit en production (hors DEMO_MODE).")
-    if not conf.get("BACKOFFICE_SMS_CODE"):
-        errors.append("Le code SMS de connexion au back-office est obligatoire en production.")
+    if conf.get("BACKOFFICE_2FA") != "totp":
+        errors.append("BACKOFFICE_2FA doit valoir « totp » en production : application d'authentification "
+                      "obligatoire pour l'équipe (le code SMS n'est permis qu'en DEBUG).")
     if not conf.get("ATTESTATION_SIGNING_KEY"):
         errors.append("ATTESTATION_SIGNING_KEY est obligatoire en production.")
     if demo and len(conf.get("DEMO_PASSWORD") or "") < 12:

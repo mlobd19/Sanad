@@ -1127,3 +1127,63 @@ msgstr "العودة إلى سند"
 
 msgid "Trop de codes demandés pour ce numéro. Réessayez dans une heure."
 msgstr "تم طلب رموز كثيرة لهذا الرقم. أعد المحاولة بعد ساعة."
+
+msgid "%(n)s connexion(s) fermée(s)."
+msgstr "تم إغلاق %(n)s جلسة."
+
+msgid "Application d'authentification"
+msgstr "تطبيق المصادقة"
+
+msgid "Code de l'application"
+msgstr "رمز التطبيق"
+
+msgid "Code incorrect. Vérifiez l'heure de votre téléphone et saisissez le code affiché."
+msgstr "الرمز غير صحيح. تحقق من ساعة هاتفك وأدخل الرمز المعروض."
+
+msgid "Fermer les connexions sélectionnées"
+msgstr "إغلاق الجلسات المحددة"
+
+msgid "Impossible de scanner ? Saisissez cette clé dans l'application :"
+msgstr "تعذر المسح؟ أدخل هذا المفتاح في التطبيق:"
+
+msgid "Ouvrez une application d'authentification (Google Authenticator, Microsoft Authenticator…)."
+msgstr "افتح تطبيق مصادقة (Google Authenticator أو Microsoft Authenticator…)."
+
+msgid "Premier accès : protégez votre compte avec une application d'authentification."
+msgstr "الدخول الأول: احمِ حسابك بتطبيق مصادقة."
+
+msgid "QR code à scanner avec l’application d’authentification"
+msgstr "رمز QR للمسح بتطبيق المصادقة"
+
+msgid "Saisissez le code à 6 chiffres affiché par votre application d'authentification."
+msgstr "أدخل الرمز المكون من 6 أرقام الذي يعرضه تطبيق المصادقة."
+
+msgid "Saisissez le code à 6 chiffres qu'elle affiche pour confirmer."
+msgstr "أدخل الرمز المكون من 6 أرقام الذي يعرضه للتأكيد."
+
+msgid "Scannez ce QR code avec l'application."
+msgstr "امسح رمز QR هذا بالتطبيق."
+
+msgid "activée le"
+msgstr "فُعّل في"
+
+msgid "appareil"
+msgstr "الجهاز"
+
+msgid "application d'authentification"
+msgstr "تطبيق المصادقة"
+
+msgid "applications d'authentification"
+msgstr "تطبيقات المصادقة"
+
+msgid "connexion"
+msgstr "جلسة"
+
+msgid "connexions"
+msgstr "الجلسات"
+
+msgid "dernière utilisation"
+msgstr "آخر استخدام"
+
+msgid "ouverte le"
+msgstr "فُتحت في"

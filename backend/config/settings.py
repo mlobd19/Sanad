@@ -139,7 +139,8 @@ PRIVATE_MEDIA_ROOT = Path(env("PRIVATE_MEDIA_ROOT") or BASE_DIR / "private_media
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.TokenAuthentication"],
+    # Un jeton par appareil, à durée de vie limitée (apps/accounts/tokens.py) ; 401 quand il expire.
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.accounts.tokens.ExpiringTokenAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     # Adresse IP des limites de débit : nombre de relais de confiance devant Django. 0 = l'en-tête
@@ -169,8 +170,16 @@ OTP_MAX_SMS_PER_PHONE_PER_HOUR = int(env("OTP_MAX_SMS_PER_PHONE_PER_HOUR", 5))
 # Comptes professionnels (agents assureurs) : email + mot de passe + code SMS.
 PRO_LOGIN_MAX_FAILURES = int(env("PRO_LOGIN_MAX_FAILURES", 5))
 PRO_LOGIN_LOCK_MINUTES = int(env("PRO_LOGIN_LOCK_MINUTES", 15))
-# Back-office : code SMS après le mot de passe. Désactivable en développement seulement.
-BACKOFFICE_SMS_CODE = env_bool("BACKOFFICE_SMS_CODE", True)
+# Connexions à l'app : durée de vie du jeton d'un appareil.
+AUTH_TOKEN_TTL_CUSTOMER_DAYS = int(env("AUTH_TOKEN_TTL_CUSTOMER_DAYS", 30))
+AUTH_TOKEN_TTL_PRO_HOURS = int(env("AUTH_TOKEN_TTL_PRO_HOURS", 8))
+
+# Back-office : second facteur après le mot de passe. « totp » (application d'authentification),
+# obligatoire en production ; « sms » (code dans la console) ou « off » : développement (DEBUG) seulement.
+BACKOFFICE_2FA = env("BACKOFFICE_2FA", "totp")
+# Session du back-office : 8 h au plus, et fermée à la fermeture du navigateur.
+SESSION_COOKIE_AGE = 8 * 3600
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 PASSWORD_RESET_TIMEOUT = 72 * 3600  # lien d'invitation ou de réinitialisation : 72 h
 PORTAL_BASE_URL = env("PORTAL_BASE_URL", "http://localhost:3000")  # liens envoyés par email
 

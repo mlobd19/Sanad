@@ -245,3 +245,9 @@ a.sn-btn-danger:hover { background: #861d1d; color: #fff; }
 .sn-resend .button, .sn-resend a { min-height: 44px; display: inline-flex; align-items: center; }
 .sn-back { text-align: center; margin: 16px 0 0; }
 .sn-back a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+
+/* Connexion par application d'authentification (TOTP) */
+.sn-totp-steps { margin: 8px 0 12px; padding-inline-start: 20px; line-height: 1.6; }
+.sn-totp-qr { text-align: center; margin: 12px 0; }
+.sn-totp-qr img { background: #fff; padding: 8px; border-radius: 8px; }
+.sn-totp-secret code { display: inline-block; margin-top: 4px; font-size: 1rem; letter-spacing: .08em; word-break: break-all; }

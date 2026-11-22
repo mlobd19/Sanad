@@ -123,10 +123,19 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.is_pro and not self.email:
             raise ValidationError("Un compte professionnel doit avoir un email.")
 
+    def set_password(self, raw_password):
+        super().set_password(raw_password)
+        self._password_changed = True
+
     def save(self, *args, **kwargs):
         # Un email vide devient NULL (sinon deux comptes sans email violeraient l'unicité).
         self.email = (self.email or "").strip().lower() or None
         super().save(*args, **kwargs)
+        # Nouveau mot de passe (changement, réinitialisation, back-office…) : toutes les connexions
+        # ouvertes avec l'ancien sont fermées, sur tous les appareils.
+        if getattr(self, "_password_changed", False):
+            self._password_changed = False
+            AuthToken.objects.filter(user=self).delete()
 
     def __str__(self):
         return self.full_name or self.phone
@@ -206,3 +215,41 @@ class IdentityCheck(models.Model):
         verbose_name = _("vérification au registre national")
         verbose_name_plural = _("vérifications au registre national")
         ordering = ["-created_at"]
+
+
+class AuthToken(models.Model):
+    """Connexion d'un appareil à l'app (un jeton par appareil), à durée de vie limitée.
+
+    Seule l'empreinte SHA-256 du jeton est enregistrée : une fuite de la base ne donne accès à aucun compte.
+    Durée : 30 jours pour un particulier, 8 h pour un compte professionnel (accounts/tokens.py).
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="auth_tokens", verbose_name=_("compte"))
+    digest = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("ouverte le"))
+    expires_at = models.DateTimeField(db_index=True, verbose_name=_("expire le"))
+    last_used_at = models.DateTimeField(null=True, blank=True, verbose_name=_("dernière utilisation"))
+    user_agent = models.CharField(max_length=200, blank=True, verbose_name=_("appareil"))
+
+    class Meta:
+        verbose_name = _("connexion")
+        verbose_name_plural = _("connexions")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} · {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class TotpDevice(models.Model):
+    """Application d'authentification (TOTP) d'un compte équipe : second facteur du back-office."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp", verbose_name=_("compte"))
+    secret = models.CharField(max_length=64)
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name=_("activée le"))
+    # Dernier pas de 30 s accepté : un même code ne sert jamais deux fois.
+    last_step = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("application d'authentification")
+        verbose_name_plural = _("applications d'authentification")

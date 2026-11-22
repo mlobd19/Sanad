@@ -64,12 +64,18 @@ def test_backoffice_is_served_to_staff_only(admin_client, customer_client, demo)
     assert login.status_code == 200 and b"errornote" in login.content
 
 
+@pytest.fixture
+def sms_mode(settings):
+    """Code SMS au lieu de l'application d'authentification : permis en DEBUG seulement."""
+    settings.DEBUG, settings.BACKOFFICE_2FA = True, "sms"
+
+
 def last_sms_code(phone="+22230000000") -> str:
     sms = [m for m in MemoryBackend.outbox if m["channel"] == "sms" and m["to"] == phone][-1]
     return re.search(r"\b(\d{6})\b", sms["body"]).group(1)
 
 
-def test_staff_logs_in_with_password_then_sms_code(staff):
+def test_staff_logs_in_with_password_then_sms_code(staff, sms_mode):
     client = Client()
     resp = client.post("/admin/login/?next=/admin/policies/policy/",
                        {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
@@ -87,7 +93,7 @@ def test_staff_logs_in_with_password_then_sms_code(staff):
     assert client.get("/admin/login/code/").status_code == 302  # étape terminée : plus de code en attente
 
 
-def test_sms_code_cannot_be_reused_or_brute_forced(staff, settings):
+def test_sms_code_cannot_be_reused_or_brute_forced(staff, settings, sms_mode):
     client = Client()
     client.post("/admin/login/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
     good = last_sms_code()
@@ -98,7 +104,7 @@ def test_sms_code_cannot_be_reused_or_brute_forced(staff, settings):
     assert client.get("/admin/").status_code == 302
 
 
-def test_code_resend_waits_a_minute(staff, monkeypatch):
+def test_code_resend_waits_a_minute(staff, monkeypatch, sms_mode):
     from apps.backoffice import site
 
     client = Client()
@@ -132,11 +138,11 @@ def test_login_pages_link_back_to_sanad(staff):
     client = Client()
     assert b'href="/">' in client.get("/admin/login/").content
     client.post("/admin/login/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
-    assert b'href="/">' in client.get("/admin/login/code/").content
+    assert b'href="/">' in client.get("/admin/login/totp/").content
 
 
-def test_sms_step_can_be_disabled_in_development_only(staff, settings):
-    settings.BACKOFFICE_SMS_CODE = False
+def test_second_factor_can_be_disabled_in_development_only(staff, settings):
+    settings.DEBUG, settings.BACKOFFICE_2FA = True, "off"
     resp = Client().post("/admin/login/?next=/admin/", {"username": "+22230000000", "password": "Equipe-Sanad-2026"})
     assert resp.status_code == 302 and resp.url == "/admin/"
 

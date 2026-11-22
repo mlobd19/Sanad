@@ -13,7 +13,8 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from apps.accounts import services
-from apps.accounts.models import User
+from apps.accounts.models import AuthToken, User
+from apps.accounts.tokens import digest, issue_token
 from apps.notifications.backends import MemoryBackend
 
 from .conftest import login
@@ -134,7 +135,7 @@ def test_sms_only_never_opens_the_agent_account(mar_agent):
     assert data["user"]["id"] != mar_agent.pk
     assert User.objects.filter(phone=mar_agent.phone).count() == 2
     assert client.get("/api/insurer/me").status_code == 403
-    assert not Token.objects.filter(user=mar_agent).exists()
+    assert not AuthToken.objects.filter(user=mar_agent).exists()
 
 
 def test_personal_phone_stays_unique(demo):
@@ -167,7 +168,7 @@ def test_forgot_password_does_not_reveal_accounts(mar_agent):
 
 def test_reset_password_flow(mar_agent):
     client = APIClient()
-    old_session = Token.objects.create(user=mar_agent)
+    old_session = AuthToken.objects.get(digest=digest(issue_token(mar_agent)))
     client.post("/api/auth/pro/password/forgot", {"email": EMAIL}, format="json")
     uid, token = link_from_last_email()
 
@@ -177,7 +178,7 @@ def test_reset_password_flow(mar_agent):
     new = "Nouakchott-Plage-2026"
     ok = client.post("/api/auth/pro/password/reset", {"uid": uid, "token": token, "password": new}, format="json")
     assert ok.status_code == 200
-    assert not Token.objects.filter(key=old_session.key).exists()  # sessions précédentes fermées
+    assert not AuthToken.objects.filter(pk=old_session.pk).exists()  # sessions précédentes fermées
 
     reused = client.post("/api/auth/pro/password/reset", {"uid": uid, "token": token, "password": "Autre-Mot-2026x"},
                          format="json")
@@ -240,6 +241,7 @@ def test_seed_sets_demo_password_only_in_demo_mode(db, settings):
 
 def test_migration_closes_agent_sessions_only(mar_agent, customer_client):
     agent_token = Token.objects.create(user=mar_agent)
+    Token.objects.create(user=User.objects.get(role=User.Role.CUSTOMER))  # ancien jeton DRF d'un particulier
     customer_tokens = Token.objects.exclude(user=mar_agent).count()
     migration = import_module("apps.accounts.migrations.0002_pro_login")
 

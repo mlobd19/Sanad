@@ -52,8 +52,9 @@ compile_translations` ; sinon le test des traductions échoue.
     (ni compte pro, ni compte équipe).
     Codes SMS liés à un usage (`OtpCode.purpose`). Invitation / mot de passe
     oublié par email (lien 72 h). Back-office : téléphone + mot de passe
-    (`backends.PhonePasswordBackend`, verrouillage après 5 échecs) puis code SMS
-    (`backoffice/site.py`, `BACKOFFICE_SMS_CODE`, obligatoire en production).
+    (`backends.PhonePasswordBackend`, verrouillage après 5 échecs) puis
+    application d'authentification (`accounts/totp.py`, `backoffice/site.py`,
+    `BACKOFFICE_2FA`). Connexions à l'app : `accounts/tokens.py`.
     Identité : `identity.py` (registre national ANRPTS derrière une interface ;
     `simulated` en développement, interdit en production ; adaptateur réel à
     écrire avec la documentation de l'ANRPTS). Un désaccord ne refuse jamais
@@ -105,8 +106,8 @@ compile_translations` ; sinon le test des traductions échoue.
 
 - **DEBUG faux par défaut** : le `.env` local porte `DJANGO_DEBUG=1`. Hors DEBUG,
   `config/production.py` refuse de démarrer (clé secrète, PostgreSQL, SMS et
-  e-mails réels, paiement opérationnel avec secret, clé de signature, code SMS
-  du back-office…). Toute nouvelle variable indispensable y ajoute sa règle et
+  e-mails réels, paiement opérationnel avec secret, clé de signature,
+  application d'authentification du back-office…). Toute nouvelle variable indispensable y ajoute sa règle et
   son test (`tests/test_production_settings.py`).
 - **DEMO_MODE** (distinct de DEBUG) : simulateurs, comptes démo, `reset_demo`.
   Ne lève aucune autre protection.
@@ -117,6 +118,19 @@ compile_translations` ; sinon le test des traductions échoue.
   (0 par défaut : `X-Forwarded-For` ignoré).
 - Jamais de code SMS ni de lien de mot de passe dans les journaux hors DEBUG
   (`notifications/backends.redact`).
+- **Connexions à l'app** (`accounts/tokens.py`, modèle `AuthToken`) : un jeton
+  par appareil, seule son empreinte SHA-256 est enregistrée ; 30 jours pour un
+  particulier, 8 h pour un compte pro (`AUTH_TOKEN_TTL_*`). Expiré ou révoqué →
+  401 (l'app renvoie vers `/connexion`). `POST /api/auth/logout` (appelé par
+  `logout()` de `lib/spaces.ts`), `POST /api/auth/logout-others` (Profil).
+  Tout nouveau mot de passe (`User.set_password` puis `save`) ferme toutes les
+  connexions du compte. Nettoyage : tâche Celery quotidienne et
+  `manage.py purge_expired_tokens`. Ne jamais revenir au `Token` DRF.
+- **Back-office** : second facteur par application d'authentification (TOTP,
+  `accounts/totp.py`, un code ne sert qu'une fois, 5 essais) ; QR code au premier
+  accès. `BACKOFFICE_2FA=totp` obligatoire en production ; `sms` ou `off`
+  seulement en DEBUG. Téléphone perdu : `manage.py reset_totp <téléphone>`
+  (audit « totp.reset »). Session : 8 h, fermée avec le navigateur.
 - CI GitHub (`.github/workflows/ci.yml`) : pytest, build, pip-audit, npm audit.
 
 ## Règles métier à respecter
