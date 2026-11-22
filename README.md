@@ -234,7 +234,7 @@ services ; les vues API ne contiennent pas de logique métier.
 | `policies` | Biens assurés, devis, polices et leur cycle de vie, sinistres, commissions |
 | `payments` | Adaptateurs de paiement, callbacks signés et idempotents, remboursements (partiels pour une commande) |
 | `attestations` | Numérotation, signature Ed25519, QR code, vérification publique, révocation |
-| `notifications` | SMS / WhatsApp derrière une interface unique, modèles FR et AR |
+| `notifications` | SMS (et e-mail) derrière une interface unique, modèles FR et AR ; tous les messages aux clients partent par SMS |
 | `audit` | Journal non modifiable de chaque action sensible |
 
 ## Attestation PDF
@@ -306,8 +306,8 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 - **Paiements réels** : `BankilyProvider`, `MasrviProvider`, `SedadProvider` dans
   `apps/payments/providers.py` attendent l'API marchande de chaque opérateur.
   Le simulateur suit le même contrat ; il est refusé en production.
-- **SMS et WhatsApp** : écrire un backend dans `apps/notifications/backends.py`
-  (agrégateur SMS local, fournisseur WhatsApp Business).
+- **SMS** : écrire un backend dans `apps/notifications/backends.py`
+  (agrégateur SMS local). Tous les messages aux clients passent par ce canal.
 - **Stockage des pièces** : stockage objet chiffré en production.
 - **Dépôt des pièces KYC** et **déclaration de sinistre** dans l'app client.
 - **Mode hors ligne** de l'app (service worker).

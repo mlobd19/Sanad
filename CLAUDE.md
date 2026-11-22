@@ -73,7 +73,9 @@ compile_translations` ; sinon le test des traductions échoue.
   - `attestations` : numéro `SN-AAAA-NNNNNN`, signature Ed25519, QR, vérification
     publique `/v/<jeton>`, révocation, PDF bilingue (`pdf.py`, fpdf2 + HarfBuzz
     pour l'arabe ; mention « SPÉCIMEN » tant que `ATTESTATION_SPECIMEN` est vrai)
-  - `notifications` : SMS / WhatsApp derrière une interface, modèles FR + AR
+  - `notifications` : SMS (et e-mail) derrière une interface, modèles FR + AR.
+    **Tous les messages aux clients partent par SMS**, jamais par WhatsApp
+    (attestation, refus, sinistres, rappels de renouvellement).
   - `audit` : journal append-only (`record(...)` pour toute action sensible)
   - `backoffice` : site d'administration de Sanad (`site.py` : tableau de bord
     « À traiter », menu par métier), thème, gabarits, actions avec motif
@@ -214,7 +216,7 @@ profond des en-têtes, fond blanc du QR code et des logos des compagnies.
 3. Mise en ligne (Render : Django + PostgreSQL, Next.js ; code SMS du
    back-office fait)
 4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),
-   fournisseur SMS et WhatsApp Business, envoi d'emails (SMTP)
+   fournisseur SMS, envoi d'emails (SMTP)
 5. Mode hors ligne (service worker)
 
 ### Espace entreprise : décisions du porteur (20/11/2026)

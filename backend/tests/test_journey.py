@@ -80,7 +80,7 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     mine = customer_client.get(f"/api/policies/{policy['id']}").data
     att = mine["attestation"]
     assert att["number"].startswith("SN-") and att["status"] == "valid"
-    assert any(m["channel"] == "whatsapp" and att["number"] in m["body"] for m in outbox)
+    assert any(m["channel"] == "sms" and att["number"] in m["body"] for m in outbox)  # attestation par SMS
 
     assert Commission.objects.get(policy_id=policy["id"]).amount == 3375  # 15 % de 22 500
 

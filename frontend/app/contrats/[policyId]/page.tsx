@@ -64,7 +64,7 @@ export default function ContractPage() {
             </span>
             <div className="stack" style={{ gap: 2 }}>
               <strong style={{ fontFamily: "var(--display)", fontSize: 20 }}>{t("youreInsured")}</strong>
-              <span style={{ fontSize: 14, color: "var(--green-soft)" }}>{t("alsoWhatsapp")}</span>
+              <span style={{ fontSize: 14, color: "var(--green-soft)" }}>{t("alsoSms")}</span>
             </div>
           </div>
         </header>

@@ -14,7 +14,7 @@ def send_renewal_reminders():
             if policy.renewals.exists():
                 continue
             notify(
-                "whatsapp",
+                "sms",
                 policy.customer.phone,
                 "renewal_reminder",
                 {"plate": policy.asset.reference, "days": days},

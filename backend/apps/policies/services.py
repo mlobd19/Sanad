@@ -204,7 +204,7 @@ def _activate(policy: Policy, actor, insurer_reference: str = "") -> Policy:
     attestation = issue_attestation(policy)
     transaction.on_commit(
         lambda: notify(
-            "whatsapp",
+            "sms",  # attestation envoyée par SMS (lien de vérification)
             policy.customer.phone,
             "attestation_issued",
             {"number": attestation.number, "url": attestation.verify_url},
@@ -248,7 +248,7 @@ def _refuse(policy: Policy, actor, reason: str, refund_note: str = "Refus de l'a
     refund_policy(policy, actor=actor, note=refund_note)
     transaction.on_commit(
         lambda: notify(
-            "whatsapp",
+            "sms",
             policy.customer.phone,
             template,
             {"amount": policy.premium},
@@ -365,7 +365,7 @@ def _notify_claim(claim: Claim, template: str, **context):
     # Prévenir celui qui a déclaré (pour une flotte : le membre de l'entreprise, pas forcément le souscripteur).
     person = claim.declared_by if claim.declared_by and claim.declared_by.is_active else claim.policy.customer
     context = {"number": claim.number, "insurer": claim.policy.product.insurer.name, **context}
-    transaction.on_commit(lambda: notify("whatsapp", person.phone, template, context, language=person.language))
+    transaction.on_commit(lambda: notify("sms", person.phone, template, context, language=person.language))
 
 
 def may_declare_claim(user, policy: Policy) -> bool:
