@@ -93,9 +93,6 @@ const fr = {
   usage: "Usage",
   usagePersonal: "Personnel",
   usageCommercial: "Commercial",
-  // Formulaire : les deux seuls usages, avec leur précision
-  usagePersonalFull: "Personnel (trajets privés, famille)",
-  usageCommercialFull: "Commercial (livraisons, marchandises, VTC…)",
   myVehicles: "Mes véhicules",
   addVehicle: "Ajouter un véhicule",
   seeQuotes: "Voir les offres",
@@ -558,8 +555,6 @@ const ar: Record<Key, string> = {
   usage: "الاستعمال",
   usagePersonal: "شخصي",
   usageCommercial: "تجاري",
-  usagePersonalFull: "شخصي (تنقلات خاصة، العائلة)",
-  usageCommercialFull: "تجاري (توصيل، بضائع، نقل بالأجرة عبر التطبيقات…)",
   myVehicles: "سياراتي",
   addVehicle: "إضافة سيارة",
   seeQuotes: "عرض العروض",

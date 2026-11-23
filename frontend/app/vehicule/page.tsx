@@ -14,8 +14,8 @@ import { useSpace } from "@/lib/spaces";
 
 /** Deux usages seulement, pour les particuliers comme pour les flottes. */
 const USAGES = [
-  { value: "personal", key: "usagePersonalFull" },
-  { value: "commercial", key: "usageCommercialFull" },
+  { value: "personal", key: "usagePersonal" },
+  { value: "commercial", key: "usageCommercial" },
 ] as const;
 
 export default function VehiclePage() {
