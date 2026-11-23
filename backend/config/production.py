@@ -41,6 +41,9 @@ def production_errors(conf: dict) -> list[str]:
 
     if conf.get("IDENTITY_PROVIDER") == "simulated" and not demo:
         errors.append("Le registre d'identité simulé est interdit en production (hors DEMO_MODE).")
+    if not conf.get("NUM_PROXIES_EXPLICIT"):
+        errors.append("NUM_PROXIES doit être défini explicitement (nombre de relais devant Django ; "
+                      "1 sur Render) : sinon les limites par adresse IP sont faussées ou contournables.")
     if conf.get("BACKOFFICE_2FA") != "totp":
         errors.append("BACKOFFICE_2FA doit valoir « totp » en production : application d'authentification "
                       "obligatoire pour l'équipe (le code SMS n'est permis qu'en DEBUG).")

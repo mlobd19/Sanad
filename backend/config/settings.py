@@ -10,6 +10,7 @@ from pathlib import Path
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
+from .monitoring import init_sentry
 from .production import DEV_SECRET_KEY, DEV_SIMULATED_SECRET, production_errors
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -147,8 +148,11 @@ REST_FRAMEWORK = {
     # X-Forwarded-For est ignoré (impossible à falsifier). En ligne : le nombre exact de relais
     # (hébergeur, Next.js…) ; DRF lit alors l'adresse ajoutée par le dernier relais, jamais celle du client.
     "NUM_PROXIES": int(env("NUM_PROXIES", 0)),
+    # Valeur explicite exigée en production (config/production.py) : jamais un 0 implicite.
     "DEFAULT_THROTTLE_RATES": {
-        "otp": env("OTP_THROTTLE_RATE", "5/hour"),
+        # Par adresse IP : large, car un opérateur mobile fait partager une même adresse à de nombreux
+        # abonnés. La vraie protection est la limite par numéro (OTP_MAX_SMS_PER_PHONE_PER_HOUR).
+        "otp": env("OTP_THROTTLE_RATE", "60/hour"),
         "verify": "120/minute",
         "pro_login": env("PRO_LOGIN_THROTTLE_RATE", "30/hour"),  # par adresse IP
         "password": env("PASSWORD_THROTTLE_RATE", "10/hour"),
@@ -156,6 +160,8 @@ REST_FRAMEWORK = {
         "identity": env("IDENTITY_THROTTLE_RATE", "5/hour"),  # interrogations du registre national, par compte  # lecture de carte grise : payante, par compte
     },
 }
+
+NUM_PROXIES_EXPLICIT = "NUM_PROXIES" in os.environ  # défini dans l'environnement ou le .env
 
 # --- Métier -----------------------------------------------------------------
 
@@ -243,6 +249,14 @@ if not DEBUG:
             "Configuration de production refusée (DJANGO_DEBUG=1 pour le développement local) :\n- "
             + "\n- ".join(_errors)
         )
+
+# Surveillance des erreurs (Sentry) : seulement si SENTRY_DSN est défini ; aucune donnée personnelle.
+SENTRY_DSN = env("SENTRY_DSN", "")
+SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT", "development" if DEBUG else ("demo" if DEMO_MODE else "production"))
+SENTRY_ENABLED = init_sentry(SENTRY_DSN, SENTRY_ENVIRONMENT)
+
+# L'hébergeur interroge /api/health en interne (HTTP) : pas de redirection vers HTTPS pour elle.
+SECURE_REDIRECT_EXEMPT = [r"^api/health$"]
 
 LOGGING = {
     "version": 1,

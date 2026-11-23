@@ -115,9 +115,16 @@ compile_translations` ; sinon le test des traductions échoue.
   Ne lève aucune autre protection.
 - Tests : `config/settings_test.py` (DEBUG, sans démo ni `.env` local).
 - Codes SMS : 5 par numéro et par heure, tous parcours confondus
-  (`OTP_MAX_SMS_PER_PHONE_PER_HOUR`, dans `accounts.services.send_code`), en plus
-  des limites par adresse IP ; `NUM_PROXIES` = relais de confiance devant Django
-  (0 par défaut : `X-Forwarded-For` ignoré).
+  (`OTP_MAX_SMS_PER_PHONE_PER_HOUR`, dans `accounts.services.send_code`) : la
+  protection principale. Par adresse IP : 60 par heure (`OTP_THROTTLE_RATE`), car
+  une adresse d'opérateur mobile est partagée. `NUM_PROXIES` = relais de
+  confiance devant Django, **obligatoire et explicite en production** (Render : 1).
+- **Surveillance** : Sentry si `SENTRY_DSN` (`config/monitoring.py`,
+  `data_collection` : aucune donnée personnelle) ; alertes e-mail toutes les
+  15 min au groupe « Équipe Sanad » (`backoffice/monitoring.py` : paiement en
+  attente > 1 h, envois en échec) ; `GET /api/health` (base joignable) pour
+  l'hébergeur. Un envoi qui échoue est enregistré (`NotificationFailure`, numéro
+  masqué) et ne fait jamais échouer l'opération qui l'a demandé.
 - Jamais de code SMS ni de lien de mot de passe dans les journaux hors DEBUG
   (`notifications/backends.redact`).
 - **Connexions à l'app** (`accounts/tokens.py`, modèle `AuthToken`) : un jeton

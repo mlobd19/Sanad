@@ -211,6 +211,32 @@ chaque compagnie**, avec son accord. Ils ne sont pas versionnés dans ce dépôt
 Ou un par un dans le back-office : Catalog › Insurers › la compagnie › Logo.
 Sans logo, l'application affiche le sigle de la compagnie.
 
+## Mise en ligne : réglages et surveillance
+
+Sanad refuse de démarrer en production tant qu'un réglage indispensable manque
+(`backend/config/production.py`). En plus de la clé secrète, de PostgreSQL, du
+fournisseur SMS, de l'envoi d'e-mails et de la clé de signature :
+
+- **`NUM_PROXIES`** doit être défini explicitement : nombre de relais devant
+  Django. **Sur Render : `NUM_PROXIES=1`.** Mal réglé, les limites par adresse IP
+  sont faussées (ou contournables avec un en-tête `X-Forwarded-For` inventé).
+- Codes SMS : 5 par numéro et par heure (protection principale) et 60 par
+  adresse IP et par heure (`OTP_THROTTLE_RATE`), car un opérateur mobile fait
+  partager une même adresse à de nombreux abonnés.
+
+Surveillance :
+
+- **Santé** : `GET /api/health` renvoie 200 si la base répond, 503 sinon. À
+  donner comme « Health Check Path » à l'hébergeur (exemptée de la redirection
+  HTTPS).
+- **Erreurs** : Sentry si `SENTRY_DSN` est défini, sans aucune donnée
+  personnelle (ni compte, ni adresse IP, ni corps de requête, ni variables du
+  code ; numéros et codes masqués dans les messages).
+- **Alertes** : toutes les 15 min (Celery beat), un e-mail aux membres du groupe
+  « Équipe Sanad » qui ont une adresse e-mail, si un paiement attend depuis plus
+  d'1 h ou si des SMS ont échoué (back-office › Technique › Envois en échec).
+  Penser à lancer le worker et le beat Celery (`celery -A config worker -B`).
+
 ## Démarrer avec Docker
 
 ```bash

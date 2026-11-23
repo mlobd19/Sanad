@@ -28,8 +28,8 @@ SECTIONS = [
                                   "policies.InsuredAsset"]),
     ("money", _("Paiements"), ["payments.Payment", "payments.Refund", "policies.Commission"]),
     ("catalog", _("Catalogue"), ["catalog.Insurer", "catalog.Product"]),
-    ("technical", _("Technique"), ["audit.AuditEvent", "payments.CallbackLog", "policies.Quote", "auth.Group",
-                                   "accounts.AuthToken"]),
+    ("technical", _("Technique"), ["audit.AuditEvent", "notifications.NotificationFailure", "payments.CallbackLog",
+                                   "policies.Quote", "auth.Group", "accounts.AuthToken"]),
 ]
 
 

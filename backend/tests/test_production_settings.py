@@ -22,6 +22,7 @@ def good_conf(**overrides) -> dict:
         "PAYMENT_CALLBACK_SECRETS": {"simulated": "secret-de-production-solide"},
         "IDENTITY_PROVIDER": "",
         "BACKOFFICE_2FA": "totp",
+        "NUM_PROXIES_EXPLICIT": True,
         "ATTESTATION_SIGNING_KEY": "graine",
         "DEMO_MODE": True,  # seul fournisseur prêt aujourd'hui : le simulateur, permis en démonstration
         "DEMO_PASSWORD": "Mot-de-passe-demo-2026",

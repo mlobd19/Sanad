@@ -9,6 +9,8 @@ from apps.companies import api as companies
 from apps.payments import api as payments
 from apps.policies import api as policies
 
+from .health import health
+
 
 api = [
     # Compte et KYC
@@ -69,6 +71,7 @@ api = [
 
 urlpatterns = [
     path("admin/i18n/", include("django.conf.urls.i18n")),  # choix de la langue (français / arabe)
+    path("api/health", health, name="health"),  # hébergeur : base joignable ? (hors API DRF, sans jeton)
     path("admin/", admin.site.urls),
     path("v/<str:token>", attestations.verify_page, name="verify-page"),
     path("api/", include(api)),

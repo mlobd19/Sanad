@@ -1187,3 +1187,21 @@ msgstr "آخر استخدام"
 
 msgid "ouverte le"
 msgstr "فُتحت في"
+
+msgid "canal"
+msgstr "القناة"
+
+msgid "destinataire (masqué)"
+msgstr "المستلم (مخفي)"
+
+msgid "envoi en échec"
+msgstr "إرسال فاشل"
+
+msgid "envois en échec"
+msgstr "الإرسالات الفاشلة"
+
+msgid "erreur"
+msgstr "الخطأ"
+
+msgid "message"
+msgstr "الرسالة"

@@ -5,8 +5,9 @@ from django.conf import settings
 
 logger = logging.getLogger("notifications")
 
-# Codes SMS (chiffres) et liens (invitation, mot de passe, attestation) : jamais dans les journaux hors DEBUG.
-_SECRETS = re.compile(r"https?://\S+|\b\d{4,8}\b")
+# Codes SMS, numéros de téléphone et liens (invitation, mot de passe, attestation) : jamais dans les journaux
+# hors DEBUG, ni dans les erreurs d'envoi enregistrées.
+_SECRETS = re.compile(r"https?://\S+|\+?\d{4,}")  # liens, codes et numéros de téléphone complets
 
 
 def redact(text: str) -> str:

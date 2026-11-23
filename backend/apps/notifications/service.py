@@ -1,11 +1,19 @@
-"""Envoi de messages (SMS, WhatsApp, e-mail) derrière une interface unique.
+"""Envoi de messages (SMS, e-mail) derrière une interface unique.
 
-Le backend réel (agrégateur SMS local, fournisseur WhatsApp Business) se
-branche via NOTIFICATION_BACKEND sans toucher au code métier.
+Le backend réel (agrégateur SMS local) se branche via NOTIFICATION_BACKEND sans
+toucher au code métier. Un envoi qui échoue est enregistré (NotificationFailure)
+et l'équipe en est prévenue ; il ne fait jamais échouer l'opération qui l'a demandé.
 """
+import logging
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils.module_loading import import_string
+
+from .backends import redact
+from .models import NotificationFailure, mask_recipient
+
+logger = logging.getLogger("notifications")
 
 TEMPLATES = {
     "otp": {
@@ -103,12 +111,22 @@ def render(template: str, language: str, context: dict) -> str:
     return text.format(platform=settings.PLATFORM_NAME, **context)
 
 
-def notify(channel: str, to: str, template: str, context: dict, language: str = "fr"):
+def notify(channel: str, to: str, template: str, context: dict, language: str = "fr") -> bool:
     body = render(template, language, context)
-    if channel == "email":
-        # Les e-mails passent par le système d'envoi de Django (console en dev, SMTP en production).
-        subjects = SUBJECTS[template]
-        subject = (subjects.get(language) or subjects["fr"]).format(platform=settings.PLATFORM_NAME)
-        return send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to]) == 1
-    backend = import_string(settings.NOTIFICATION_BACKEND)()
-    return backend.send(channel=channel, to=to, body=body)
+    error = ""
+    try:
+        if channel == "email":
+            # Les e-mails passent par le système d'envoi de Django (console en dev, SMTP en production).
+            subjects = SUBJECTS[template]
+            subject = (subjects.get(language) or subjects["fr"]).format(platform=settings.PLATFORM_NAME)
+            sent = send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to]) == 1
+        else:
+            backend = import_string(settings.NOTIFICATION_BACKEND)()
+            sent = bool(backend.send(channel=channel, to=to, body=body))
+    except Exception as exc:  # fournisseur injoignable, refus… : enregistré, l'équipe est prévenue
+        sent, error = False, redact(f"{type(exc).__name__}: {exc}")  # jamais de numéro ni de code en clair
+    if not sent:
+        NotificationFailure.objects.create(channel=channel, recipient=mask_recipient(to), template=template,
+                                           error=(error or "refusé par le fournisseur")[:255])
+        logger.warning("Envoi %s en échec (%s) vers %s", channel, template, mask_recipient(to))
+    return sent
