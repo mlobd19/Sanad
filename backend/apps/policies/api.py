@@ -15,7 +15,7 @@ from apps.audit.models import record
 
 from . import registration_scan, services
 from .body_types import body_type
-from .models import Claim, Commission, InsuredAsset, Policy, Quote, normalize_plate
+from .models import Claim, Commission, InsuredAsset, Policy, Quote, VehicleUsage, normalize_plate
 
 
 def django_errors(fn):
@@ -57,6 +57,9 @@ class AssetSerializer(serializers.ModelSerializer):
     def validate_attributes(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError("Objet attendu.")
+        # Personnel ou commercial ; « taxi » n'existe plus. Un usage absent est signalé au devis.
+        if "usage" in value and value["usage"] not in VehicleUsage.values:
+            raise serializers.ValidationError(services.USAGE_ERROR)
         return value
 
 

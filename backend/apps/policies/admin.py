@@ -12,7 +12,7 @@ from apps.backoffice.actions import reason_page
 from apps.backoffice.ui import mru, pill, status_pill
 
 from . import services
-from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Order, Policy, Quote
+from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Order, Policy, Quote, VehicleUsage
 
 
 class ReadOnlyMixin:
@@ -158,12 +158,30 @@ class OrderAdmin(ReadOnlyMixin, admin.ModelAdmin):
         return order.policies.count()
 
 
+class UsageFilter(admin.SimpleListFilter):
+    """Deux usages seulement : personnel ou commercial."""
+
+    title = _("usage")
+    parameter_name = "usage"
+
+    def lookups(self, request, model_admin):
+        return VehicleUsage.choices
+
+    def queryset(self, request, queryset):
+        return queryset.filter(attributes__usage=self.value()) if self.value() else queryset
+
+
 @admin.register(InsuredAsset)
 class InsuredAssetAdmin(ReadOnlyMixin, admin.ModelAdmin):
-    list_display = ("reference", "kind", "owner", "company", "created_at")
-    list_filter = ("kind",)
+    list_display = ("reference", "kind", "usage_display", "owner", "company", "created_at")
+    list_filter = ("kind", UsageFilter)
     search_fields = ("reference", "owner__phone", "company__legal_name")
-    readonly_fields = ("owner", "company", "kind", "reference", "attributes", "created_at")
+    readonly_fields = ("owner", "company", "kind", "reference", "usage_display", "attributes", "created_at")
+
+    @admin.display(description=_("usage"))
+    def usage_display(self, asset):
+        usage = (asset.attributes or {}).get("usage")
+        return VehicleUsage(usage).label if usage in VehicleUsage.values else "—"
 
 
 @admin.register(Quote)

@@ -43,7 +43,9 @@ const TABS: { id: Tab; label: Key }[] = [
   { id: "company", label: "tabCompany" },
 ];
 
-const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial", taxi: "usageTaxi" };
+const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial" };
+/** Choix du formulaire : les deux seuls usages, avec leur précision. */
+const USAGE_CHOICES: Record<string, Key> = { personal: "usagePersonalFull", commercial: "usageCommercialFull" };
 const STATUS_PILL: Record<string, string> = { active: "pill", refused: "pill bad", paid: "pill warn", draft: "pill quiet" };
 const COMPANY_PILL: Record<string, string> = { verified: "pill", pending: "pill warn", rejected: "pill bad" };
 const CLAIM_PILL: Record<string, string> = { submitted: "pill warn", in_review: "pill warn", closed: "pill quiet" };
@@ -378,7 +380,7 @@ function AddVehicleCard({ onAdded }: { onAdded: () => void }) {
         <div className="field">
           <label htmlFor="v-usage">{t("usage")}</label>
           <select id="v-usage" className="input" value={usage} onChange={(e) => setUsage(e.target.value)}>
-            {Object.entries(USAGE).map(([code, key]) => <option key={code} value={code}>{t(key)}</option>)}
+            {Object.entries(USAGE_CHOICES).map(([code, key]) => <option key={code} value={code}>{t(key)}</option>)}
           </select>
         </div>
       </div>

@@ -147,6 +147,10 @@ compile_translations` ; sinon le test des traductions échoue.
 - Cycle de vie d'une police : `draft → paid → active → expired`,
   `paid → refused` (remboursement automatique), `active → cancelled`
   (attestation révoquée). Toute transition passe par `policies/services.py`.
+- **Deux usages de véhicule seulement**, particuliers comme flottes : `personal`
+  (Personnel : trajets privés, famille) et `commercial` (Commercial : livraisons,
+  marchandises, VTC…) — `policies.models.VehicleUsage`. Plus de « taxi » (refusé
+  par l'API ; anciens véhicules et devis passés en commercial, montants inchangés).
 - Un véhicule ne peut pas être couvert deux fois sur la même période : vérifié au
   devis **et revérifié à la confirmation du paiement** (sinon paid → refused,
   remboursement automatique).

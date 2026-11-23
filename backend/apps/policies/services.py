@@ -17,10 +17,18 @@ from apps.audit.models import record
 from apps.catalog.models import DEFAULT_DURATION, DURATIONS, Product
 from apps.notifications.service import notify
 
-from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Policy, Quote, normalize_plate
+from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Policy, Quote, VehicleUsage, normalize_plate
 
 QUOTE_VALIDITY = timedelta(hours=48)
 REQUIRED_VEHICLE_ATTRIBUTES = {"fiscal_power", "usage"}
+USAGE_ERROR = "Usage inconnu : personnel ou commercial."
+
+
+def check_vehicle_usage(usage) -> str:
+    """Usage du véhicule : « personal » ou « commercial » (il n'y a plus de catégorie « taxi »)."""
+    if usage not in VehicleUsage.values:
+        raise ValidationError(USAGE_ERROR, code="invalid_usage")
+    return usage
 
 
 def parse_duration(value) -> int:
@@ -48,6 +56,8 @@ def build_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO, mont
     missing = REQUIRED_VEHICLE_ATTRIBUTES - set(asset.attributes)
     if asset.kind == InsuredAsset.Kind.VEHICLE and missing:
         raise ValidationError(f"Attributs manquants : {', '.join(sorted(missing))}.")
+    if asset.kind == InsuredAsset.Kind.VEHICLE:
+        check_vehicle_usage(asset.attributes.get("usage"))
     products = Product.objects.filter(branch=branch, is_active=True, insurer__is_active=True).prefetch_related(
         "factors"
     ).select_related("insurer")

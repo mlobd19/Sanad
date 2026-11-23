@@ -15,7 +15,7 @@ import { useSpace } from "@/lib/spaces";
 
 const FORMULA_ORDER = ["rc", "tiers-etendu", "tous-risques"];
 
-const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial", taxi: "usageTaxi" };
+const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial" };
 
 function QuotesScreen() {
   const { t, lang } = useI18n();

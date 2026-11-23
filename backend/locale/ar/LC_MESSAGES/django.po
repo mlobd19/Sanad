@@ -1205,3 +1205,12 @@ msgstr "الخطأ"
 
 msgid "message"
 msgstr "الرسالة"
+
+msgid "Personnel (trajets privés, famille)"
+msgstr "شخصي (تنقلات خاصة، العائلة)"
+
+msgid "Commercial (livraisons, marchandises, VTC…)"
+msgstr "تجاري (توصيل، بضائع، نقل بالأجرة عبر التطبيقات…)"
+
+msgid "usage"
+msgstr "الاستعمال"

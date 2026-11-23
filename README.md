@@ -140,7 +140,7 @@ viendront ensuite.
    est prévenu par email. **Avant vérification, pas de paiement** (flotte et
    devis restent possibles).
 4. **Flotte** : ajout à la main ou import CSV
-   (`immatriculation;marque;cv;usage`, usage `personnel`, `commercial` ou `taxi`) ;
+   (`immatriculation;marque;cv;usage`, usage `personnel` ou `commercial`) ;
    les lignes en erreur sont listées.
 5. **Offres groupées** : une compagnie et une formule pour toute la sélection,
    prix par véhicule et total ; **un seul paiement mobile money** par commande.

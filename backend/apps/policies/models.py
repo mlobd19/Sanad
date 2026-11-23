@@ -33,6 +33,13 @@ def format_plate(value: str) -> str:
     return " ".join(match.groups()) if match else (value or "")
 
 
+class VehicleUsage(models.TextChoices):
+    """Deux usages seulement, pour les particuliers comme pour les flottes d'entreprise."""
+
+    PERSONAL = "personal", _("Personnel (trajets privés, famille)")
+    COMMERCIAL = "commercial", _("Commercial (livraisons, marchandises, VTC…)")
+
+
 class InsuredAsset(models.Model):
     """Bien assuré. Générique pour accueillir plus tard un logement ou un voyage."""
 

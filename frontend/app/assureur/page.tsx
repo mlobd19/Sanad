@@ -41,7 +41,7 @@ const KYC_PILL: Record<InsurerPolicy["kyc_status"], string> = {
 
 const STATUS_PILL: Record<string, string> = { active: "pill", refused: "pill bad", paid: "pill warn" };
 
-const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial", taxi: "usageTaxi" };
+const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial" };
 
 const PROVIDERS: Record<string, Key> = {
   simulated: "provider_simulated",

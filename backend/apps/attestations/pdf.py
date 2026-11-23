@@ -29,7 +29,7 @@ RED_TINT = (251, 228, 228)
 PAGE_W, MARGIN = 210, 14
 CONTENT_W = PAGE_W - 2 * MARGIN
 
-USAGE = {"personal": ("Personnel", "شخصي"), "commercial": ("Commercial", "تجاري"), "taxi": ("Taxi", "أجرة")}
+USAGE = {"personal": ("Personnel", "شخصي"), "commercial": ("Commercial", "تجاري")}
 
 
 def _d(value: str | date) -> str:

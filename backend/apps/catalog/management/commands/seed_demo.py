@@ -49,8 +49,7 @@ FACTORS = [
     ("fiscal_power", None, Decimal("0"), Decimal("6"), Decimal("1.0000")),
     ("fiscal_power", None, Decimal("7"), Decimal("10"), Decimal("1.2500")),
     ("fiscal_power", None, Decimal("11"), None, Decimal("1.6000")),
-    ("usage", "commercial", None, None, Decimal("1.4000")),
-    ("usage", "taxi", None, None, Decimal("1.8000")),
+    ("usage", "commercial", None, None, Decimal("1.4000")),  # deux usages : personnel (1) et commercial
 ]
 
 # Compagnies des catalogues de démo précédents, à retirer

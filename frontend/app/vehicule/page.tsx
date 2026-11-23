@@ -12,10 +12,10 @@ import { cleanPlate, formatPlate, plateInput } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
 
+/** Deux usages seulement, pour les particuliers comme pour les flottes. */
 const USAGES = [
-  { value: "personal", key: "usagePersonal" },
-  { value: "commercial", key: "usageCommercial" },
-  { value: "taxi", key: "usageTaxi" },
+  { value: "personal", key: "usagePersonalFull" },
+  { value: "commercial", key: "usageCommercialFull" },
 ] as const;
 
 export default function VehiclePage() {
@@ -101,7 +101,7 @@ export default function VehiclePage() {
           </div>
           <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
             <legend style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{t("usage")}</legend>
-            <div className="segmented" role="radiogroup">
+            <div className="segmented" role="radiogroup" aria-label={t("usage")} style={{ gridTemplateColumns: "1fr 1fr" }}>
               {USAGES.map((u) => (
                 <button
                   key={u.value}
@@ -109,7 +109,7 @@ export default function VehiclePage() {
                   role="radio"
                   aria-checked={usage === u.value}
                   className="radio"
-                  style={{ justifyContent: "center", minHeight: 52 }}
+                  style={{ justifyContent: "center", textAlign: "center", minHeight: 52 }}
                   onClick={() => setUsage(u.value)}
                 >
                   {t(u.key)}

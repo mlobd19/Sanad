@@ -27,7 +27,8 @@ from .models import Company, CompanyDocument, Membership, normalize_identifier
 
 SIGNUP_SALT = "sanad.company-signup"
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
-USAGES = {"personal": "personal", "personnel": "personal", "commercial": "commercial", "taxi": "taxi"}
+# Deux usages seulement (personnel, commercial), en français ou en anglais dans l'import CSV.
+USAGES = {"personal": "personal", "personnel": "personal", "commercial": "commercial"}
 MAX_IMPORT_ROWS = 500
 
 
@@ -218,7 +219,7 @@ def add_vehicle(user, reference: str, attributes: dict) -> InsuredAsset:
         raise ValidationError("Puissance fiscale entre 1 et 60 CV.")
     usage = USAGES.get(str(attributes.get("usage", "")).strip().lower())
     if usage is None:
-        raise ValidationError("Usage inconnu : personnel, commercial ou taxi.")
+        raise ValidationError("Usage inconnu : personnel ou commercial.")
     if company.assets.filter(reference__iexact=plate).exists():
         raise ValidationError(f"{plate} est déjà dans la flotte.")
     attrs = {"fiscal_power": power, "usage": usage}
