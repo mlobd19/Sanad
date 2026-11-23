@@ -87,7 +87,7 @@ export default function VehiclePage() {
           <div className="field">
             <label htmlFor="plate">{t("plate")}</label>
             <input id="plate" className="input plate-input" value={plate} onChange={(e) => setPlate(plateInput(e.target.value))}
-              required dir="ltr" autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="66 02 BA 00"
+              required dir="ltr" autoCapitalize="characters" autoComplete="off" spellCheck={false}
               aria-describedby="plate-hint" />
             <span id="plate-hint" className="small muted">{t("plateHint")}</span>
           </div>

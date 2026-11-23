@@ -364,7 +364,7 @@ function AddVehicleCard({ onAdded }: { onAdded: () => void }) {
         <div className="field">
           <label htmlFor="v-plate">{t("plate")}</label>
           <input id="v-plate" className="input plate-input" dir="ltr" value={plate} onChange={(e) => setPlate(plateInput(e.target.value))}
-            required autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="66 02 BA 00" />
+            required autoCapitalize="characters" autoComplete="off" spellCheck={false} />
         </div>
         <div className="field">
           <label htmlFor="v-make">{t("make")}</label>

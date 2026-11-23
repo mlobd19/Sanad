@@ -26,7 +26,6 @@ export function PhoneInput({ id, value, onChange, autoComplete = "tel-national",
         type="tel"
         inputMode="numeric"
         autoComplete={autoComplete}
-        placeholder={t("phonePlaceholder")}
         value={groupPhone(value)}
         onChange={(e) => onChange(localPhone(e.target.value))}
         aria-describedby={describedBy}

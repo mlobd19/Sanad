@@ -383,7 +383,6 @@ table.mini .sub, .doc-row .sub { display: block; color: var(--muted); font-size:
 
 /* Saisie d'une immatriculation : capitales et groupes bien visibles (66 02 BA 00). */
 .plate-input { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.04em; text-transform: uppercase; }
-.plate-input::placeholder { font-weight: 600; letter-spacing: 0.04em; }
 
 /* Indicateur de chargement dans un bouton plein : même couleur que son texte, dans les deux modes. */
 .btn .spinner.sm { border-top-color: currentColor; }
