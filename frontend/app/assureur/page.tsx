@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type R
 
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
+import { LanguageButton } from "@/components/LanguageButton";
 import {
   api,
   ApiError,
@@ -90,7 +91,7 @@ export default function InsurerPortalPage() {
 }
 
 function Portal({ me }: { me: InsurerMe }) {
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("pending");
   const [decision, setDecision] = useState<Decision | null>(null);
@@ -153,9 +154,7 @@ function Portal({ me }: { me: InsurerMe }) {
             <strong><bdi>{agentName}</bdi></strong>
             {me.agent.full_name && <bdi dir="ltr">{formatPhone(me.agent.phone)}</bdi>}
           </div>
-          <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
-            {lang === "fr" ? "العربية" : "Français"}
-          </button>
+          <LanguageButton />
           <ThemeIconButton />
           <button type="button" className="btn-on-dark" onClick={logout}>{t("logout")}</button>
         </div>

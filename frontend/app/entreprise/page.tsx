@@ -10,6 +10,7 @@ import { ThemeIconButton } from "@/components/ThemeChoice";
 import { PhoneInput } from "@/components/PhoneInput";
 import { ScanRegistration } from "@/components/ScanRegistration";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
+import { LanguageButton } from "@/components/LanguageButton";
 import {
   api,
   ApiError,
@@ -96,7 +97,7 @@ export default function CompanySpacePage() {
 }
 
 function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void> }) {
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("fleet");
   const [selection, setSelection] = useState<number[]>([]);
@@ -143,9 +144,7 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
             <strong><bdi>{member.full_name || member.email}</bdi></strong>
             <span>{t(member.role === "admin" ? "roleAdmin" : "roleManager")}</span>
           </div>
-          <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
-            {lang === "fr" ? "العربية" : "Français"}
-          </button>
+          <LanguageButton />
           <ThemeIconButton />
           <button type="button" className="btn-on-dark" onClick={logout}>{t("logout")}</button>
         </div>

@@ -8,6 +8,7 @@ import { Wordmark } from "@/components/Logo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
 import { OtpLogin, type OtpResult } from "@/components/OtpLogin";
 import { ProLoginForm } from "@/components/ProAuth";
+import { LanguageButton } from "@/components/LanguageButton";
 import { api, setToken } from "@/lib/api";
 import { useI18n, type Key } from "@/lib/i18n";
 import { enterSpace, useRedirectIfLoggedIn, type LoginTab } from "@/lib/spaces";
@@ -27,7 +28,7 @@ export default function LoginPage() {
 }
 
 function Login() {
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
   const [tab, setTab] = useState<LoginTab>(params.get("espace") === "pro" ? "pro" : "particulier");
@@ -65,9 +66,7 @@ function Login() {
             <Wordmark name={t("appName")} size={22} onDark />
           </Link>
           <div className="head-actions">
-            <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
-              {lang === "fr" ? "العربية" : "Français"}
-            </button>
+            <LanguageButton />
             <ThemeIconButton />
           </div>
         </div>

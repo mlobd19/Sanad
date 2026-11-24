@@ -9,6 +9,7 @@ import { KhaimaMark, Wordmark } from "@/components/Logo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
+import { LanguageButton } from "@/components/LanguageButton";
 import { api, type Policy } from "@/lib/api";
 import { addDays, date, daysUntil, formatPlate } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
@@ -68,7 +69,7 @@ export default function HomePage() {
 }
 
 function Landing() {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const entries: { href: string; icon: string; title: Key; hint: Key }[] = [
     { href: "/connexion", icon: "user", title: "entryPersonal", hint: "entryPersonalHint" },
     { href: "/connexion?espace=pro", icon: "briefcase", title: "entryCompany", hint: "entryCompanyHint" },
@@ -80,9 +81,7 @@ function Landing() {
         <div className="between">
           <Wordmark name={t("appName")} size={22} onDark />
           <div className="head-actions">
-            <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")}>
-              {lang === "fr" ? "العربية" : "Français"}
-            </button>
+            <LanguageButton />
             <ThemeIconButton />
           </div>
         </div>
@@ -140,7 +139,7 @@ function useEvening(): boolean {
 }
 
 function CustomerHome() {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const evening = useEvening();
   const { user } = useSpace("customer");
   const [policies, setPolicies] = useState<Policy[] | null>(null);
@@ -168,9 +167,7 @@ function CustomerHome() {
         <div className="between">
           <Wordmark name={t("appName")} size={17} onDark />
           <div className="head-actions">
-            <button type="button" className="btn-on-dark" onClick={() => setLang(lang === "fr" ? "ar" : "fr")} aria-label={t("language")}>
-              FR · ع
-            </button>
+            <LanguageButton />
             <ThemeIconButton />
           </div>
         </div>
