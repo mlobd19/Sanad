@@ -23,7 +23,7 @@ def test_reset_demo_efface_et_recree(settings, logos):
     settings.DEMO_MODE, settings.DEMO_PASSWORD = True, "Mot-de-passe-demo-2026"
     call_command("seed_demo", verbosity=0)
     User.objects.create_user(phone="+22236000000", full_name="Client de test")
-    piece = settings.PRIVATE_MEDIA_ROOT / "kyc" / "piece.jpg"
+    piece = settings.PRIVATE_MEDIA_ROOT / "companies" / "nif.pdf"
     piece.parent.mkdir(parents=True)
     piece.write_bytes(b"x")
 

@@ -114,10 +114,12 @@ export type User = {
   id: number;
   phone: string;
   email: string | null;
+  /** Particulier : nom renvoyé par l'ANRPTS avec l'identité numérique (eID), en latin et, s'il est fourni, en arabe. */
   full_name: string;
+  full_name_ar: string;
   nni: string;
   language: "fr" | "ar";
-  kyc_status: "none" | "pending" | "verified" | "rejected";
+  kyc_status: "none" | "verified";
   role: string;
 };
 
@@ -264,11 +266,6 @@ export type InsurerClaim = Claim & {
 
 /** Sinistre d'un véhicule de la flotte (espace entreprise). */
 export type FleetClaim = Claim & { policy_id: number; plate: string; insurer: string; declared_by: string };
-
-/** Pièce d'identité déposée (le fichier reste privé : jamais d'URL). */
-export type KycDocument = {
-  id: number; kind: "id_card" | "passport"; status: "pending" | "accepted" | "rejected"; uploaded_at: string;
-};
 
 /** Champs lus sur une carte grise ; vides (ou null) quand illisibles. */
 export type RegistrationScan = { reference: string; make: string; fiscal_power: number | null };

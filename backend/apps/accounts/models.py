@@ -8,7 +8,6 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from .storage import PrivateStorage
 
 PHONE_RE = re.compile(r"^\+222\d{8}$")
 
@@ -65,10 +64,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         STAFF = "staff", _("Équipe interne")
 
     class KycStatus(models.TextChoices):
-        NONE = "none", _("Non commencé")
-        PENDING = "pending", _("En vérification")
-        VERIFIED = "verified", _("Vérifié")
-        REJECTED = "rejected", _("Refusé")
+        # Identité vérifiée uniquement par l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS.
+        NONE = "none", _("Non vérifiée")
+        VERIFIED = "verified", _("Vérifiée")
 
     # Un numéro = un seul compte particulier. Le même numéro peut aussi servir de second
     # facteur (SMS) à des comptes professionnels, identifiés eux par leur email.
@@ -77,7 +75,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         _("email professionnel"), null=True, blank=True, unique=True,
         help_text=_("Identifiant des comptes professionnels (agents assureurs), avec mot de passe et code SMS."),
     )
+    # Particuliers : nom renvoyé par l'ANRPTS à la vérification de l'eID (jamais saisi par le client).
     full_name = models.CharField(max_length=120, blank=True, verbose_name=_("nom complet"))
+    full_name_ar = models.CharField(max_length=120, blank=True, verbose_name=_("nom en arabe"))
     nni = models.CharField(_("NNI"), max_length=20, blank=True, db_index=True)
     language = models.CharField(max_length=2, choices=[("fr", "Français"), ("ar", "العربية")], default="fr", verbose_name=_("langue"))
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER, verbose_name=_("rôle"))
@@ -165,55 +165,30 @@ class OtpCode(models.Model):
 
 
 def kyc_upload_path(instance, filename):
+    """Conservée pour les anciennes migrations (pièces d'identité supprimées : vérification par eID)."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     return f"kyc/{instance.user_id}/{uuid.uuid4().hex}.{ext}"
 
 
-class KycDocument(models.Model):
-    class Kind(models.TextChoices):
-        ID_CARD = "id_card", _("Carte d'identité")
-        PASSPORT = "passport", _("Passeport")
-        VEHICLE_REGISTRATION = "vehicle_registration", _("Carte grise")
-
-    class Status(models.TextChoices):
-        PENDING = "pending", _("À vérifier")
-        ACCEPTED = "accepted", _("Accepté")
-        REJECTED = "rejected", _("Refusé")
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="documents", verbose_name=_("compte"))
-    kind = models.CharField(max_length=24, choices=Kind.choices, verbose_name=_("type de pièce"))
-    file = models.FileField(upload_to=kyc_upload_path, storage=PrivateStorage(), verbose_name=_("fichier"))
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, verbose_name=_("statut"))
-    reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name=_("vérifiée par"))
-    review_note = models.CharField(max_length=255, blank=True, verbose_name=_("note de vérification"))
-    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_("déposée le"))
-
-    class Meta:
-        verbose_name = _("pièce d'identité")
-        verbose_name_plural = _("pièces d'identité")
-        ordering = ["-uploaded_at"]
-
-
 class IdentityCheck(models.Model):
-    """Une interrogation du registre national (ANRPTS ou simulateur). Journal, jamais modifié."""
+    """Une vérification de l'identité numérique (eID) auprès de l'ANRPTS ou du simulateur. Journal, jamais modifié."""
 
     class Outcome(models.TextChoices):
-        MATCH = "match", _("Identité confirmée")
-        MISMATCH = "mismatch", _("Nom différent du registre")
-        NOT_FOUND = "not_found", _("NNI inconnu du registre")
-        UNAVAILABLE = "unavailable", _("Registre injoignable")
+        VALID = "valid", _("Identité numérique valide")
+        NO_EID = "no_eid", _("Pas d'identité numérique valide")
+        PHONE_MISMATCH = "phone_mismatch", _("Téléphone de l'eID différent du compte")
+        UNAVAILABLE = "unavailable", _("ANRPTS injoignable")
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="identity_checks", verbose_name=_("compte"))
     provider = models.CharField(max_length=20, verbose_name=_("source"))
     nni = models.CharField(_("NNI"), max_length=20)
-    full_name = models.CharField(max_length=120, verbose_name=_("nom complet"))
-    outcome = models.CharField(max_length=12, choices=Outcome.choices, verbose_name=_("résultat"))
-    reference = models.CharField(max_length=64, blank=True, verbose_name=_("référence du registre"))
+    outcome = models.CharField(max_length=16, choices=Outcome.choices, verbose_name=_("résultat"))
+    reference = models.CharField(max_length=64, blank=True, verbose_name=_("référence ANRPTS"))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("vérifiée le"))
 
     class Meta:
-        verbose_name = _("vérification au registre national")
-        verbose_name_plural = _("vérifications au registre national")
+        verbose_name = _("vérification d'identité numérique")
+        verbose_name_plural = _("vérifications d'identité numérique")
         ordering = ["-created_at"]
 
 

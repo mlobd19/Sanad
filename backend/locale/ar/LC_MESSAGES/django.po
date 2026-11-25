@@ -1214,3 +1214,34 @@ msgstr "تجاري (توصيل، بضائع، نقل بالأجرة عبر ال�
 
 msgid "usage"
 msgstr "الاستعمال"
+
+# Identité numérique (eID Houwiyeti)
+msgid "Non vérifiée"
+msgstr "لم يتم التحقق"
+
+msgid "nom en arabe"
+msgstr "الاسم بالعربية"
+
+msgid "Identité numérique valide"
+msgstr "هوية رقمية صالحة"
+
+msgid "Pas d'identité numérique valide"
+msgstr "لا توجد هوية رقمية صالحة"
+
+msgid "Téléphone de l'eID différent du compte"
+msgstr "هاتف الهوية الرقمية مختلف عن هاتف الحساب"
+
+msgid "ANRPTS injoignable"
+msgstr "تعذر الاتصال بالوكالة الوطنية لسجل السكان والوثائق المؤمنة"
+
+msgid "référence ANRPTS"
+msgstr "مرجع الوكالة الوطنية لسجل السكان"
+
+msgid "vérification d'identité numérique"
+msgstr "التحقق من الهوية الرقمية"
+
+msgid "vérifications d'identité numérique"
+msgstr "عمليات التحقق من الهوية الرقمية"
+
+msgid "Vérifiée uniquement par l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS, depuis le profil du client. Aucune pièce d'identité n'est demandée."
+msgstr "يتم التحقق منها فقط عبر الهوية الرقمية (هويتي) لدى الوكالة الوطنية لسجل السكان والوثائق المؤمنة، من حساب الزبون. لا تُطلب أي وثيقة هوية."

@@ -1,14 +1,13 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework import serializers, status
-from rest_framework.parsers import MultiPartParser
+from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.audit.models import record
 
-from . import identity, services
-from .models import KycDocument, User
+from . import services
+from .models import IdentityCheck, User
 from .services import LoginError, OtpError, OtpRateLimited, request_otp, verify_otp
 from .tokens import issue_token, revoke_others
 
@@ -17,8 +16,9 @@ from .tokens import issue_token, revoke_others
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "phone", "email", "full_name", "nni", "language", "kyc_status", "role"]
-        read_only_fields = ["id", "phone", "email", "kyc_status", "role"]
+        fields = ["id", "phone", "email", "full_name", "full_name_ar", "nni", "language", "kyc_status", "role"]
+        # Le nom d'un particulier vient de l'ANRPTS (eID) : seuls le NNI et la langue se modifient.
+        read_only_fields = ["id", "phone", "email", "full_name", "full_name_ar", "kyc_status", "role"]
 
 
 class CustomerOnly:
@@ -126,52 +126,30 @@ class MeView(APIView):
 
 
 class IdentityCheckView(CustomerOnly, APIView):
-    """Vérification d'identité auprès du registre national (ANRPTS), particuliers uniquement.
+    """Vérification de l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS, particuliers uniquement.
 
-    GET : la vérification automatique est-elle disponible ? POST : lance la vérification
-    avec le NNI et le nom du profil. Erreurs avec un « code » que l'app traduit.
+    POST : vérifie le NNI du profil. Réponse « outcome » : verified, no_eid ou not_verified (message
+    neutre : rien n'indique au client pourquoi). ANRPTS injoignable : 503, code « unavailable ».
     """
 
-    throttle_scope = "identity"
+    throttle_scope = "identity"  # interrogations limitées par compte (évite de tester des NNI en série)
 
-    def get_throttles(self):
-        # Seule l'interrogation du registre est limitée (évite de tester des NNI en série).
-        return super().get_throttles() if self.request.method == "POST" else []
-
-    def get(self, request):
-        return Response({"available": services.identity_check_available()})
+    # Ce que voit l'app : le désaccord de téléphone n'est jamais révélé tel quel.
+    PUBLIC_OUTCOMES = {
+        IdentityCheck.Outcome.VALID: "verified",
+        IdentityCheck.Outcome.NO_EID: "no_eid",
+        IdentityCheck.Outcome.PHONE_MISMATCH: "not_verified",
+    }
 
     def post(self, request):
         try:
-            check = services.verify_identity(request.user)
+            outcome = services.verify_identity(request.user)
         except DjangoValidationError as exc:
             return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
-        except identity.IdentityUnavailable:
-            return Response({"detail": "Le registre national ne répond pas. Réessayez plus tard.",
+        if outcome == IdentityCheck.Outcome.UNAVAILABLE:
+            return Response({"detail": "Service indisponible, réessayez dans quelques minutes.",
                              "code": "unavailable"}, status=503)
-        return Response({"outcome": check.outcome, "user": UserSerializer(request.user).data})
-
-
-class KycDocumentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = KycDocument
-        fields = ["id", "kind", "status", "uploaded_at"]  # jamais le fichier : il reste privé
-
-
-class KycDocumentView(CustomerOnly, APIView):
-    """Pièces d'identité déposées : solution de secours de la vérification au registre."""
-
-    parser_classes = [MultiPartParser]
-
-    def get(self, request):
-        return Response(KycDocumentSerializer(request.user.documents.all(), many=True).data)
-
-    def post(self, request):
-        try:
-            doc = services.upload_kyc_document(request.user, request.data.get("kind", ""), request.FILES.get("file"))
-        except DjangoValidationError as exc:
-            return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
-        return Response(KycDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
+        return Response({"outcome": self.PUBLIC_OUTCOMES[outcome], "user": UserSerializer(request.user).data})
 
 
 class LogoutView(APIView):

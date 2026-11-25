@@ -1,50 +1,24 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.core.exceptions import PermissionDenied, ValidationError
-from django.shortcuts import get_object_or_404
-from django.urls import path, reverse
+from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 from apps.audit.models import record
-from apps.backoffice.actions import reason_page
 from apps.backoffice.ui import pill, status_pill
 
-from .models import AuthToken, IdentityCheck, KycDocument, User, format_phone
+from .models import AuthToken, IdentityCheck, User, format_phone
 from .services import send_password_email
-from .storage import private_file_response
-
-
-class KycDocumentInline(admin.TabularInline):
-    model = KycDocument
-    fk_name = "user"
-    extra = 0
-    can_delete = False
-    fields = ("kind", "open_file", "status_display", "review_note", "uploaded_at")
-    readonly_fields = ("kind", "open_file", "status_display", "review_note", "uploaded_at")
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    @admin.display(description=_("fichier"))
-    def open_file(self, doc):
-        # Fichier privé : ouvert par une vue réservée à l'équipe, jamais par une URL publique.
-        url = reverse("admin:accounts_kycdocument_file", args=[doc.pk])
-        return format_html('<a href="{}" target="_blank" rel="noopener">{}</a>', url, gettext("Ouvrir"))
-
-    @admin.display(description=_("statut"))
-    def status_display(self, doc):
-        return status_pill(doc)
 
 
 class IdentityCheckInline(admin.TabularInline):
-    """Historique des interrogations du registre national : lecture seule."""
+    """Historique des vérifications d'identité numérique (eID) auprès de l'ANRPTS : lecture seule."""
 
     model = IdentityCheck
     extra = 0
     can_delete = False
-    fields = ("created_at", "provider", "nni", "full_name", "outcome_display", "reference")
+    fields = ("created_at", "provider", "nni", "outcome_display", "reference")
     readonly_fields = fields
 
     def has_add_permission(self, request, obj=None):
@@ -80,15 +54,19 @@ class UserAdmin(BaseUserAdmin):
     list_display_links = ("phone_display", "full_name")
     list_filter = (RoleFilter, "kyc_status", "insurer", "is_active")
     search_fields = ("phone", "email", "full_name", "nni")
-    inlines = [IdentityCheckInline, KycDocumentInline]
+    inlines = [IdentityCheckInline]
     fieldsets = (
-        (_("Identité"), {"fields": ("full_name", "phone", "email", "nni", "language")}),
+        (_("Identité"), {"fields": ("full_name", "full_name_ar", "phone", "email", "nni", "language")}),
         (_("Rôle et accès"), {
             "fields": ("role", "insurer", "is_active", "is_staff", "is_superuser", "groups"),
             "description": _("Agent assureur : choisir la compagnie, renseigner l'email, puis envoyer l'invitation "
                              "depuis la liste (action « Envoyer l'invitation »)."),
         }),
-        (_("Vérification d'identité"), {"fields": ("kyc_status",)}),
+        (_("Vérification d'identité"), {
+            "fields": ("kyc_status",),
+            "description": _("Vérifiée uniquement par l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS, "
+                             "depuis le profil du client. Aucune pièce d'identité n'est demandée."),
+        }),
         (_("Sécurité"), {"fields": ("password", "last_login", "failed_logins", "locked_until"),
                          "classes": ("collapse",)}),
     )
@@ -98,15 +76,19 @@ class UserAdmin(BaseUserAdmin):
         "description": _("Pour un agent assureur : laissez le mot de passe vide si le formulaire le permet, "
                          "puis envoyez l'invitation : l'agent choisira lui-même son mot de passe."),
     }),)
-    readonly_fields = ("last_login", "failed_logins")
-    actions = ["mark_kyc_verified", "reject_kyc", "send_invitation"]
+    readonly_fields = ("last_login", "failed_logins", "kyc_status")
+    actions = ["send_invitation"]
+    # Particulier : nom renvoyé par l'ANRPTS avec l'eID, jamais modifié à la main.
+    CUSTOMER_IDENTITY_FIELDS = ("full_name", "full_name_ar")
 
     # Un compte équipe ordinaire (groupe « Équipe Sanad ») ne peut ni s'accorder plus de droits,
     # ni modifier un superutilisateur : seuls les superutilisateurs gèrent les accès.
     ACCESS_FIELDS = ("is_staff", "is_superuser", "groups", "user_permissions")
 
     def get_readonly_fields(self, request, obj=None):
-        fields = super().get_readonly_fields(request, obj)
+        fields = tuple(super().get_readonly_fields(request, obj))
+        if obj is not None and obj.role == User.Role.CUSTOMER:
+            fields = (*fields, *self.CUSTOMER_IDENTITY_FIELDS)
         return fields if request.user.is_superuser else (*fields, *self.ACCESS_FIELDS)
 
     def has_change_permission(self, request, obj=None):
@@ -121,22 +103,6 @@ class UserAdmin(BaseUserAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("insurer", "membership__company")
-
-    def get_urls(self):
-        return [
-            path("piece/<int:doc_id>/", self.admin_site.admin_view(self.document_file_view),
-                 name="accounts_kycdocument_file"),
-            *super().get_urls(),
-        ]
-
-    def document_file_view(self, request, doc_id):
-        """Affiche une pièce d'identité à l'équipe ; chaque consultation est journalisée."""
-        if not self.has_view_permission(request):
-            raise PermissionDenied
-        doc = get_object_or_404(KycDocument, pk=doc_id)
-        response = private_file_response(doc.file)
-        record("kyc.document_viewed", doc, actor=request.user, user_id=doc.user_id)
-        return response
 
     @admin.display(description=_("téléphone"), ordering="phone")
     def phone_display(self, user):
@@ -157,36 +123,6 @@ class UserAdmin(BaseUserAdmin):
     @admin.display(description=_("identité"), ordering="kyc_status")
     def kyc_display(self, user):
         return status_pill(user, "kyc_status")
-
-    @admin.action(description=_("Valider l'identité (KYC)"))
-    def mark_kyc_verified(self, request, queryset):
-        for user in queryset:
-            user.kyc_status = User.KycStatus.VERIFIED
-            user.save(update_fields=["kyc_status"])
-            user.documents.filter(status=KycDocument.Status.PENDING).update(
-                status=KycDocument.Status.ACCEPTED, reviewed_by=request.user
-            )
-            record("kyc.verified", user, actor=request.user)
-        self.message_user(request, gettext("Identité validée pour %(n)s compte(s).") % {"n": queryset.count()},
-                          messages.SUCCESS)
-
-    @admin.action(description=_("Refuser l'identité (KYC)…"))
-    def reject_kyc(self, request, queryset):
-        def apply(user, reason):
-            user.kyc_status = User.KycStatus.REJECTED
-            user.save(update_fields=["kyc_status"])
-            user.documents.filter(status=KycDocument.Status.PENDING).update(
-                status=KycDocument.Status.REJECTED, reviewed_by=request.user, review_note=reason[:255]
-            )
-            record("kyc.rejected", user, actor=request.user, reason=reason)
-
-        return reason_page(
-            request, self, objects=list(queryset), action="reject_kyc",
-            title=gettext("Refuser l'identité"),
-            intro=gettext("Le client ne pourra plus souscrire tant qu'il n'aura pas déposé de pièce valable."),
-            label=gettext("Motif du refus (obligatoire)"), submit=gettext("Refuser l'identité"), apply=apply,
-            done_message=gettext("Identité refusée pour %(n)s compte(s)."),
-        )
 
     @admin.action(description=_("Envoyer l'invitation par email (choix du mot de passe)"))
     def send_invitation(self, request, queryset):

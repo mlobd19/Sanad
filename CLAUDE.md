@@ -45,7 +45,7 @@ compile_translations` ; sinon le test des traductions échoue.
 - `backend/` : Django 5.2 + DRF, **monolithe modulaire** (pas de microservices).
   Chaque app garde ses tables ; la logique métier vit dans `services.py`, jamais
   dans les vues (`api.py`).
-  - `accounts` : utilisateurs, OTP, KYC, rôles `customer` / `insurer_agent` /
+  - `accounts` : utilisateurs, OTP, identité numérique (eID), rôles `customer` / `insurer_agent` /
     `company_member` / `staff`. Particuliers : téléphone + code SMS ; le numéro
     n'est unique que parmi eux. Comptes pro (`User.PRO_ROLES`) : email + mot de
     passe + code SMS ; le SMS seul n'ouvre jamais qu'un compte particulier
@@ -55,10 +55,18 @@ compile_translations` ; sinon le test des traductions échoue.
     (`backends.PhonePasswordBackend`, verrouillage après 5 échecs) puis
     application d'authentification (`accounts/totp.py`, `backoffice/site.py`,
     `BACKOFFICE_2FA`). Connexions à l'app : `accounts/tokens.py`.
-    Identité : `identity.py` (registre national ANRPTS derrière une interface ;
-    `simulated` en développement, interdit en production ; adaptateur réel à
-    écrire avec la documentation de l'ANRPTS). Un désaccord ne refuse jamais
-    automatiquement ; changer nom ou NNI d'une identité vérifiée la réinitialise
+    Identité : **identité numérique eID Houwiyeti vérifiée auprès de l'ANRPTS
+    avec le seul NNI**, plus aucun dépôt de pièce d'identité. `identity.py` :
+    `verify_eid(nni)` → valide (nom latin, nom arabe et téléphone lié s'ils sont
+    fournis) / pas d'eID valide / injoignable (toute panne ou réponse
+    inexploitable) ; `simulated` en DEBUG ou DEMO_MODE, interdit en production ;
+    adaptateur réel à écrire avec la documentation de l'ANRPTS
+    (`IDENTITY_PROVIDER` obligatoire en production). Le profil n'a qu'un champ, le
+    NNI : le nom (`full_name`, `full_name_ar`) vient de l'ANRPTS, jamais de la
+    saisie ; le nom arabe s'affiche en mode arabe et sur la partie arabe du PDF.
+    Téléphone de l'eID ≠ téléphone du compte : rien n'est vérifié, message
+    neutre (`not_verified`), détail au journal `IdentityCheck`. Changer le NNI
+    réinitialise la vérification. Limite : `IDENTITY_THROTTLE_RATE` par compte
   - `companies` : entreprises (NIF, RC, statut de vérification), pièces,
     membres (administrateur / gestionnaire), flotte, devis groupés, commandes ;
     tout part de `services.member_company(user)`
@@ -164,8 +172,11 @@ compile_translations` ; sinon le test des traductions échoue.
   période couverte ; `submitted → in_review → closed` (note de clôture
   obligatoire, envoyée au client). Traité par l'assureur dans son portail,
   ou par l'équipe au back-office en renfort. Photos en stockage privé.
-- Particulier : **identité vérifiée avant tout paiement** (registre national ou
-  pièce validée au back-office) ; devis et police brouillon restent possibles.
+- Particulier : **identité vérifiée avant tout paiement** (eID Houwiyeti auprès
+  de l'ANRPTS, jamais à la main au back-office) ; devis et police brouillon
+  restent possibles. Pas d'eID → « Créez votre identité numérique dans
+  l'application Houwiyeti, puis réessayez » ; injoignable → « Service
+  indisponible, réessayez dans quelques minutes » (FR + AR).
 - Espace entreprise : une entreprise ne voit jamais les données d'une autre ;
   pas de paiement tant qu'elle n'est pas vérifiée (NIF + RC) ; mobile money
   uniquement, plafond `PAYMENT_MAX_AMOUNT`.
@@ -174,7 +185,7 @@ compile_translations` ; sinon le test des traductions échoue.
 - Paiements : ne jamais activer une police sans callback valide (signature,
   montant exact). Le fournisseur `simulated` est interdit en production.
 - Aucune donnée de compte mobile money stockée ; seules les références.
-- Pièces justificatives (identité, NIF / RC) : stockage privé (`PRIVATE_MEDIA_ROOT`,
+- Pièces justificatives (NIF / RC des entreprises) : stockage privé (`PRIVATE_MEDIA_ROOT`,
   `accounts/storage.py`), type vérifié sur le contenu, jamais d'URL publique ;
   ouvertes seulement au back-office, chaque consultation journalisée.
 - Vérification publique : données personnelles **masquées**.
@@ -186,9 +197,10 @@ compile_translations` ; sinon le test des traductions échoue.
 - Catalogue démo (`seed_demo`) : **NASR, MAR, MEDINA Assurances, IMAN Assurance**.
   Agents démo `agent@<code>.test` (`+22220000001` à `+22220000004`), mot de
   passe = `DEMO_PASSWORD`, posé **uniquement en DEMO_MODE** (jamais en dur dans
-  le code). Compte équipe démo : groupe « Équipe Sanad », jamais superutilisateur. Registre d'identité
-  simulé : NNI `1234567890` = « Sidi Mohamed », `000…` inconnu, `999…`
-  injoignable, tout autre NNI à 10 chiffres correspond. **Les primes sont fictives** et
+  le code). Compte équipe démo : groupe « Équipe Sanad », jamais superutilisateur. Registre eID
+  simulé : NNI `1234567890` = « Sidi Mohamed » / « سيدي محمد », `000…` pas d'eID
+  valide, `999…` injoignable, tout autre NNI à 10 chiffres valide avec un nom
+  fictif (toujours le même pour un NNI) ; jamais de téléphone renvoyé. **Les primes sont fictives** et
   marquées `is_indicative` (« Indicatif » dans l'app) : ne jamais les présenter
   comme de vrais tarifs.
 - **Logos des compagnies** : uniquement les fichiers officiels fournis par les
@@ -223,8 +235,8 @@ profond des en-têtes, fond blanc du QR code et des logos des compagnies.
 
 1. Espace entreprise, suite : **voyage**, puis **santé de groupe** (l'auto de la
    flotte est faite ; un plan par produit)
-2. Adaptateur ANRPTS réel (dépôt de pièce en secours, déclaration de
-   sinistre et sinistres de flotte faits)
+2. Adaptateur ANRPTS réel pour l'eID Houwiyeti (`verify_eid`, dès réception de
+   la documentation ; déclaration de sinistre et sinistres de flotte faits)
 3. Mise en ligne (Render : Django + PostgreSQL, Next.js ; code SMS du
    back-office fait)
 4. Vraies intégrations : Bankily / Masrvi / Sedad (API marchandes),

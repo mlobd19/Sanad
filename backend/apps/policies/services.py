@@ -136,8 +136,6 @@ def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal
         raise ValidationError("Ce devis a expiré. Relancez une comparaison.")
     if hasattr(quote, "policy"):
         raise ValidationError("Ce devis a déjà été utilisé.")
-    if customer.kyc_status == customer.KycStatus.REJECTED:
-        raise ValidationError("Votre identité n'a pas pu être vérifiée.")
     today = timezone.localdate()
     starts_on = starts_on or today
     if starts_on < today or starts_on > today + timedelta(days=60):

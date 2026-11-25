@@ -224,7 +224,6 @@ class SanadAdminSite(admin.AdminSite):
             return ""
 
     def _todo(self) -> list[dict]:
-        from apps.accounts.models import User
         from apps.companies.models import Company
         from apps.payments.models import Refund
         from apps.policies.models import Claim, Policy
@@ -247,9 +246,6 @@ class SanadAdminSite(admin.AdminSite):
             {"count": Refund.objects.filter(status=Refund.Status.FAILED).count(), "label": _("Remboursements en échec"),
              "hint": _("À reprendre à la main avec l'opérateur"),
              "url": self._url("payments_refund_changelist", "status__exact=failed"), "tone": "bad"},
-            {"count": User.objects.filter(kyc_status=User.KycStatus.PENDING).count(),
-             "label": _("Identités (KYC) à vérifier"), "hint": _("Pièces d'identité déposées par des clients"),
-             "url": self._url("accounts_user_changelist", "kyc_status__exact=pending"), "tone": "warn"},
             {"count": Claim.objects.filter(status=Claim.Status.SUBMITTED).count(), "label": _("Sinistres déclarés"),
              "hint": _("À transmettre à l'assureur"),
              "url": self._url("policies_claim_changelist", "status__exact=submitted"), "tone": "warn"},

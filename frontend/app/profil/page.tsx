@@ -5,43 +5,39 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
-import { IdentityDocument } from "@/components/IdentityDocument";
 import { ThemeChoicePicker } from "@/components/ThemeChoice";
 import { App, BottomNav, Loading, TopBar } from "@/components/Shell";
 import { api, ApiError, type User } from "@/lib/api";
-import { formatPhone } from "@/lib/format";
+import { displayName, formatPhone } from "@/lib/format";
 import { useI18n, type Key, type Lang } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
 
-type IdOutcome = "match" | "mismatch" | "not_found";
+/** Réponse de la vérification de l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS. */
+type IdOutcome = "verified" | "no_eid" | "not_verified";
+type IdMessage = { tone: "green" | "sand" | "red"; key: Key };
 
-const OUTCOMES: Record<IdOutcome, { tone: "green" | "sand"; key: Key }> = {
-  match: { tone: "green", key: "idMatch" },
-  mismatch: { tone: "sand", key: "idMismatch" },
-  not_found: { tone: "sand", key: "idNotFound" },
+const OUTCOMES: Record<IdOutcome, IdMessage> = {
+  verified: { tone: "green", key: "idVerified" },
+  no_eid: { tone: "sand", key: "idNoEid" },
+  not_verified: { tone: "sand", key: "idNotVerified" }, // message neutre : rien ne dit pourquoi
 };
 
 const ID_ERRORS: Record<string, Key> = {
   unavailable: "idUnavailable",
-  missing_fields: "idMissing",
+  missing_nni: "idMissing",
   invalid_nni: "idInvalidNni",
-  rejected: "idRejected",
-  already_verified: "idMatch",
+  already_verified: "idVerified",
 };
 
 export default function ProfilePage() {
   const { t, lang, setLang } = useI18n();
   const router = useRouter();
   const { user, setUser } = useSpace("customer");
-  const [fullName, setFullName] = useState("");
   const [nni, setNni] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
   const [closing, setClosing] = useState(false);
   const [othersMessage, setOthersMessage] = useState("");
-  const [registry, setRegistry] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [idResult, setIdResult] = useState<{ tone: "green" | "sand" | "red"; key: Key } | null>(null);
+  const [idResult, setIdResult] = useState<IdMessage | null>(null);
   // Arrivée depuis l'écran de paiement : on y renvoie une fois l'identité vérifiée.
   const [returnTo, setReturnTo] = useState("");
 
@@ -51,45 +47,25 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    api<{ available: boolean }>("me/identity").then((r) => setRegistry(r.available)).catch(() => setRegistry(false));
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      setFullName(user.full_name);
-      setNni(user.nni);
-    }
+    if (user) setNni(user.nni);
   }, [user]);
 
-  async function save(e: FormEvent) {
+  // Un seul champ, le NNI : il est enregistré (un changement relance la vérification), puis l'eID est vérifiée.
+  async function checkIdentity(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setMessage("");
-    try {
-      setUser(await api<User>("me", { method: "PATCH", body: { full_name: fullName, nni, language: lang } }));
-      setMessage(t("saved"));
-    } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : t("error"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Vérification au registre national : enregistre d'abord le nom et le NNI saisis, puis interroge le registre.
-  async function checkIdentity() {
     setChecking(true);
     setIdResult(null);
-    setMessage("");
     try {
-      if (user && (fullName !== user.full_name || nni !== user.nni)) {
-        setUser(await api<User>("me", { method: "PATCH", body: { full_name: fullName, nni } }));
+      if (user && nni !== user.nni) {
+        setUser(await api<User>("me", { method: "PATCH", body: { nni } }));
       }
       const r = await api<{ outcome: IdOutcome; user: User }>("me/identity", { method: "POST" });
       setUser(r.user);
       setIdResult(OUTCOMES[r.outcome]);
     } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0;
       const code = err instanceof ApiError ? err.code : "";
-      setIdResult({ tone: "red", key: ID_ERRORS[code] ?? (err instanceof ApiError && err.status === 429 ? "idUnavailable" : "error") });
+      setIdResult({ tone: "red", key: status === 429 ? "idTooMany" : ID_ERRORS[code] ?? "error" });
     } finally {
       setChecking(false);
     }
@@ -124,41 +100,32 @@ export default function ProfilePage() {
     <App>
       <TopBar title={t("profileTitle")} />
       <main className="content with-nav">
-        <form className="card" onSubmit={save}>
+        <form className="card" onSubmit={checkIdentity} aria-labelledby="kyc-title">
+          <div className="between">
+            <h2 id="kyc-title" className="eyebrow" style={{ margin: 0 }}>{t("kyc")}</h2>
+            <span className={`pill ${user.kyc_status === "verified" ? "" : "warn"}`}>{t(`kyc_${user.kyc_status}` as Key)}</span>
+          </div>
+          {user.full_name && (
+            <div className="field">
+              <span className="small muted" id="name-label">{t("idName")}</span>
+              <strong aria-labelledby="name-label"><bdi>{displayName(user, lang)}</bdi></strong>
+            </div>
+          )}
           <div className="field">
             <label htmlFor="phone">{t("phoneLabel")}</label>
             <input id="phone" className="input" value={formatPhone(user.phone)} disabled dir="ltr" />
           </div>
           <div className="field">
-            <label htmlFor="name">{t("fullName")}</label>
-            <input id="name" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
-          </div>
-          <div className="field">
             <label htmlFor="nni">{t("nni")}</label>
-            <input id="nni" className="input" value={nni} onChange={(e) => setNni(e.target.value)} inputMode="numeric" dir="ltr" />
+            <input id="nni" className="input" value={nni} dir="ltr" inputMode="numeric" autoComplete="off" maxLength={10}
+              onChange={(e) => setNni(e.target.value.replace(/\D/g, "").slice(0, 10))} aria-describedby="nni-hint" />
+            <span id="nni-hint" className="small muted">{user.kyc_status === "verified" ? t("idChangeResets") : t("idCheckHint")}</span>
           </div>
-          {user.kyc_status === "verified" && <span className="small muted">{t("idChangeResets")}</span>}
-          {message && <p className="small" role="status" style={{ margin: 0 }}>{message}</p>}
-          <button className="btn primary block" disabled={busy}>{t("save")}</button>
-        </form>
-
-        {/* Hors du formulaire du profil : le dépôt de pièce a son propre formulaire (pas de <form> imbriqués). */}
-        <section className="card" aria-labelledby="kyc-title">
-          <div className="between">
-            <h2 id="kyc-title" className="eyebrow" style={{ margin: 0 }}>{t("kyc")}</h2>
-            <span className={`pill ${user.kyc_status === "verified" ? "" : user.kyc_status === "rejected" ? "bad" : "warn"}`}>
-              {t(`kyc_${user.kyc_status}` as Key)}
-            </span>
-          </div>
-          {registry && (user.kyc_status === "none" || user.kyc_status === "pending") && (
-            <div className="stack" style={{ gap: 6 }}>
-              <button type="button" className="btn outline block" onClick={checkIdentity} disabled={checking || busy}
-                aria-describedby="id-hint">
-                {checking ? <span className="spinner sm" aria-hidden="true" /> : <Icon name="shield" size={20} strokeWidth={2} />}
-                {checking ? t("idChecking") : t("idCheck")}
-              </button>
-              <span id="id-hint" className="small muted">{t("idCheckHint")}</span>
-            </div>
+          {(user.kyc_status !== "verified" || nni !== user.nni) && (
+            <button className="btn primary block" disabled={checking}>
+              {checking ? <span className="spinner sm" aria-hidden="true" /> : <Icon name="shield" size={20} strokeWidth={2} />}
+              {checking ? t("idChecking") : t("idCheck")}
+            </button>
           )}
           <div aria-live="polite">
             {idResult && (
@@ -170,11 +137,7 @@ export default function ProfilePage() {
           {returnTo && user.kyc_status === "verified" && (
             <Link className="btn primary block" href={returnTo}>{t("continueToPay")}</Link>
           )}
-          {(user.kyc_status === "none" || user.kyc_status === "pending") && (
-            <IdentityDocument user={user} onUploaded={setUser}
-              open={!registry || (idResult !== null && idResult.key !== "idMatch")} />
-          )}
-        </section>
+        </form>
 
         <section className="card">
           <h2 className="eyebrow">{t("language")}</h2>

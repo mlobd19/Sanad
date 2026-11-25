@@ -89,3 +89,8 @@ export function formatPhone(value: string): string {
   const local = digits.length === 11 && digits.startsWith("222") ? digits.slice(3) : digits.length === 8 ? digits : "";
   return local ? `+222 ${local.replace(/(\d{2})(?=\d)/g, "$1 ")}` : value ?? "";
 }
+
+/** Nom du client : en arabe en mode arabe s'il a été fourni par l'ANRPTS, sinon en caractères latins. */
+export function displayName(user: { full_name: string; full_name_ar?: string }, lang: Lang): string {
+  return (lang === "ar" && user.full_name_ar) || user.full_name;
+}

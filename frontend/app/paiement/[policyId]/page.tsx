@@ -148,15 +148,13 @@ export default function PaymentPage() {
           policy?.status === "draft" && (
             <>
               {kycNeeded && (
-                <div className={`banner ${user?.kyc_status === "rejected" ? "red" : "sand"}`} role="alert"
+                <div className="banner sand" role="alert"
                   style={{ flexDirection: "column", alignItems: "stretch", gap: 12 }}>
-                  <span>{t(user?.kyc_status === "rejected" ? "kycRejectedPay" : user?.kyc_status === "pending" ? "kycPendingPay" : "kycBeforePay")}</span>
-                  {user?.kyc_status !== "rejected" && (
-                    <Link className="btn primary block" href={`/profil?retour=/paiement/${policyId}`}>
-                      <Icon name="shield" size={20} strokeWidth={2} />
-                      {t("idCheck")}
-                    </Link>
-                  )}
+                  <span>{t("kycBeforePay")}</span>
+                  <Link className="btn primary block" href={`/profil?retour=/paiement/${policyId}`}>
+                    <Icon name="shield" size={20} strokeWidth={2} />
+                    {t("idCheck")}
+                  </Link>
                 </div>
               )}
               <section className="stack">

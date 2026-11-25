@@ -105,3 +105,24 @@ def test_revoked_attestation_cannot_be_downloaded(customer_client, attestation):
 
     assert resp.status_code == 410
     assert "révoquée" in resp.data["detail"]
+
+
+def test_pdf_shows_arabic_name_on_the_arabic_side(customer_client, attestation, monkeypatch):
+    """Nom en arabe renvoyé par l'ANRPTS : écrit dans la colonne arabe, en police arabe, aligné à droite."""
+    from apps.attestations import pdf as pdf_module
+
+    written = []
+    original = pdf_module.AttestationPdf.multi_cell
+
+    def spy(self, w, h=None, text="", *args, **kwargs):
+        written.append((text, self.font_family, kwargs.get("align")))
+        return original(self, w, h, text, *args, **kwargs)
+
+    monkeypatch.setattr(pdf_module.AttestationPdf, "multi_cell", spy)
+    assert customer_client.get(f"/api/attestations/{attestation.id}/pdf").status_code == 200
+    assert ("سيدي محمد", "kufi", "R") in written
+
+    written.clear()
+    User.objects.filter(pk=attestation.policy.customer_id).update(full_name_ar="")  # pas de nom arabe fourni
+    assert customer_client.get(f"/api/attestations/{attestation.id}/pdf").status_code == 200
+    assert not [w for w in written if w[1] == "kufi" and w[0] == ""]

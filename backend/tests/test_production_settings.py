@@ -20,7 +20,7 @@ def good_conf(**overrides) -> dict:
         "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
         "PAYMENT_PROVIDERS": ["simulated"],
         "PAYMENT_CALLBACK_SECRETS": {"simulated": "secret-de-production-solide"},
-        "IDENTITY_PROVIDER": "",
+        "IDENTITY_PROVIDER": "simulated",
         "BACKOFFICE_2FA": "totp",
         "NUM_PROXIES_EXPLICIT": True,
         "ATTESTATION_SIGNING_KEY": "graine",
@@ -100,6 +100,15 @@ def test_refuses_simulated_payment_outside_demo_mode():
 def test_refuses_simulated_identity_outside_demo_mode():
     assert refused(good_conf(DEMO_MODE=False, IDENTITY_PROVIDER="simulated"), "registre d'identité simulé")
     assert production_errors(good_conf(IDENTITY_PROVIDER="simulated")) == []  # permis en démonstration
+
+
+def test_refuses_missing_identity_provider():
+    # Sans vérification d'eID, aucun client ne pourrait payer.
+    assert refused(good_conf(IDENTITY_PROVIDER=""), "IDENTITY_PROVIDER est obligatoire")
+
+
+def test_refuses_unknown_identity_adapter():
+    assert refused(good_conf(IDENTITY_PROVIDER="anrpts"), "adaptateur inconnu")
 
 
 @pytest.mark.parametrize("method", ["sms", "off", ""])

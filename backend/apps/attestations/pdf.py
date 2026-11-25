@@ -157,6 +157,8 @@ def render(attestation, *, specimen: bool) -> bytes:
     value_x, value_w = MARGIN + label_w, CONTENT_W - label_w - ar_w
     pdf.set_draw_color(*LINE)
     pdf.line(MARGIN, y, PAGE_W - MARGIN, y)
+    # Partie arabe : nom de l'assuré en arabe (renvoyé par l'ANRPTS avec l'eID), sous son libellé.
+    ar_values = {"Assuré": customer.full_name_ar}
     for fr_label, ar_label, value, strong in rows:
         size = 11.5 if strong else 10.5
         n = pdf.lines_for(value_w, value, size, bold=strong)
@@ -167,6 +169,12 @@ def render(attestation, *, specimen: bool) -> bytes:
         pdf.set_xy(value_x, y + 2.6)
         pdf.multi_cell(value_w, size * 0.48, value)
         pdf.write_at(PAGE_W - MARGIN - ar_w, y + 2.4, ar_w, ar_label, size=8.5, color=MUTED, align="R", arabic=True)
+        if ar_values.get(fr_label):
+            pdf.set_font("kufi", "", 10)
+            pdf.set_text_color(*INK)
+            pdf.set_xy(PAGE_W - MARGIN - ar_w, y + 7.4)
+            pdf.multi_cell(ar_w, 5, ar_values[fr_label], align="R")
+            h = max(h, pdf.get_y() - y + 2)
         y += h
         pdf.line(MARGIN, y, PAGE_W - MARGIN, y)
 

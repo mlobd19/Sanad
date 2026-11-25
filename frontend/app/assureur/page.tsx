@@ -35,8 +35,6 @@ const TABS: { id: Tab; label: Key }[] = [
 
 const KYC_PILL: Record<InsurerPolicy["kyc_status"], string> = {
   verified: "pill",
-  pending: "pill warn",
-  rejected: "pill bad",
   none: "pill quiet",
 };
 

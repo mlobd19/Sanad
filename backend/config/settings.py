@@ -157,7 +157,7 @@ REST_FRAMEWORK = {
         "pro_login": env("PRO_LOGIN_THROTTLE_RATE", "30/hour"),  # par adresse IP
         "password": env("PASSWORD_THROTTLE_RATE", "10/hour"),
         "scan": env("SCAN_THROTTLE_RATE", "20/hour"),
-        "identity": env("IDENTITY_THROTTLE_RATE", "5/hour"),  # interrogations du registre national, par compte  # lecture de carte grise : payante, par compte
+        "identity": env("IDENTITY_THROTTLE_RATE", "5/hour"),  # vérifications d'identité numérique (eID), par compte
     },
 }
 
@@ -220,8 +220,8 @@ PAYMENT_MAX_AMOUNT = int(env("PAYMENT_MAX_AMOUNT", 0))
 # Bouton « simuler la confirmation » : développement ou démonstration uniquement.
 ENABLE_PAYMENT_SIMULATOR = (DEBUG or DEMO_MODE) and "simulated" in PAYMENT_PROVIDERS
 
-# Vérification d'identité au registre national : "simulated" (développement),
-# "anrpts" quand l'adaptateur existera, vide = désactivée (pièces vérifiées à la main).
+# Vérification de l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS, avec le seul NNI :
+# "simulated" (DEBUG ou DEMO_MODE), "anrpts" quand l'adaptateur existera. Obligatoire en production.
 IDENTITY_PROVIDER = env("IDENTITY_PROVIDER", "simulated" if DEBUG or DEMO_MODE else "")
 
 # Lecture de la carte grise par Claude (vision). Sans clé, le bouton répond

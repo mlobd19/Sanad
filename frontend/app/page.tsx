@@ -11,7 +11,7 @@ import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
 import { LanguageButton } from "@/components/LanguageButton";
 import { api, type Policy } from "@/lib/api";
-import { addDays, date, daysUntil, formatPlate } from "@/lib/format";
+import { addDays, date, daysUntil, displayName, formatPlate } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useHasToken, useSpace } from "@/lib/spaces";
 
@@ -139,7 +139,7 @@ function useEvening(): boolean {
 }
 
 function CustomerHome() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const evening = useEvening();
   const { user } = useSpace("customer");
   const [policies, setPolicies] = useState<Policy[] | null>(null);
@@ -159,7 +159,7 @@ function CustomerHome() {
   const current = (policies ?? []).filter((p) => ["active", "paid", "draft"].includes(p.status));
   const active = current.filter((p) => p.status === "active");
   const nextEnd = active.filter((p) => !p.renewed).map((p) => daysUntil(p.ends_on)).sort((a, b) => a - b)[0];
-  const firstName = user.full_name.split(" ")[0];
+  const firstName = displayName(user, lang).split(" ")[0];
 
   return (
     <App>

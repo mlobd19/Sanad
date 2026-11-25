@@ -25,8 +25,7 @@ from apps.audit.models import record
 from apps.notifications.service import notify
 
 from . import identity
-from .storage import detect_document_type
-from .models import IdentityCheck, KycDocument, OtpCode, User, normalize_phone
+from .models import IdentityCheck, OtpCode, User, normalize_phone
 
 PRO_CHALLENGE_SALT = "sanad.pro-login"
 BAD_CREDENTIALS = "Email ou mot de passe incorrect."
@@ -277,103 +276,67 @@ def reset_password(uidb64: str, token: str, password: str) -> User:
     return user
 
 
-# --- Identité : profil et registre national -------------------------------------
+# --- Identité : NNI et identité numérique (eID Houwiyeti) ------------------------------
+
+IDENTITY_FIELDS = ("nni", "language")  # le nom vient de l'ANRPTS, jamais de la saisie du client
 
 
 def update_profile(user: User, data: dict) -> User:
-    """Mise à jour du profil. Changer le nom ou le NNI d'une identité vérifiée relance la vérification."""
-    identity_changed = any(
-        key in data and str(data[key]).strip() != getattr(user, key) for key in ("full_name", "nni")
-    )
-    for key in ("full_name", "nni", "language"):
-        if key in data:
-            setattr(user, key, str(data[key]).strip())
-    fields = ["full_name", "nni", "language"]
-    if identity_changed and user.kyc_status == User.KycStatus.VERIFIED:
+    """Mise à jour du profil. Changer le NNI d'une identité vérifiée relance la vérification."""
+    fields = [key for key in IDENTITY_FIELDS if key in data]
+    if not fields:
+        return user
+    nni_changed = "nni" in data and str(data["nni"]).strip() != user.nni
+    for key in fields:
+        setattr(user, key, str(data[key]).strip())
+    if nni_changed and user.kyc_status == User.KycStatus.VERIFIED:
+        # Le nom reste affiché (attestations en cours) jusqu'à la prochaine vérification, qui le remplace.
         user.kyc_status = User.KycStatus.NONE
         fields.append("kyc_status")
-        record("kyc.reset", user, actor=user, reason="identité modifiée")
+        record("kyc.reset", user, actor=user, reason="NNI modifié")
     user.save(update_fields=fields)
     return user
 
 
-def identity_check_available() -> bool:
+def _same_phone(eid_phone: str, account_phone: str) -> bool:
     try:
-        return identity.get_identity_provider() is not None
-    except identity.IdentityUnavailable:
+        return normalize_phone(eid_phone) == account_phone
+    except ValidationError:
         return False
 
 
-def verify_identity(user: User) -> IdentityCheck:
-    """Interroge le registre national avec le NNI et le nom du profil.
+def verify_identity(user: User) -> str:
+    """Vérifie l'identité numérique (eID) du NNI du profil auprès de l'ANRPTS.
 
-    Correspondance : identité vérifiée. Désaccord ou NNI inconnu : rien n'est refusé
-    automatiquement (fautes de saisie, translittération arabe / français) ; le client
-    corrige son profil ou dépose une pièce vérifiée à la main dans le back-office.
-    Lève identity.IdentityUnavailable si le registre ne répond pas.
+    Renvoie le résultat enregistré au journal (IdentityCheck.Outcome) :
+    - valid : identité vérifiée, nom (latin et, s'il est fourni, arabe) repris de l'ANRPTS ;
+    - no_eid : pas d'eID valide, le client la crée dans l'application Houwiyeti ;
+    - phone_mismatch : l'eID est liée à un autre téléphone que celui du compte, rien n'est vérifié
+      (l'app affiche un message neutre) ;
+    - unavailable : ANRPTS injoignable.
+    Aucun échec ne refuse le client : il peut réessayer (dans la limite d'interrogations par compte).
     """
     if user.kyc_status == User.KycStatus.VERIFIED:
         raise ValidationError("Votre identité est déjà vérifiée.", code="already_verified")
-    if user.kyc_status == User.KycStatus.REJECTED:
-        raise ValidationError("Votre identité a été refusée : contactez le support.", code="rejected")
-    nni, full_name = user.nni.strip(), user.full_name.strip()
-    if not full_name or not nni:
-        raise ValidationError("Renseignez votre nom complet et votre NNI.", code="missing_fields")
+    nni = user.nni.strip()
+    if not nni:
+        raise ValidationError("Saisissez votre NNI.", code="missing_nni")
     if not identity.NNI_PATTERN.match(nni):
         raise ValidationError("Le NNI compte 10 chiffres.", code="invalid_nni")
 
-    provider = identity.get_identity_provider()
-    if provider is None:
-        raise identity.IdentityUnavailable("vérification automatique désactivée")
-    try:
-        result = provider.verify(nni, full_name)
-    except identity.IdentityUnavailable:
-        IdentityCheck.objects.create(user=user, provider=provider.name, nni=nni, full_name=full_name,
-                                     outcome=IdentityCheck.Outcome.UNAVAILABLE)
-        raise
-    check = IdentityCheck.objects.create(user=user, provider=provider.name, nni=nni, full_name=full_name,
-                                         outcome=result.outcome, reference=result.reference)
-    if result.outcome == identity.Outcome.MATCH:
+    result = identity.verify_eid(nni)
+    outcome = result.status
+    if outcome == identity.EidStatus.VALID and result.phone and not _same_phone(result.phone, user.phone):
+        outcome = IdentityCheck.Outcome.PHONE_MISMATCH
+    IdentityCheck.objects.create(user=user, provider=result.provider, nni=nni, outcome=outcome,
+                                 reference=result.reference)
+
+    if outcome == IdentityCheck.Outcome.VALID:
+        user.full_name, user.full_name_ar = result.full_name[:120], result.full_name_ar[:120]
         user.kyc_status = User.KycStatus.VERIFIED
-        user.save(update_fields=["kyc_status"])
-        record("kyc.verified", user, actor=user, method=provider.name, reference=result.reference)
-    else:
-        record("kyc.registry_no_match", user, actor=user, method=provider.name, outcome=result.outcome,
+        user.save(update_fields=["full_name", "full_name_ar", "kyc_status"])
+        record("kyc.verified", user, actor=user, method=result.provider, reference=result.reference)
+    elif outcome != IdentityCheck.Outcome.UNAVAILABLE:
+        record("kyc.eid_not_verified", user, actor=user, method=result.provider, outcome=outcome,
                reference=result.reference)
-    return check
-
-
-# --- Pièce d'identité : solution de secours du registre --------------------------
-
-KYC_MAX_BYTES = 8 * 1024 * 1024
-KYC_IDENTITY_KINDS = (KycDocument.Kind.ID_CARD, KycDocument.Kind.PASSPORT)
-KYC_MAX_PENDING = 3
-
-
-def upload_kyc_document(user: User, kind: str, upload) -> KycDocument:
-    """Dépôt d'une pièce d'identité, vérifiée ensuite à la main au back-office.
-
-    Le compte passe « En vérification » (pastille « À traiter » du tableau de bord).
-    """
-    if user.kyc_status == User.KycStatus.VERIFIED:
-        raise ValidationError("Votre identité est déjà vérifiée.", code="already_verified")
-    if user.kyc_status == User.KycStatus.REJECTED:
-        raise ValidationError("Votre identité a été refusée : contactez le support.", code="rejected")
-    if kind not in KYC_IDENTITY_KINDS:
-        raise ValidationError("Choisissez une carte d'identité ou un passeport.", code="invalid_kind")
-    if upload is None:
-        raise ValidationError("Ajoutez la photo ou le PDF de la pièce.", code="missing")
-    if upload.size > KYC_MAX_BYTES:
-        raise ValidationError("Fichier trop lourd (8 Mo maximum).", code="too_large")
-    ext = detect_document_type(upload)
-    if not ext:
-        raise ValidationError("Formats acceptés : JPEG, PNG, PDF.", code="invalid_type")
-    if user.documents.filter(status=KycDocument.Status.PENDING).count() >= KYC_MAX_PENDING:
-        raise ValidationError("Des pièces attendent déjà d'être vérifiées.", code="too_many")
-    upload.name = f"piece.{ext}"
-    doc = KycDocument.objects.create(user=user, kind=kind, file=upload)
-    if user.kyc_status == User.KycStatus.NONE:
-        user.kyc_status = User.KycStatus.PENDING
-        user.save(update_fields=["kyc_status"])
-    record("kyc.document_uploaded", doc, actor=user, kind=kind)
-    return doc
+    return outcome

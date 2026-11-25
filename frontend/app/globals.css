@@ -363,8 +363,6 @@ table.mini .sub, .doc-row .sub { display: block; color: var(--muted); font-size:
 }
 
 /* Dépôt de pièce d'identité (profil) */
-.doc-upload { border-top: 1px solid var(--line); padding-top: 10px; }
-.doc-upload summary { cursor: pointer; font-weight: 600; font-size: 15px; min-height: 44px; display: flex; align-items: center; color: var(--green); }
 
 /* Porte d'entrée unique : onglets de /connexion et accueil des visiteurs */
 .login-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); }

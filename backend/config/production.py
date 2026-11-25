@@ -39,8 +39,17 @@ def production_errors(conf: dict) -> list[str]:
 
     errors += _payment_errors(conf.get("PAYMENT_PROVIDERS") or [], conf.get("PAYMENT_CALLBACK_SECRETS") or {}, demo)
 
-    if conf.get("IDENTITY_PROVIDER") == "simulated" and not demo:
+    identity = conf.get("IDENTITY_PROVIDER") or ""
+    if identity == "simulated" and not demo:
         errors.append("Le registre d'identité simulé est interdit en production (hors DEMO_MODE).")
+    elif not identity:
+        errors.append("IDENTITY_PROVIDER est obligatoire : sans vérification de l'identité numérique (eID) "
+                      "auprès de l'ANRPTS, aucun client ne peut payer.")
+    else:
+        from apps.accounts.identity import REGISTRY as IDENTITY_REGISTRY  # bibliothèque standard et django.conf
+
+        if identity not in IDENTITY_REGISTRY:
+            errors.append(f"IDENTITY_PROVIDER « {identity} » : adaptateur inconnu (celui de l'ANRPTS reste à écrire).")
     if not conf.get("NUM_PROXIES_EXPLICIT"):
         errors.append("NUM_PROXIES doit être défini explicitement (nombre de relais devant Django ; "
                       "1 sur Render) : sinon les limites par adresse IP sont faussées ou contournables.")

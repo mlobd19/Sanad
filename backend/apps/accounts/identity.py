@@ -1,94 +1,112 @@
-"""Vérification d'identité auprès du registre national (ANRPTS).
+"""Vérification de l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS, avec le seul NNI.
 
 Une interface, un adaptateur par source, comme pour les paiements. L'adaptateur
 ANRPTS reste à écrire dès que l'agence fournit sa documentation (format de la
-requête, authentification, ce qui est renvoyé, cadre de la convention). Le
+requête, authentification, champs renvoyés, cadre de la convention). Le
 simulateur reproduit le même contrat pour développer et tester.
 
-Contrat : on envoie le NNI et le nom déclarés par le client ; la source répond
-par un verdict (correspond / ne correspond pas / NNI inconnu) et une référence
-de transaction. Sanad ne reçoit ni ne stocke aucune donnée du registre.
+Contrat : on envoie le NNI ; la source répond
+- « valide » : le NNI porte une identité numérique valide, avec le nom en
+  caractères latins, le nom en arabe s'il est fourni et, s'il est fourni, le
+  téléphone lié à l'eID ;
+- « pas d'eID valide » : le client doit créer son identité dans l'application
+  Houwiyeti ;
+- « injoignable » : source en panne, non configurée ou réponse inexploitable.
+Aucune pièce d'identité n'est demandée au client.
 """
+import logging
 import re
-import unicodedata
 import uuid
 from dataclasses import dataclass
 
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
+
 NNI_PATTERN = re.compile(r"^\d{10}$")
 
 
-class Outcome:
-    MATCH = "match"            # le NNI existe et le nom correspond
-    MISMATCH = "mismatch"      # le NNI existe mais le nom ne correspond pas
-    NOT_FOUND = "not_found"    # NNI inconnu du registre
+class EidStatus:
+    VALID = "valid"            # identité numérique valide : nom(s) renvoyé(s)
+    NO_EID = "no_eid"          # pas d'eID valide pour ce NNI
+    UNAVAILABLE = "unavailable"  # source injoignable
 
 
-@dataclass
-class IdentityResult:
-    outcome: str
-    reference: str  # référence de transaction côté registre, gardée pour l'audit
+@dataclass(frozen=True)
+class EidResult:
+    status: str
+    full_name: str = ""     # nom en caractères latins
+    full_name_ar: str = ""  # nom en arabe, s'il est fourni
+    phone: str = ""         # téléphone lié à l'eID, s'il est fourni
+    reference: str = ""     # référence de transaction côté ANRPTS, gardée pour l'audit
+    provider: str = ""      # source interrogée (journal)
 
 
-class IdentityUnavailable(Exception):
-    """Source injoignable ou non configurée : le client réessaie plus tard ou dépose une pièce."""
-
-
-class IdentityProvider:
+class EidProvider:
     name = ""
     label = ""
 
-    def verify(self, nni: str, full_name: str) -> IdentityResult:
+    def verify_eid(self, nni: str) -> EidResult:
+        """Interroge la source. Peut lever n'importe quelle exception réseau : elle vaut « injoignable »."""
         raise NotImplementedError
 
 
-def normalize_name(name: str) -> str:
-    """Nom comparable : sans accents, casse, ponctuation ni espaces multiples."""
-    text = unicodedata.normalize("NFKD", name)
-    text = "".join(c for c in text if not unicodedata.combining(c)).lower()
-    text = re.sub(r"[^\w\s]", " ", text)
-    return " ".join(text.split())
+class SimulatedEid(EidProvider):
+    """Registre fictif pour le développement et la démo. Interdit en production hors DEMO_MODE.
 
-
-class SimulatedRegistry(IdentityProvider):
-    """Registre fictif pour le développement. Interdit en production (voir settings).
-
-    - NNI commençant par 000 : inconnu du registre ;
-    - NNI commençant par 999 : registre injoignable ;
-    - NNI de DEMO_REGISTRY : le nom déclaré doit correspondre ;
-    - tout autre NNI à 10 chiffres : correspond, quel que soit le nom.
+    - 1234567890 : « Sidi Mohamed » / « سيدي محمد » ;
+    - NNI commençant par 000 : pas d'eID valide ;
+    - NNI commençant par 999 : injoignable ;
+    - tout autre NNI à 10 chiffres : valide, avec un nom fictif (toujours le même pour un NNI).
+    Le simulateur ne renvoie pas de téléphone.
     """
 
     name = "simulated"
     label = "Registre simulé (développement)"
 
-    DEMO_REGISTRY = {
-        "1234567890": "Sidi Mohamed",
-        "2345678901": "Fatimetou Mint Sidi",
-        "3456789012": "Mohamed Lemine Ould Ahmed",
-    }
+    KNOWN = {"1234567890": ("Sidi Mohamed", "سيدي محمد")}
+    FICTIONAL = [
+        ("Fatimetou Mint Ahmed", "فاطمة بنت أحمد"),
+        ("Ahmed Salem Ould Sidi", "أحمد سالم ولد سيدي"),
+        ("Aminetou Mint Cheikh", "أمينة بنت الشيخ"),
+        ("Cheikh Ould Brahim", "الشيخ ولد ابراهيم"),
+        ("Mariem Mint Mohamed", "مريم بنت محمد"),
+        ("Brahim Ould Ely", "ابراهيم ولد اعلي"),
+    ]
 
-    def verify(self, nni: str, full_name: str) -> IdentityResult:
+    def verify_eid(self, nni: str) -> EidResult:
         if nni.startswith("999"):
-            raise IdentityUnavailable("registre simulé injoignable")
-        reference = f"SIM-ID-{uuid.uuid4().hex[:12].upper()}"
+            raise ConnectionError("registre simulé injoignable")
+        reference = f"SIM-EID-{uuid.uuid4().hex[:12].upper()}"
         if nni.startswith("000"):
-            return IdentityResult(Outcome.NOT_FOUND, reference)
-        known = self.DEMO_REGISTRY.get(nni)
-        if known is not None and normalize_name(known) != normalize_name(full_name):
-            return IdentityResult(Outcome.MISMATCH, reference)
-        return IdentityResult(Outcome.MATCH, reference)
+            return EidResult(EidStatus.NO_EID, reference=reference)
+        latin, arabic = self.KNOWN.get(nni) or self.FICTIONAL[int(nni) % len(self.FICTIONAL)]
+        return EidResult(EidStatus.VALID, full_name=latin, full_name_ar=arabic, reference=reference)
 
 
-REGISTRY: dict[str, type[IdentityProvider]] = {SimulatedRegistry.name: SimulatedRegistry}
+REGISTRY: dict[str, type[EidProvider]] = {SimulatedEid.name: SimulatedEid}
 
 
-def get_identity_provider() -> IdentityProvider | None:
-    """Source configurée (IDENTITY_PROVIDER), ou None si la vérification automatique est désactivée."""
-    name = settings.IDENTITY_PROVIDER
-    if not name:
-        return None
-    if name not in REGISTRY:
-        raise IdentityUnavailable(f"Source d'identité inconnue : {name}")
-    return REGISTRY[name]()
+def get_provider() -> EidProvider | None:
+    """Source configurée (IDENTITY_PROVIDER), ou None si aucune (ou inconnue)."""
+    cls = REGISTRY.get(settings.IDENTITY_PROVIDER or "")
+    return cls() if cls else None
+
+
+def verify_eid(nni: str) -> EidResult:
+    """valide / pas d'eID valide / injoignable. Ne lève jamais : toute panne vaut « injoignable »."""
+    provider = get_provider()
+    if provider is None:
+        return EidResult(EidStatus.UNAVAILABLE)
+    try:
+        result = provider.verify_eid(nni)
+    except Exception as exc:  # réseau, délai, réponse illisible… (jamais le NNI dans le journal)
+        logger.warning("Vérification eID injoignable (%s) : %s", provider.name, type(exc).__name__)
+        return EidResult(EidStatus.UNAVAILABLE, provider=provider.name)
+    if result.status == EidStatus.VALID and not result.full_name.strip():
+        # Réponse « valide » sans nom : inexploitable, on ne vérifie rien.
+        return EidResult(EidStatus.UNAVAILABLE, reference=result.reference, provider=provider.name)
+    if result.status not in (EidStatus.VALID, EidStatus.NO_EID):
+        return EidResult(EidStatus.UNAVAILABLE, reference=result.reference, provider=provider.name)
+    return EidResult(result.status, full_name=result.full_name.strip(), full_name_ar=result.full_name_ar.strip(),
+                     phone=(result.phone or "").strip(), reference=result.reference, provider=provider.name)

@@ -106,7 +106,7 @@ SMS dans la console du backend.
 - En développement, les emails s'affichent dans la console du backend.
 
 - **Demandes à valider** : polices payées de la compagnie de l'agent (client,
-  véhicule, formule, prime, moyen de paiement, statut KYC). « Valider » active la
+  véhicule, formule, prime, moyen de paiement, identité vérifiée ou non). « Valider » active la
   police et émet l'attestation ; « Refuser » exige un motif et rembourse le client.
 - **Polices émises** : actives, expirées et résiliées ; filtre « Refusées » pour
   retrouver les refus et leur motif.
@@ -164,13 +164,12 @@ proposé. Session de 8 h au plus, fermée avec le navigateur. En français et en
 arabe (bouton en haut à droite), clair ou sombre.
 
 - **Tableau de bord** : ce qui est à traiter (entreprises à vérifier, polices
-  payées en attente de l'assureur, remboursements en échec, identités KYC,
-  sinistres) et l'activité du jour ; chaque carte ouvre la liste filtrée.
+  payées en attente de l'assureur, remboursements en échec, sinistres) et l'activité du jour ; chaque carte ouvre la liste filtrée.
 - **Menu par métier** : Clients, Entreprises, Contrats, Paiements, Catalogue,
   Technique.
 - **Décisions** : fiche entreprise avec les pièces à ouvrir et les boutons
   « Vérifier » / « Refuser » (motif obligatoire) ; refus ou résiliation de
-  polices, refus d'identité, remboursement fait à la main : toujours avec un
+  polices, remboursement fait à la main : toujours avec un
   motif ou une référence.
 - **Lecture seule** pour les paiements, les attestations, les devis et l'audit :
   rien ne se saisit à la main là où ce serait une erreur.
@@ -254,7 +253,7 @@ services ; les vues API ne contiennent pas de logique métier.
 
 | Module | Rôle |
 | --- | --- |
-| `accounts` | Comptes, OTP, pièces KYC, rôles (client, agent assureur, membre d'entreprise, équipe) |
+| `accounts` | Comptes, OTP, identité numérique (eID Houwiyeti, ANRPTS), rôles (client, agent assureur, membre d'entreprise, équipe) |
 | `companies` | Entreprises : inscription, NIF / RC, vérification, membres, flotte, commandes groupées |
 | `catalog` | Assureurs, produits, grilles tarifaires (facteurs multiplicatifs) |
 | `policies` | Biens assurés, devis, polices et leur cycle de vie, sinistres, commissions |
@@ -297,8 +296,8 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 | POST | `/api/auth/pro/verify` | `{challenge, code}` → `{token, user}` |
 | POST | `/api/auth/pro/password/forgot` | `{email}` → lien par email (réponse identique si l'email est inconnu) |
 | POST | `/api/auth/pro/password/reset` | `{uid, token, password}` : choisir le mot de passe (invitation ou oubli) |
-| GET/PATCH | `/api/me` | Profil (nom, NNI, langue) |
-| GET/POST | `/api/me/documents` | Pièces KYC (JPEG, PNG, PDF, 8 Mo max) |
+| GET/PATCH | `/api/me` | Profil : seuls `nni` et `language` se modifient (le nom, latin et arabe, vient de l'ANRPTS) |
+| POST | `/api/me/identity` | Vérifie l'eID du NNI → `verified`, `no_eid` ou `not_verified` ; 503 `unavailable` (5 par heure et par compte) |
 | GET/POST | `/api/assets` | Véhicules : `{reference, attributes: {fiscal_power, usage, …}}` |
 | POST | `/api/assets/{id}/quotes` | Devis de tous les assureurs actifs, triés par prix |
 | GET/POST | `/api/policies` | Polices du client ; créer : `{quote_id, starts_on?}` |
@@ -332,10 +331,12 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 - **Paiements réels** : `BankilyProvider`, `MasrviProvider`, `SedadProvider` dans
   `apps/payments/providers.py` attendent l'API marchande de chaque opérateur.
   Le simulateur suit le même contrat ; il est refusé en production.
+- **Identité numérique** : adaptateur ANRPTS de `verify_eid(nni)` dans
+  `apps/accounts/identity.py`, à écrire avec la documentation de l'agence
+  (`IDENTITY_PROVIDER`, obligatoire en production).
 - **SMS** : écrire un backend dans `apps/notifications/backends.py`
   (agrégateur SMS local). Tous les messages aux clients passent par ce canal.
 - **Stockage des pièces** : stockage objet chiffré en production.
-- **Dépôt des pièces KYC** et **déclaration de sinistre** dans l'app client.
 - **Mode hors ligne** de l'app (service worker).
 - **Grilles tarifaires réelles** et accords de partenariat avec les compagnies
   (les primes de `seed_demo` sont fictives).

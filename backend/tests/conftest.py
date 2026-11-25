@@ -2,6 +2,7 @@ import json
 import re
 
 import pytest
+from django.core.cache import cache
 from django.core.management import call_command
 from rest_framework.test import APIClient
 
@@ -23,6 +24,8 @@ def _settings(settings, tmp_path):
     settings.ATTESTATION_SIGNING_KEY = TEST_SIGNING_KEY
     settings.ANTHROPIC_API_KEY = ""  # jamais d'appel réel à l'API Claude pendant les tests
     settings.REST_FRAMEWORK = {**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": []}
+    # Les vues gardent leurs limites (fixées à l'import) : compteurs remis à zéro à chaque test.
+    cache.clear()
     MemoryBackend.outbox.clear()
 
 
@@ -60,9 +63,9 @@ def login(client: APIClient, phone: str) -> dict:
 def customer_client(demo):
     client = APIClient()
     login(client, "+22236000001")
-    client.patch("/api/me", {"full_name": "Sidi Mohamed", "nni": "1234567890"}, format="json")
-    # Identité vérifiée : condition pour payer (voir test_identity pour le parcours registre).
-    User.objects.filter(phone="+22236000001", role=User.Role.CUSTOMER).update(kyc_status=User.KycStatus.VERIFIED)
+    # Identité vérifiée (eID, nom renvoyé par l'ANRPTS) : condition pour payer (parcours dans test_identity).
+    User.objects.filter(phone="+22236000001", role=User.Role.CUSTOMER).update(
+        nni="1234567890", full_name="Sidi Mohamed", full_name_ar="سيدي محمد", kyc_status=User.KycStatus.VERIFIED)
     return client
 
 
