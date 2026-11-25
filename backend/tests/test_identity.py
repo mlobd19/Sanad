@@ -81,6 +81,16 @@ def test_no_valid_eid(customer_client):
     assert AuditEvent.objects.filter(action="kyc.eid_not_verified", data__outcome="no_eid").exists()
 
 
+def test_nni_not_found_at_anrpts(customer_client):
+    set_nni(customer_client, "1111234567")
+    resp = verify(customer_client)
+    assert resp.status_code == 200 and resp.data["outcome"] == "nni_not_found"  # pas « Service indisponible »
+    user = me(customer_client)
+    assert user.kyc_status == User.KycStatus.NONE and user.full_name == ""
+    assert IdentityCheck.objects.get().outcome == "not_found"
+    assert AuditEvent.objects.filter(action="kyc.eid_not_verified", data__outcome="not_found").exists()
+
+
 def test_anrpts_unreachable(customer_client):
     set_nni(customer_client, "9991234567")
     resp = verify(customer_client)
@@ -305,6 +315,6 @@ def test_migration_deletes_identity_documents_and_converts_statuses(settings, tm
     assert "accounts_kycdocument" not in connection.introspection.table_names()
     statuses = dict(NewUser.objects.values_list("pk", "kyc_status"))
     assert (statuses[pending.pk], statuses[rejected.pk], statuses[verified.pk]) == ("none", "none", "verified")
-    assert sorted(NewCheck.objects.values_list("outcome", flat=True)) == ["no_eid", "valid"]
+    assert sorted(NewCheck.objects.values_list("outcome", flat=True)) == ["not_found", "valid"]
 
     MigrationExecutor(connection).migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())

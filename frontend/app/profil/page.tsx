@@ -13,11 +13,12 @@ import { useI18n, type Key, type Lang } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
 
 /** Réponse de la vérification de l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS. */
-type IdOutcome = "verified" | "no_eid" | "not_verified";
+type IdOutcome = "verified" | "nni_not_found" | "no_eid" | "not_verified";
 type IdMessage = { tone: "green" | "sand" | "red"; key: Key };
 
 const OUTCOMES: Record<IdOutcome, IdMessage> = {
   verified: { tone: "green", key: "idVerified" },
+  nni_not_found: { tone: "sand", key: "idNniNotFound" },
   no_eid: { tone: "sand", key: "idNoEid" },
   not_verified: { tone: "sand", key: "idNotVerified" }, // message neutre : rien ne dit pourquoi
 };

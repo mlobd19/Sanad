@@ -1225,6 +1225,9 @@ msgstr "الاسم بالعربية"
 msgid "Identité numérique valide"
 msgstr "هوية رقمية صالحة"
 
+msgid "NNI introuvable à l'ANRPTS"
+msgstr "الرقم الوطني غير موجود لدى الوكالة الوطنية لسجل السكان"
+
 msgid "Pas d'identité numérique valide"
 msgstr "لا توجد هوية رقمية صالحة"
 

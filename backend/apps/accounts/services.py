@@ -310,6 +310,7 @@ def verify_identity(user: User) -> str:
 
     Renvoie le résultat enregistré au journal (IdentityCheck.Outcome) :
     - valid : identité vérifiée, nom (latin et, s'il est fourni, arabe) repris de l'ANRPTS ;
+    - not_found : NNI introuvable dans la base de l'ANRPTS (le client vérifie les chiffres) ;
     - no_eid : pas d'eID valide, le client la crée dans l'application Houwiyeti ;
     - phone_mismatch : l'eID est liée à un autre téléphone que celui du compte, rien n'est vérifié
       (l'app affiche un message neutre) ;

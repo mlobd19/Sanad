@@ -7,7 +7,7 @@ from pathlib import Path
 
 from django.db import migrations, models
 
-OUTCOMES = {"match": "valid", "mismatch": "no_eid", "not_found": "no_eid"}
+OUTCOMES = {"match": "valid", "mismatch": "no_eid"}  # not_found (NNI introuvable) garde sa valeur
 
 
 def delete_identity_documents(apps, schema_editor):

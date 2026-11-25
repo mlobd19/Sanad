@@ -297,7 +297,7 @@ Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
 | POST | `/api/auth/pro/password/forgot` | `{email}` → lien par email (réponse identique si l'email est inconnu) |
 | POST | `/api/auth/pro/password/reset` | `{uid, token, password}` : choisir le mot de passe (invitation ou oubli) |
 | GET/PATCH | `/api/me` | Profil : seuls `nni` et `language` se modifient (le nom, latin et arabe, vient de l'ANRPTS) |
-| POST | `/api/me/identity` | Vérifie l'eID du NNI → `verified`, `no_eid` ou `not_verified` ; 503 `unavailable` (5 par heure et par compte) |
+| POST | `/api/me/identity` | Vérifie l'eID du NNI → `verified`, `nni_not_found`, `no_eid` ou `not_verified` ; 503 `unavailable` (5 par heure et par compte) |
 | GET/POST | `/api/assets` | Véhicules : `{reference, attributes: {fiscal_power, usage, …}}` |
 | POST | `/api/assets/{id}/quotes` | Devis de tous les assureurs actifs, triés par prix |
 | GET/POST | `/api/policies` | Polices du client ; créer : `{quote_id, starts_on?}` |

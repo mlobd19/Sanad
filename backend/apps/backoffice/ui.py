@@ -9,7 +9,7 @@ TONES = {
     # Entreprises, identité, attestations
     "verified": "ok", "rejected": "bad", "none": "quiet", "valid": "ok", "revoked": "bad", "accepted": "ok",
     # Vérifications d'identité numérique (eID)
-    "no_eid": "warn", "phone_mismatch": "warn", "unavailable": "quiet",
+    "not_found": "warn", "no_eid": "warn", "phone_mismatch": "warn", "unavailable": "quiet",
     # Sinistres
     "submitted": "warn", "sent": "warn", "in_review": "warn", "closed": "quiet",
 }

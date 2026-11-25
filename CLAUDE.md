@@ -58,7 +58,7 @@ compile_translations` ; sinon le test des traductions échoue.
     Identité : **identité numérique eID Houwiyeti vérifiée auprès de l'ANRPTS
     avec le seul NNI**, plus aucun dépôt de pièce d'identité. `identity.py` :
     `verify_eid(nni)` → valide (nom latin, nom arabe et téléphone lié s'ils sont
-    fournis) / pas d'eID valide / injoignable (toute panne ou réponse
+    fournis) / NNI introuvable / pas d'eID valide / injoignable (toute panne ou réponse
     inexploitable) ; `simulated` en DEBUG ou DEMO_MODE, interdit en production ;
     adaptateur réel à écrire avec la documentation de l'ANRPTS
     (`IDENTITY_PROVIDER` obligatoire en production). Le profil n'a qu'un champ, le
@@ -174,7 +174,8 @@ compile_translations` ; sinon le test des traductions échoue.
   ou par l'équipe au back-office en renfort. Photos en stockage privé.
 - Particulier : **identité vérifiée avant tout paiement** (eID Houwiyeti auprès
   de l'ANRPTS, jamais à la main au back-office) ; devis et police brouillon
-  restent possibles. Pas d'eID → « Créez votre identité numérique dans
+  restent possibles. NNI introuvable → « Ce NNI est introuvable. Vérifiez les
+  chiffres saisis et réessayez » ; pas d'eID → « Créez votre identité numérique dans
   l'application Houwiyeti, puis réessayez » ; injoignable → « Service
   indisponible, réessayez dans quelques minutes » (FR + AR).
 - Espace entreprise : une entreprise ne voit jamais les données d'une autre ;
@@ -198,8 +199,8 @@ compile_translations` ; sinon le test des traductions échoue.
   Agents démo `agent@<code>.test` (`+22220000001` à `+22220000004`), mot de
   passe = `DEMO_PASSWORD`, posé **uniquement en DEMO_MODE** (jamais en dur dans
   le code). Compte équipe démo : groupe « Équipe Sanad », jamais superutilisateur. Registre eID
-  simulé : NNI `1234567890` = « Sidi Mohamed » / « سيدي محمد », `000…` pas d'eID
-  valide, `999…` injoignable, tout autre NNI à 10 chiffres valide avec un nom
+  simulé : NNI `1234567890` = « Sidi Mohamed » / « سيدي محمد », `111…` NNI
+  introuvable, `000…` pas d'eID valide, `999…` injoignable, tout autre NNI à 10 chiffres valide avec un nom
   fictif (toujours le même pour un NNI) ; jamais de téléphone renvoyé. **Les primes sont fictives** et
   marquées `is_indicative` (« Indicatif » dans l'app) : ne jamais les présenter
   comme de vrais tarifs.

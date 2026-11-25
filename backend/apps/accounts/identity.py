@@ -9,6 +9,8 @@ Contrat : on envoie le NNI ; la source répond
 - « valide » : le NNI porte une identité numérique valide, avec le nom en
   caractères latins, le nom en arabe s'il est fourni et, s'il est fourni, le
   téléphone lié à l'eID ;
+- « NNI introuvable » : le NNI n'existe pas dans la base de l'ANRPTS (erreur de
+  saisie, le plus souvent) ;
 - « pas d'eID valide » : le client doit créer son identité dans l'application
   Houwiyeti ;
 - « injoignable » : source en panne, non configurée ou réponse inexploitable.
@@ -28,6 +30,7 @@ NNI_PATTERN = re.compile(r"^\d{10}$")
 
 class EidStatus:
     VALID = "valid"            # identité numérique valide : nom(s) renvoyé(s)
+    NOT_FOUND = "not_found"    # NNI introuvable dans la base de l'ANRPTS
     NO_EID = "no_eid"          # pas d'eID valide pour ce NNI
     UNAVAILABLE = "unavailable"  # source injoignable
 
@@ -55,6 +58,7 @@ class SimulatedEid(EidProvider):
     """Registre fictif pour le développement et la démo. Interdit en production hors DEMO_MODE.
 
     - 1234567890 : « Sidi Mohamed » / « سيدي محمد » ;
+    - NNI commençant par 111 : introuvable à l'ANRPTS ;
     - NNI commençant par 000 : pas d'eID valide ;
     - NNI commençant par 999 : injoignable ;
     - tout autre NNI à 10 chiffres : valide, avec un nom fictif (toujours le même pour un NNI).
@@ -78,6 +82,8 @@ class SimulatedEid(EidProvider):
         if nni.startswith("999"):
             raise ConnectionError("registre simulé injoignable")
         reference = f"SIM-EID-{uuid.uuid4().hex[:12].upper()}"
+        if nni.startswith("111"):
+            return EidResult(EidStatus.NOT_FOUND, reference=reference)
         if nni.startswith("000"):
             return EidResult(EidStatus.NO_EID, reference=reference)
         latin, arabic = self.KNOWN.get(nni) or self.FICTIONAL[int(nni) % len(self.FICTIONAL)]
@@ -94,7 +100,7 @@ def get_provider() -> EidProvider | None:
 
 
 def verify_eid(nni: str) -> EidResult:
-    """valide / pas d'eID valide / injoignable. Ne lève jamais : toute panne vaut « injoignable »."""
+    """valide / NNI introuvable / pas d'eID valide / injoignable. Ne lève jamais : toute panne vaut « injoignable »."""
     provider = get_provider()
     if provider is None:
         return EidResult(EidStatus.UNAVAILABLE)
@@ -106,7 +112,7 @@ def verify_eid(nni: str) -> EidResult:
     if result.status == EidStatus.VALID and not result.full_name.strip():
         # Réponse « valide » sans nom : inexploitable, on ne vérifie rien.
         return EidResult(EidStatus.UNAVAILABLE, reference=result.reference, provider=provider.name)
-    if result.status not in (EidStatus.VALID, EidStatus.NO_EID):
+    if result.status not in (EidStatus.VALID, EidStatus.NOT_FOUND, EidStatus.NO_EID):
         return EidResult(EidStatus.UNAVAILABLE, reference=result.reference, provider=provider.name)
     return EidResult(result.status, full_name=result.full_name.strip(), full_name_ar=result.full_name_ar.strip(),
                      phone=(result.phone or "").strip(), reference=result.reference, provider=provider.name)

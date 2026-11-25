@@ -128,7 +128,7 @@ class MeView(APIView):
 class IdentityCheckView(CustomerOnly, APIView):
     """Vérification de l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS, particuliers uniquement.
 
-    POST : vérifie le NNI du profil. Réponse « outcome » : verified, no_eid ou not_verified (message
+    POST : vérifie le NNI du profil. Réponse « outcome » : verified, nni_not_found, no_eid ou not_verified (message
     neutre : rien n'indique au client pourquoi). ANRPTS injoignable : 503, code « unavailable ».
     """
 
@@ -137,6 +137,7 @@ class IdentityCheckView(CustomerOnly, APIView):
     # Ce que voit l'app : le désaccord de téléphone n'est jamais révélé tel quel.
     PUBLIC_OUTCOMES = {
         IdentityCheck.Outcome.VALID: "verified",
+        IdentityCheck.Outcome.NOT_FOUND: "nni_not_found",
         IdentityCheck.Outcome.NO_EID: "no_eid",
         IdentityCheck.Outcome.PHONE_MISMATCH: "not_verified",
     }

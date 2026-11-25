@@ -175,6 +175,7 @@ class IdentityCheck(models.Model):
 
     class Outcome(models.TextChoices):
         VALID = "valid", _("Identité numérique valide")
+        NOT_FOUND = "not_found", _("NNI introuvable à l'ANRPTS")
         NO_EID = "no_eid", _("Pas d'identité numérique valide")
         PHONE_MISMATCH = "phone_mismatch", _("Téléphone de l'eID différent du compte")
         UNAVAILABLE = "unavailable", _("ANRPTS injoignable")
