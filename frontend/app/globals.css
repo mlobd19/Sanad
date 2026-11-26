@@ -160,6 +160,7 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 .banner.sand a { color: var(--sand-text); font-weight: 700; }
 .banner.green { background: var(--green-tint); color: var(--green-dark); }
 .banner.red { background: var(--red-tint); color: var(--red); }
+.banner.compact { font-size: 14px; } /* message court, sur une ligne jusqu'à 320 px de large */
 
 .btn { min-height: 52px; padding: 0 20px; border-radius: 16px; border: 2px solid transparent; font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; text-decoration: none; }
 .btn.primary { background: var(--green); color: var(--on-green); }

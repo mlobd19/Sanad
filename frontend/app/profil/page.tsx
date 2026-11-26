@@ -130,7 +130,7 @@ export default function ProfilePage() {
           )}
           <div aria-live="polite">
             {idResult && (
-              <p className={`banner ${idResult.tone}`} role={idResult.tone === "red" ? "alert" : "status"} style={{ margin: 0 }}>
+              <p className={`banner ${idResult.tone}${idResult.key === "idVerified" ? " compact" : ""}`} role={idResult.tone === "red" ? "alert" : "status"} style={{ margin: 0 }}>
                 {t(idResult.key)}
               </p>
             )}
