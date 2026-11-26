@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { FormValidation } from "@/components/FormValidation";
 import { I18nProvider } from "@/lib/i18n";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
@@ -38,7 +39,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
-        <I18nProvider>{children}</I18nProvider>
+        <I18nProvider>
+          {/* Messages d'erreur des champs dans la langue de l'app (pas la bulle du navigateur). */}
+          <FormValidation />
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

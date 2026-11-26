@@ -180,6 +180,10 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 .input { height: 52px; border-radius: 14px; border: 2px solid var(--line-strong); padding: 0 14px; background: var(--card); font-size: 16px; width: 100%; }
 .input:focus { border-color: var(--green); outline: none; box-shadow: 0 0 0 3px var(--green-soft); }
 .error { color: var(--red); font-size: 14px; font-weight: 600; margin: 0; }
+/* Erreur sous un champ (components/FormValidation.tsx) */
+.field-error { color: var(--red); font-size: 14px; font-weight: 600; margin: 0; }
+.input[aria-invalid="true"] { border-color: var(--red); }
+.input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px var(--red-tint); }
 
 .otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .otp input { height: 58px; border-radius: 12px; border: 2px solid var(--line-strong); text-align: center; font: 700 26px var(--display); background: var(--card); width: 100%; padding: 0; }

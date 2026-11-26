@@ -109,6 +109,10 @@ compile_translations` ; sinon le test des traductions échoue.
   - Composants partagés : `components/Shell.tsx` (TopBar, Stepper, BottomNav…),
     `Logo.tsx` (logo khaïma), `InsurerLogo.tsx`, `OtpLogin.tsx`, `ProAuth.tsx`,
     `ClaimForm.tsx`.
+  - Validation des champs : `components/FormValidation.tsx` (monté dans le layout)
+    remplace la bulle du navigateur (langue et style du système) par un message
+    sous le champ, traduit (`field*` dans `lib/i18n.tsx`). Garder les attributs
+    HTML (`required`, `type="email"`, `minLength`, `min`/`max`) dans un `.field`.
   - Portail assureur : `/assureur` (web, bureau d'abord, styles `.portal*`),
     réservé au rôle `insurer_agent`.
 
