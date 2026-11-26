@@ -93,8 +93,8 @@ export default function CompanySignupPage() {
           <legend>{t("signupCompany")}</legend>
           <div className="form-grid">
             {text("legal_name", "legalName", { autoComplete: "organization" })}
-            {text("nif", "nifLabel", { dir: "ltr", inputMode: "text" })}
-            {text("rc_number", "rcLabel", { dir: "ltr" })}
+            {text("nif", "nifLabel", { dir: "ltr", inputMode: "text", autoComplete: "off" })}
+            {text("rc_number", "rcLabel", { dir: "ltr", autoComplete: "off" })}
             {text("address", "addressLabel", { autoComplete: "street-address" })}
           </div>
         </fieldset>

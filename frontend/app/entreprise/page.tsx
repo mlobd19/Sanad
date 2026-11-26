@@ -367,11 +367,11 @@ function AddVehicleCard({ onAdded }: { onAdded: () => void }) {
         </div>
         <div className="field">
           <label htmlFor="v-make">{t("make")}</label>
-          <input id="v-make" className="input" value={make} onChange={(e) => setMake(e.target.value)} />
+          <input id="v-make" className="input" value={make} onChange={(e) => setMake(e.target.value)} autoComplete="off" />
         </div>
         <div className="field">
           <label htmlFor="v-power">{t("fiscalPower")}</label>
-          <input id="v-power" className="input" type="number" inputMode="numeric" min={1} max={60} value={power}
+          <input id="v-power" className="input" type="number" inputMode="numeric" min={1} max={60} value={power} autoComplete="off"
             onChange={(e) => setPower(e.target.value)} required />
         </div>
         <div className="field">

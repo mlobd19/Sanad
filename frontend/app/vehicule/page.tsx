@@ -93,11 +93,11 @@ export default function VehiclePage() {
           </div>
           <div className="field">
             <label htmlFor="make">{t("make")}</label>
-            <input id="make" className="input" value={make} onChange={(e) => setMake(e.target.value)} />
+            <input id="make" className="input" value={make} onChange={(e) => setMake(e.target.value)} autoComplete="off" />
           </div>
           <div className="field">
             <label htmlFor="power">{t("fiscalPower")}</label>
-            <input id="power" className="input" type="number" inputMode="numeric" min={1} max={60} value={power} onChange={(e) => setPower(e.target.value)} required />
+            <input id="power" className="input" type="number" inputMode="numeric" min={1} max={60} value={power} onChange={(e) => setPower(e.target.value)} autoComplete="off" required />
           </div>
           <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
             <legend style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{t("usage")}</legend>

@@ -100,12 +100,12 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
       <div className="field">
         <label htmlFor={`${ids}-date`}>{t("claimDate")}</label>
         <input id={`${ids}-date`} className="input" type="date" value={occurredOn} min={policy.starts_on} max={maxDate}
-          onChange={(e) => setOccurredOn(e.target.value)} required />
+          onChange={(e) => setOccurredOn(e.target.value)} autoComplete="off" required />
       </div>
 
       <div className="field">
         <label htmlFor={`${ids}-place`}>{t("claimPlace")}</label>
-        <input id={`${ids}-place`} className="input" value={place} maxLength={200} onChange={(e) => setPlace(e.target.value)}
+        <input id={`${ids}-place`} className="input" value={place} maxLength={200} onChange={(e) => setPlace(e.target.value)} autoComplete="off"
           aria-describedby={`${ids}-place-hint`} required />
         <span id={`${ids}-place-hint`} className="small muted">{t("claimPlaceHint")}</span>
       </div>
@@ -113,7 +113,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
       <div className="field">
         <label htmlFor={`${ids}-description`}>{t("claimDescription")}</label>
         <textarea id={`${ids}-description`} className="input" value={description} maxLength={2000}
-          onChange={(e) => setDescription(e.target.value)} aria-describedby={`${ids}-description-hint`} required />
+          onChange={(e) => setDescription(e.target.value)} autoComplete="off" aria-describedby={`${ids}-description-hint`} required />
         <span id={`${ids}-description-hint`} className="small muted">{t("claimDescriptionHint")}</span>
       </div>
 
