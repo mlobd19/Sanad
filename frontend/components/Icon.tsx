@@ -1,8 +1,9 @@
 // Icônes au trait, sans dépendance. currentColor pour suivre le texte.
 
 const paths: Record<string, string> = {
-  // Berline vue de profil : carrosserie, vitres avant / arrière, deux roues.
-  car: "M5 16.5H3.2a.7.7 0 0 1-.7-.7v-2.6c0-.7.5-1.3 1.2-1.5L7 10.8l2.4-3.2c.3-.4.8-.6 1.3-.6h4.6c.5 0 1 .2 1.3.6l2.6 3.2 1.7.5c.7.2 1.1.8 1.1 1.5v2.5a.7.7 0 0 1-.7.7H19 M9 16.5h6 M7 10.8h12.2 M12.8 7v3.8 M7 16.5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M17 16.5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+  // Berline vue de profil : carrosserie, vitres avant / arrière, deux roues. Cadre ~19 × 14, centré
+  // (proportions voisines de heart, home, plane).
+  car: "M4.5 16.8H3.2a.7.7 0 0 1-.7-.7v-3c0-.8.5-1.4 1.2-1.6L7 10l2.5-4.2c.3-.5.8-.8 1.4-.8h4.4c.6 0 1.1.3 1.4.7l2.8 4.3 1.2.4c.5.2.8.7.8 1.2v4.5a.7.7 0 0 1-.7.7h-1.3 M9.1 16.8h5.8 M7 10h12.5 M13 5v5 M6.8 16.8m-2.3 0a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0 -4.6 0 M17.2 16.8m-2.3 0a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0 -4.6 0",
   heart: "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z",
   home: "M4 11l8-7 8 7v9H4z M10 20v-5h4v5",
   plane: "M2 13l20-7-7 16-3-7z",
