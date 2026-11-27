@@ -127,6 +127,17 @@ compile_translations` ; sinon le test des traductions échoue.
     `components/NavLink.tsx` (le sens est calculé) ; `useNav().push` seulement après une action
     (paiement, formulaire). Nouvel écran client : l'ajouter à `lib/screens.ts`. Un écran qui
     remplace la barre du haut (contrat assuré) : `useHideTopBar`.
+  - **Accueil client** (`app/(client)/page.tsx`) : contrats en cours (actifs, payés, brouillons)
+    en **carrousel horizontal** pour que « Souscrire une assurance » reste visible sans défiler
+    (vérifié à 390 × 844 et 360 × 740). Défilement natif en CSS (`.carousel` : `scroll-snap`,
+    barre masquée), aucune bibliothèque ni défilement automatique ; carte ≈ 78 % de l'écran, la
+    suivante dépasse au bord (sens inversé en arabe) ; un seul contrat → pleine largeur, sans
+    points ni « Tout voir (n) ». Ordre : ce qui demande une action (en validation, brouillon à
+    payer, expire dans 30 jours ou moins) puis par date de fin. Liste accessible (`role="list"`,
+    « Mes contrats »). Espaces : `--section-gap` (37 px) entre deux sections, réutilisable ;
+    24 px au moins entre le texte du bandeau vert et les cartes (la carte chevauche le bandeau,
+    jamais son texte). Si un petit écran ne tient pas, on réduit les tuiles (`--tile-height`),
+    jamais les espaces entre sections.
   - **Chargement** : jamais d'indicateur plein écran ; squelettes (`components/Skeletons.tsx`,
     blocs `--line`) aux dimensions du contenu, et tout ce qui dépend des données bascule d'un
     coup (rien ne doit être poussé ensuite). Dernières données de chaque écran en mémoire

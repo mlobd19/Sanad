@@ -6,33 +6,44 @@ import { Skeleton, SkeletonGroup } from "./Shell";
 // final, pour que rien ne saute quand les données arrivent. Affichés au tout premier chargement
 // seulement : ensuite, les dernières données gardées en mémoire s'affichent (lib/cache.ts).
 
-/** Carte de contrat de l'accueil : illustration du véhicule, plaque, compagnie, statut, bouton. */
-export function ContractCardSkeleton({ raised }: { raised?: boolean }) {
+/** Carte de contrat du carrousel de l'accueil : illustration, plaque, statut, compagnie, bouton. */
+export function ContractCardSkeleton() {
   return (
-    <div className={`card${raised ? " raised" : ""}`}>
-      <div className="row" style={{ alignItems: "center" }}>
-        <Skeleton width={108} height={50} radius={10} />
+    <div className="card raised contract-card">
+      <div className="row">
+        <Skeleton width={76} height={35} radius={10} />
         <div className="grow stack" style={{ gap: 6 }}>
-          <Skeleton width="55%" height={22} />
-          <Skeleton width="85%" height={16} />
-          <Skeleton width="50%" height={16} />
-          <Skeleton width={90} height={26} radius={14} />
+          <Skeleton width="70%" height={25} />
+          <Skeleton width={70} height={26} radius={14} />
         </div>
       </div>
+      <Skeleton width="80%" height={22} />
       <Skeleton height={52} radius={14} />
     </div>
   );
 }
 
-/** Accueil (sous l'en-tête vert) : contrat et tuiles « Souscrire », remplacés d'un seul coup par
- *  le contenu (le nombre de contrats n'est pas encore connu : rien ne doit être poussé ensuite). */
+/** Accueil (sous l'en-tête vert) : le carrousel (une carte et le début de la suivante, points et
+ *  « Tout voir ») puis les tuiles « Souscrire », mêmes classes et mêmes espacements que le contenu,
+ *  remplacés d'un seul coup. */
 export function HomeContractsSkeleton() {
   return (
-    <SkeletonGroup className="stack" style={{ gap: 14 }}>
-      <ContractCardSkeleton raised />
-      <Skeleton width={170} height={14} style={{ marginTop: 6 }} />
-      <div className="grid2">
-        {[0, 1, 2, 3].map((i) => <Skeleton key={i} height={98} radius={16} />)}
+    <SkeletonGroup className="stack" style={{ gap: "var(--section-gap)" }}>
+      <div className="stack">
+        <div className="carousel" style={{ overflow: "hidden" }}>
+          <div className="carousel-item"><ContractCardSkeleton /></div>
+          <div className="carousel-item"><ContractCardSkeleton /></div>
+        </div>
+        <div className="between carousel-foot">
+          <Skeleton width={50} height={8} radius={4} />
+          <Skeleton width={90} height={16} />
+        </div>
+      </div>
+      <div className="stack">
+        <Skeleton width={170} height={14} style={{ margin: "1px 0" }} />
+        <div className="grid2">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} height="var(--tile-height)" radius={16} />)}
+        </div>
       </div>
     </SkeletonGroup>
   );

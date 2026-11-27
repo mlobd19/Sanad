@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
@@ -12,7 +12,7 @@ import { ErrorBox, Skeleton, StatusPill } from "@/components/Shell";
 import { HomeContractsSkeleton } from "@/components/Skeletons";
 import { LanguageButton } from "@/components/LanguageButton";
 import { type Policy } from "@/lib/api";
-import { addDays, date, daysUntil, displayName, formatPlate } from "@/lib/format";
+import { addDays, date, daysUntil, displayName, formatPlate, num } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useHasToken, useSpace } from "@/lib/spaces";
 import { prefetch, useLoad } from "@/lib/useLoad";
@@ -24,30 +24,47 @@ const SERVICES: { key: Key; icon: string; on: boolean }[] = [
   { key: "travel", icon: "plane", on: false },
 ];
 
-function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
+/** Contrats qui demandent une action d'abord (en validation, brouillon à payer, expire dans 30 jours
+ *  ou moins), puis les autres par date de fin. */
+function actionRank(p: Policy): number {
+  if (p.status === "paid") return 0;
+  if (p.status === "draft") return 1;
+  if (p.status === "active" && !p.renewed && daysUntil(p.ends_on) <= 30) return 2;
+  return 3;
+}
+
+function orderContracts(policies: Policy[]): Policy[] {
+  return [...policies].sort((a, b) => actionRank(a) - actionRank(b) || a.ends_on.localeCompare(b.ends_on));
+}
+
+function ContractCard({ p }: { p: Policy }) {
   const { t, lang } = useI18n();
   const days = daysUntil(p.ends_on);
   const renew = p.status === "active" && !p.renewed && days <= 30;
   return (
-    <div className={`card${raised ? " raised" : ""}`}>
-      <div className="row" style={{ alignItems: "center" }}>
-        <VehicleIllustration type={p.body_type} width={108} />
-        <div className="grow stack" style={{ gap: 4, minWidth: 0 }}>
+    <div className="card raised contract-card">
+      <div className="row">
+        <VehicleIllustration type={p.body_type} width={76} />
+        <div className="grow stack" style={{ gap: 6, minWidth: 0 }}>
           <span className="plate"><bdi dir="ltr">{formatPlate(p.plate)}</bdi></span>
-          <span className="row ink2" style={{ fontSize: 14, gap: 6 }}>
-            <InsurerLogo name={p.insurer} logo={p.insurer_logo} size={24} />
-            <span>{p.insurer} · {p.product}</span>
+          <span className="contract-status">
+            <StatusPill status={p.status} />
+            {renew && (
+              <Link
+                className="renew-link"
+                href={`/devis/${p.asset_id}?renouvellement=${p.id}&debut=${addDays(p.ends_on, 1)}&duree=${p.duration_months}`}
+                aria-label={`${t("renew")} · ${t("expiresShort", { date: date(p.ends_on, lang) })}`}
+              >
+                {t("renew")}
+              </Link>
+            )}
           </span>
-          <span><StatusPill status={p.status} /></span>
         </div>
       </div>
-      {renew && (
-        <div className="banner sand">
-          <Icon name="clock" size={20} strokeWidth={2} />
-          <span className="grow" style={{ fontWeight: 600, fontSize: 14 }}>{t("expiresShort", { date: date(p.ends_on, lang) })}</span>
-          <Link href={`/devis/${p.asset_id}?renouvellement=${p.id}&debut=${addDays(p.ends_on, 1)}&duree=${p.duration_months}`}>{t("renew")}</Link>
-        </div>
-      )}
+      <span className="row ink2 contract-insurer">
+        <InsurerLogo name={p.insurer} logo={p.insurer_logo} size={22} />
+        <span title={`${p.insurer} · ${p.product}`}>{p.insurer} · {p.product}</span>
+      </span>
       {p.status === "draft" ? (
         <Link className="btn primary block" href={`/paiement/${p.id}`}>{t("payTitle")}</Link>
       ) : p.attestation ? (
@@ -59,6 +76,57 @@ function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
         <Link className="btn outline block" href={`/contrats/${p.id}`}>{t("seeDetails")}</Link>
       )}
     </div>
+  );
+}
+
+/**
+ * Contrats en cours en carrousel horizontal (défilement natif, aimanté carte par carte) : la carte
+ * suivante dépasse au bord de l'écran et « Souscrire une assurance » reste visible sans défiler,
+ * quel que soit le nombre de véhicules. En arabe, le sens s'inverse de lui-même (première carte à
+ * droite). Jamais de défilement automatique.
+ */
+function ContractCarousel({ policies }: { policies: Policy[] }) {
+  const { t, lang } = useI18n();
+  const track = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(0);
+  const several = policies.length > 1;
+
+  // Point actif : la carte alignée au début du carrousel (scrollLeft est négatif en arabe).
+  const onScroll = () => {
+    const el = track.current;
+    if (!el || el.children.length < 2) return;
+    const [first, second] = [el.children[0], el.children[1]] as HTMLElement[];
+    const step = Math.abs(second.offsetLeft - first.offsetLeft);
+    const position = Math.abs(el.scrollLeft);
+    const end = position >= el.scrollWidth - el.clientWidth - 2;
+    setIndex(end ? el.children.length - 1 : Math.round(position / step));
+  };
+
+  return (
+    <section className="stack">
+      <div
+        ref={track}
+        className={`carousel${several ? "" : " single"}`}
+        role="list"
+        aria-label={t("myContracts")}
+        onScroll={several ? onScroll : undefined}
+      >
+        {policies.map((p) => (
+          // Clavier : la carte qui reçoit le focus vient au début du carrousel.
+          <div key={p.id} role="listitem" className="carousel-item" onFocus={(e) => e.currentTarget.scrollIntoView({ block: "nearest", inline: "start" })}>
+            <ContractCard p={p} />
+          </div>
+        ))}
+      </div>
+      {several && (
+        <div className="between carousel-foot">
+          <span className="carousel-dots" aria-hidden="true">
+            {policies.map((p, i) => <span key={p.id} className={i === index ? "on" : undefined} />)}
+          </span>
+          <Link href="/contrats" className="see-all">{t("seeAll", { count: num(policies.length, lang) })}</Link>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -172,7 +240,7 @@ function CustomerHome() {
           ) : (
             <Skeleton width={190} height={34} style={{ opacity: 0.25 }} />
           )}
-          {!policies && <Skeleton width={150} height={18} style={{ opacity: 0.25 }} />}
+          {!policies && <Skeleton width={150} height={20} style={{ opacity: 0.25 }} />}
           {active.length > 0 && (
             <span className="sub">
               {t("activeCount", { count: active.length })}
@@ -182,7 +250,7 @@ function CustomerHome() {
         </div>
       </header>
 
-      <main className="content with-nav overlap">
+      <main className="content with-nav overlap home">
         {error && <ErrorBox message={error} onRetry={reload} />}
 
         {!policies && !error ? (
@@ -195,11 +263,11 @@ function CustomerHome() {
                 <Link href="/vehicule" className="btn primary block">{t("seeQuotes")}</Link>
               </div>
             ) : (
-              current.map((p, i) => <ContractCard key={p.id} p={p} raised={i === 0} />)
+              <ContractCarousel policies={orderContracts(current)} />
             )}
 
             <section className="stack">
-              <h2 className="eyebrow">{t("subscribe")}</h2>
+              <h2 className="eyebrow" style={{ margin: 0 }}>{t("subscribe")}</h2>
               <div className="grid2">
                 {SERVICES.map((s) =>
                   s.on ? (

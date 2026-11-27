@@ -27,6 +27,8 @@
   --scrim: rgba(6, 47, 34, 0.6);
   color-scheme: light;
   --radius: 18px;
+  --tile-height: 84px; /* tuiles « Souscrire » (70 px sur un petit téléphone) */
+  --section-gap: 37px; /* entre deux sections d'un écran (ex. contrats et « Souscrire » à l'accueil) */
   --shadow: 0 6px 18px rgba(6, 47, 34, 0.14);
   --font: "Inter", "Noto Kufi Arabic", system-ui, sans-serif;
   --display: "Space Grotesk", "Noto Kufi Arabic", system-ui, sans-serif;
@@ -118,9 +120,31 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* --- En-tête sombre (accueil, connexion, confirmation) --- */
 .hero { background: var(--green-deep); color: #fff; padding: 20px 20px 64px; display: flex; flex-direction: column; gap: 18px; }
-.hero .sub { font-size: 15px; color: var(--on-deep); }
-.hero h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 28px; }
-.overlap { margin-top: -44px; }
+.hero .sub { font-size: 15px; line-height: 20px; color: var(--on-deep); }
+.hero h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 28px; line-height: 36px; } /* hauteurs fixes : même bandeau en français et en arabe */
+/* Le contenu chevauche le bas du bandeau vert, jamais son texte : 64 - 56 + 16 = 24 px sous le texte. */
+.overlap { margin-top: -56px; }
+.home { gap: var(--section-gap); }
+
+/* Accueil : carrousel des contrats. Défilement natif aimanté, barre masquée ; pleine largeur (la carte
+   suivante dépasse au bord de l'écran, ≈ 78 % de l'écran par carte). Marges négatives : l'ombre des
+   cartes n'est pas coupée et les espacements restent ceux des cartes. */
+.carousel { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scroll-padding-inline: 16px; overscroll-behavior-x: contain; scrollbar-width: none; margin: -8px -16px -20px; padding: 8px 16px 20px; }
+.carousel::-webkit-scrollbar { display: none; }
+.carousel-item { flex: 0 0 84%; scroll-snap-align: start; display: flex; min-width: 0; }
+.carousel.single .carousel-item { flex-basis: 100%; }
+.carousel-item > .card { flex: 1; min-width: 0; }
+.contract-card > .btn { margin-top: auto; padding-inline: 10px; font-size: 15px; white-space: nowrap; } /* « Montrer mon attestation » sur une ligne dès 360 px */
+.contract-status { display: flex; align-items: center; gap: 10px; }
+/* Lien court dans la ligne du statut : cible de 44 px sans agrandir la ligne. */
+.renew-link { min-height: 44px; margin-block: -9px; display: inline-flex; align-items: center; color: var(--sand-text); font-weight: 700; font-size: 13px; }
+.contract-insurer { font-size: 13px; line-height: 20px; gap: 6px; min-width: 0; }
+.contract-insurer > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.carousel-foot { min-height: 44px; }
+.carousel-dots { display: flex; gap: 6px; align-items: center; }
+.carousel-dots span { width: 8px; height: 8px; border-radius: 4px; background: var(--line-strong); transition: width 200ms ease-out, background-color 200ms ease-out; }
+.carousel-dots span.on { width: 18px; background: var(--green); }
+.see-all { min-height: 44px; display: inline-flex; align-items: center; font-weight: 700; font-size: 14px; color: var(--green); text-decoration: none; }
 .btn-on-dark { min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1.5px solid #fff; background: transparent; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; }
 .btn-on-dark.icon-only { width: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .head-actions { display: flex; align-items: center; gap: 8px; }
@@ -134,7 +158,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .logo-stacked-name { font-family: var(--display); font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
 /* Nom en arabe (mode arabe) : police arabe, sans espacement. */
 .logo-stacked-name[lang="ar"] { font-family: "Noto Kufi Arabic", system-ui, sans-serif; letter-spacing: 0; line-height: 1.25; }
-.eyebrow { font-weight: 700; font-size: 13px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 4px 0 0; }
+.eyebrow { font-weight: 700; font-size: 13px; line-height: 16px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 4px 0 0; }
 [dir="rtl"] .eyebrow { letter-spacing: 0; }
 .title { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0; }
 .muted { color: var(--muted); }
@@ -156,7 +180,7 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 .plate { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.01em; }
 .chip { padding: 6px 12px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); font-weight: 700; color: var(--ink); white-space: nowrap; }
 
-.pill { display: inline-block; padding: 5px 12px; border-radius: 14px; font-weight: 700; font-size: 13px; background: var(--green); color: var(--on-green); white-space: nowrap; }
+.pill { display: inline-block; padding: 5px 12px; border-radius: 14px; font-weight: 700; font-size: 13px; line-height: 16px; background: var(--green); color: var(--on-green); white-space: nowrap; }
 .pill.warn { background: var(--sand-tint); color: var(--sand-text); }
 .pill.bad { background: var(--red-tint); color: var(--red); }
 .pill.quiet { background: var(--bg); color: var(--ink-2); }
@@ -203,9 +227,16 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.tile { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none; color: var(--ink-2); text-align: center; }
-.tile strong { font-size: 15px; color: var(--ink); }
-.tile span.state { font-size: 12px; color: var(--muted); }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 8px 6px; min-height: var(--tile-height); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: var(--ink-2); text-align: center; }
+.tile strong { font-size: 15px; line-height: 18px; color: var(--ink); }
+.tile span.state { font-size: 12px; line-height: 15px; color: var(--muted); }
+/* Petit téléphone (hauteur ≤ 760 px) : tuiles plus basses pour que « Souscrire » reste visible sans
+   défiler à l'accueil ; les espaces entre les sections ne changent pas. */
+@media (max-height: 760px) {
+  :root { --tile-height: 70px; }
+  .tile { padding: 5px 6px; gap: 2px; }
+  .tile svg { width: 22px; height: 22px; }
+}
 .tile.on { background: var(--green); border-color: var(--green); color: var(--on-green); }
 .tile.on strong { color: var(--on-green); }
 .tile.on span.state { color: var(--green-soft); font-weight: 600; }
@@ -432,8 +463,11 @@ html[dir="rtl"]::view-transition-new(.nav-back) { --nav-from: var(--nav-shift); 
 @keyframes nav-fade-out { to { opacity: 0; } }
 @keyframes nav-fade-in { from { opacity: 0; } }
 
-/* « Réduire les animations » : aucune transition d'écran, aucun squelette qui pulse. */
+/* « Réduire les animations » : aucune transition d'écran, aucun squelette qui pulse, carrousel sans
+   glissement animé ni point qui s'étire. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   .skeleton { animation: none; }
+  .carousel { scroll-behavior: auto; }
+  .carousel-dots span { transition: none; }
 }
