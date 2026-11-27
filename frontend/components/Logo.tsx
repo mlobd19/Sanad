@@ -2,6 +2,8 @@
 
 import { useId } from "react";
 
+import { useI18n } from "@/lib/i18n";
+
 // Logo « l'arche et l'élan » : l'arche protège, la courbe s'élance et en sort. On avance, couvert.
 // Même tracé partout : icône de l'app (public/icon.svg), attestation PDF (attestations/pdf.py),
 // back-office (admin/base_site.html) et page de vérification (attestations/verify.html).
@@ -52,20 +54,16 @@ export function Wordmark({ name, size = 18, onDark = false }: { name: string; si
   );
 }
 
-/** Version empilée et centrée : symbole, « Sanad », « سند » en vert en dessous.
- *  `onDark` : sur le vert profond des en-têtes (symbole blanc, « سند » en vert clair). */
+/** Version empilée et centrée : symbole et, dessous, le nom dans la langue choisie seulement
+ *  (français : « Sanad » ; arabe : « سند »). `onDark` : sur le vert profond des en-têtes (symbole blanc). */
 export function StackedLogo({ size = 72, onDark = false }: { size?: number; onDark?: boolean }) {
+  const { lang } = useI18n();
+  const ar = lang === "ar";
   return (
     <span className="logo-stacked" style={{ color: onDark ? "#fff" : "var(--ink)" }}>
       <SanadMark size={size} color={onDark ? "#fff" : "var(--green)"} />
-      <span className="logo-stacked-name" style={{ fontSize: size * 0.42 }} lang="fr" dir="ltr">{BRAND}</span>
-      <span
-        className="logo-stacked-ar"
-        style={{ fontSize: size * 0.25, color: onDark ? "var(--green-on-deep)" : "var(--green)" }}
-        lang="ar"
-        dir="rtl"
-      >
-        {BRAND_AR}
+      <span className="logo-stacked-name" style={{ fontSize: size * 0.42 }} lang={ar ? "ar" : "fr"} dir={ar ? "rtl" : "ltr"}>
+        {ar ? BRAND_AR : BRAND}
       </span>
     </span>
   );

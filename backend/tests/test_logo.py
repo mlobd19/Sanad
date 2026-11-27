@@ -68,3 +68,11 @@ def test_old_khaima_symbol_is_gone_everywhere():
     assert sources
     leftovers = [str(p) for p in sources if KHAIMA in p.read_text(errors="ignore") or "KhaimaMark" in p.read_text(errors="ignore")]
     assert leftovers == []
+
+
+def test_stacked_logo_shows_only_the_name_of_the_chosen_language():
+    # Sous le symbole : « Sanad » en français, « سند » en arabe, jamais les deux (bouton des langues).
+    logo = (FRONTEND / "components" / "Logo.tsx").read_text(encoding="utf-8")
+    stacked = logo[logo.index("export function StackedLogo"):]
+    assert "useI18n()" in stacked and "{ar ? BRAND_AR : BRAND}" in stacked
+    assert stacked.count("<span") == 2  # le cadre et un seul nom
