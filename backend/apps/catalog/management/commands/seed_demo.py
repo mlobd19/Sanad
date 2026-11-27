@@ -1,4 +1,5 @@
-"""Catalogue auto de démonstration : NASR, MAR, MEDINA Assurances, IMAN Assurance.
+"""Catalogue de démonstration : auto chez NASR, MAR, MEDINA Assurances, IMAN Assurance ;
+voyage « Monde entier » chez NASR, MAR et IMAN (MEDINA : auto seulement).
 
 Compagnies choisies par l'équipe Sanad parmi les sociétés agréées listées dans
 le « Rapport sur le marché des assurances en Mauritanie » (ministère des
@@ -52,6 +53,28 @@ FACTORS = [
     ("usage", "commercial", None, None, Decimal("1.4000")),  # deux usages : personnel (1) et commercial
 ]
 
+# Voyage « Monde entier » (fictif) : prime d'un voyageur de 16 à 65 ans pour 1 à 8 jours, plafonds en euros
+# (frais médicaux ≥ 30 000 € partout : visa Schengen ; null = frais réels) et assistance 24 h/24 fictive.
+TRAVEL_CODE, TRAVEL_NAME = "monde-entier", "Monde entier"
+TRAVEL_COVERAGES = ["Frais médicaux", "Rapatriement", "Bagages", "Retard de vol", "RC vie privée"]
+TRAVEL_OFFERS = {
+    "nasr": (2600, {"medical": 50000, "repatriation": None, "baggage": 800, "delay": 150, "liability": 50000}),
+    "mar": (2900, {"medical": 100000, "repatriation": None, "baggage": 1200, "delay": 200, "liability": 75000}),
+    "iman": (2400, {"medical": 30000, "repatriation": 15000, "baggage": 500, "delay": 100, "liability": 30000}),
+}
+ASSISTANCE_PHONES = {"nasr": "+222 45 25 00 01", "mar": "+222 45 25 00 02", "medina": "+222 45 25 00 03",
+                     "iman": "+222 45 25 00 04"}  # numéros FICTIFS (démo)
+TRAVEL_FACTORS = [  # durée (jours) puis âge au départ ; plus de 65 ans : majoration
+    ("trip_days", None, Decimal("1"), Decimal("8"), Decimal("1.0000")),
+    ("trip_days", None, Decimal("9"), Decimal("15"), Decimal("1.6000")),
+    ("trip_days", None, Decimal("16"), Decimal("31"), Decimal("2.4000")),
+    ("trip_days", None, Decimal("32"), Decimal("62"), Decimal("3.8000")),
+    ("trip_days", None, Decimal("63"), Decimal("92"), Decimal("5.2000")),
+    ("age", None, None, Decimal("15"), Decimal("0.5000")),
+    ("age", None, Decimal("16"), Decimal("65"), Decimal("1.0000")),
+    ("age", None, Decimal("66"), None, Decimal("2.0000")),
+]
+
 # Compagnies des catalogues de démo précédents, à retirer
 OLD_DEMO_SLUGS = ["assureur-a", "assureur-b", "assureur-c", "damane", "cna", "car"]
 
@@ -71,8 +94,10 @@ class Command(BaseCommand):
             insurer, _ = Insurer.objects.update_or_create(
                 slug=slug,
                 defaults={"name": name, "legal_name": legal, "commission_rate": Decimal("0.1500"),
+                          "assistance_phone": ASSISTANCE_PHONES[slug],
                           "auto_validate": False, "integration": Insurer.Integration.PORTAL, "is_active": True},
             )
+            self._travel_offer(insurer)
             for code, premium in [("rc", RC_DEMO_PREMIUM), *offers.items()]:
                 label, coverages = FORMULAS[code]
                 product, _ = Product.objects.update_or_create(
@@ -95,7 +120,7 @@ class Command(BaseCommand):
                 agent.insurer, agent.role, agent.full_name = insurer, User.Role.INSURER_AGENT, f"Agent {name} (démo)"
             self._demo_login(agent, slug)
         self.stdout.write(self.style.SUCCESS(
-            "Catalogue auto prêt : NASR, MAR, MEDINA, IMAN (tarifs fictifs). "
+            "Catalogue prêt : auto chez NASR, MAR, MEDINA, IMAN ; voyage chez NASR, MAR, IMAN (tarifs fictifs). "
             "Agents démo : agent@nasr.test, agent@mar.test, agent@medina.test, agent@iman.test "
             "(+22220000001 à +22220000004)."
         ))
@@ -112,6 +137,25 @@ class Command(BaseCommand):
         else:
             self.stdout.write("Hors DEMO_MODE : pas de comptes démo ni de mot de passe. "
                               "Envoyez l'invitation depuis le back-office.")
+
+    def _travel_offer(self, insurer):
+        """Offre voyage « Monde entier » de la compagnie (aucune chez MEDINA)."""
+        if insurer.slug not in TRAVEL_OFFERS:
+            Product.objects.filter(insurer=insurer, code=TRAVEL_CODE).update(is_active=False)
+            return
+        premium, limits = TRAVEL_OFFERS[insurer.slug]
+        product, _ = Product.objects.update_or_create(
+            insurer=insurer, code=TRAVEL_CODE,
+            defaults={"name": TRAVEL_NAME, "branch": Product.Branch.TRAVEL, "coverages": TRAVEL_COVERAGES,
+                      "limits": limits, "base_premium": premium, "is_indicative": True,
+                      "tariff_version": "demo-2026", "is_active": True},
+        )
+        product.full_clean()  # frais médicaux ≥ 30 000 €
+        product.factors.all().delete()
+        TariffFactor.objects.bulk_create(
+            TariffFactor(product=product, attribute=a, equals=eq or "", min_value=lo, max_value=hi, multiplier=m)
+            for a, eq, lo, hi, m in TRAVEL_FACTORS
+        )
 
     def _demo_login(self, agent, slug):
         """Email agent@<code>.test ; mot de passe démo seulement en DEMO_MODE, sans écraser un mot de passe choisi."""

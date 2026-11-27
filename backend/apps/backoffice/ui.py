@@ -7,7 +7,7 @@ TONES = {
     # Paiements et remboursements
     "pending": "warn", "succeeded": "ok", "failed": "bad", "refunded": "quiet", "requested": "warn", "done": "ok",
     # Entreprises, identité, attestations
-    "verified": "ok", "rejected": "bad", "none": "quiet", "valid": "ok", "revoked": "bad", "accepted": "ok",
+    "verified": "ok", "declared": "warn", "rejected": "bad", "none": "quiet", "valid": "ok", "revoked": "bad", "accepted": "ok",
     # Vérifications d'identité numérique (eID)
     "not_found": "warn", "no_eid": "warn", "phone_mismatch": "warn", "unavailable": "quiet",
     # Sinistres

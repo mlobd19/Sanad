@@ -23,7 +23,7 @@ class InsurerAdmin(admin.ModelAdmin):
     list_display = ("name", "logo_thumb", "legal_name", "integration", "rate_display", "auto_validate", "is_active")
     prepopulated_fields = {"slug": ("name",)}
     readonly_fields = ("logo_large",)
-    fields = ("name", "legal_name", "slug", "logo", "logo_large", "contact_email", "integration",
+    fields = ("name", "legal_name", "slug", "logo", "logo_large", "contact_email", "assistance_phone", "integration",
               "commission_rate", "auto_validate", "is_active")
 
     @admin.display(description=_("taux de commission"), ordering="commission_rate")

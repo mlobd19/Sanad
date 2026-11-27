@@ -1248,3 +1248,102 @@ msgstr "عمليات التحقق من الهوية الرقمية"
 
 msgid "Vérifiée uniquement par l'identité numérique (eID Houwiyeti) auprès de l'ANRPTS, depuis le profil du client. Aucune pièce d'identité n'est demandée."
 msgstr "يتم التحقق منها فقط عبر الهوية الرقمية (هويتي) لدى الوكالة الوطنية لسجل السكان والوثائق المؤمنة، من حساب الزبون. لا تُطلب أي وثيقة هوية."
+
+msgid "Bagages"
+msgstr "الأمتعة"
+
+msgid "voyages"
+msgstr "الرحلات"
+
+msgid "Rapatriement"
+msgstr "الإعادة إلى الوطن"
+
+msgid "Voyage : plafonds en euros (medical, repatriation, baggage, delay, liability ; null = frais réels)."
+msgstr "السفر: السقوف باليورو (medical, repatriation, baggage, delay, liability ؛ null = المصاريف الفعلية)."
+
+msgid "voyageurs"
+msgstr "المسافرون"
+
+msgid "Auto : prime annuelle de base. Voyage : prime d'un voyageur de 16 à 65 ans pour 1 à 8 jours. En MRU."
+msgstr "السيارات: القسط السنوي الأساسي. السفر: قسط مسافر واحد من 16 إلى 65 سنة لمدة 1 إلى 8 أيام. بالأوقية."
+
+msgid "Profil du compte"
+msgstr "ملف الحساب"
+
+msgid "destinations"
+msgstr "الوجهات"
+
+msgid "Déclaré (sans eID)"
+msgstr "مصرَّح به (بدون هوية رقمية)"
+
+msgid "Attribut du bien, ex. fiscal_power, usage ; voyage : trip_days, age."
+msgstr "خاصية المؤمَّن عليه، مثل fiscal_power وusage ؛ السفر: trip_days وage."
+
+msgid "Immatriculation pour un véhicule ; codes des pays pour un voyage."
+msgstr "رقم اللوحة للمركبة ؛ رموز البلدان للرحلة."
+
+msgid "voyageur"
+msgstr "المسافر"
+
+msgid "voyage"
+msgstr "الرحلة"
+
+msgid "nom (passeport)"
+msgstr "الاسم (جواز السفر)"
+
+msgid "Frais médicaux : 30 000 € au moins (visa Schengen)."
+msgstr "المصاريف الطبية: 30 000 يورو على الأقل (تأشيرة شنغن)."
+
+msgid "Frais médicaux"
+msgstr "المصاريف الطبية"
+
+msgid "Auto"
+msgstr "السيارات"
+
+msgid "départ"
+msgstr "المغادرة"
+
+msgid "Retard"
+msgstr "التأخر"
+
+msgid "Assistance 24 h/24 (voyage), imprimée sur l'attestation."
+msgstr "المساعدة على مدار الساعة (السفر)، مطبوعة على الشهادة."
+
+msgid "référence"
+msgstr "المرجع"
+
+msgid "Vérifié (ANRPTS)"
+msgstr "متحقَّق منه (الوكالة الوطنية لسجل السكان)"
+
+msgid "Voyageur d'un contrat voyage"
+msgstr "مسافر في عقد سفر"
+
+msgid "assistance 24 h/24"
+msgstr "المساعدة على مدار الساعة"
+
+msgid "n° de passeport"
+msgstr "رقم جواز السفر"
+
+msgid "véhicule ou voyage"
+msgstr "المركبة أو الرحلة"
+
+msgid "plafonds"
+msgstr "السقوف"
+
+msgid "retour"
+msgstr "العودة"
+
+msgid "produit"
+msgstr "المنتج"
+
+msgid "voyageur concerné"
+msgstr "المسافر المعني"
+
+msgid "Codes ISO des pays, ex. [\"FR\", \"ES\"]."
+msgstr "رموز ISO للبلدان، مثل [\"FR\", \"ES\"]."
+
+msgid "date de naissance"
+msgstr "تاريخ الميلاد"
+
+msgid "objet"
+msgstr "الغرض"

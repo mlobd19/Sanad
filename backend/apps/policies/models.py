@@ -41,17 +41,20 @@ class VehicleUsage(models.TextChoices):
 
 
 class InsuredAsset(models.Model):
-    """Bien assuré. Générique pour accueillir plus tard un logement ou un voyage."""
+    """Bien assuré : un véhicule (auto) ou un voyage (détails dans Trip). Générique pour un logement plus tard."""
 
     class Kind(models.TextChoices):
         VEHICLE = "vehicle", _("Véhicule")
+        TRIP = "trip", _("Voyage")
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="assets", verbose_name=_("déclaré par"))
     # Flotte d'une entreprise : le bien appartient à l'entreprise ; owner = le membre qui l'a déclaré.
     company = models.ForeignKey("companies.Company", null=True, blank=True, on_delete=models.PROTECT,
                                 related_name="assets", verbose_name=_("entreprise"))
     kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.VEHICLE, verbose_name=_("type"))
-    reference = models.CharField(max_length=40, db_index=True, help_text=_("Immatriculation pour un véhicule."), verbose_name=_("immatriculation"))
+    reference = models.CharField(max_length=40, db_index=True,
+                                 help_text=_("Immatriculation pour un véhicule ; codes des pays pour un voyage."),
+                                 verbose_name=_("référence"))
     attributes = models.JSONField(default=dict, help_text=_("Marque, modèle, puissance fiscale, usage…"), verbose_name=_("caractéristiques"))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("créé le"))
 
@@ -61,6 +64,66 @@ class InsuredAsset(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} {self.reference}"
+
+
+class Trip(models.Model):
+    """Voyage assuré (formule « Monde entier ») : destinations, dates et voyageurs.
+
+    Le contrat couvre du jour du départ au jour du retour, tous deux compris.
+    """
+
+    asset = models.OneToOneField(InsuredAsset, on_delete=models.CASCADE, related_name="trip", verbose_name=_("bien assuré"))
+    destinations = models.JSONField(default=list, help_text=_("Codes ISO des pays, ex. [\"FR\", \"ES\"]."),
+                                    verbose_name=_("destinations"))
+    departure_on = models.DateField(verbose_name=_("départ"))
+    return_on = models.DateField(verbose_name=_("retour"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("créé le"))
+
+    class Meta:
+        verbose_name = _("voyage")
+        verbose_name_plural = _("voyages")
+
+    def __str__(self):
+        return f"{', '.join(self.destinations)} · {self.departure_on:%d/%m/%Y} → {self.return_on:%d/%m/%Y}"
+
+    @property
+    def days(self) -> int:
+        """Durée en jours, départ et retour compris (un aller-retour dans la journée = 1 jour)."""
+        return (self.return_on - self.departure_on).days + 1
+
+
+class Traveler(models.Model):
+    """Voyageur d'un contrat voyage, identifié par son NNI et son passeport.
+
+    Nom officiel de l'ANRPTS (eID valide, non modifiable) ou, sans eID (cas fréquent des enfants),
+    nom déclaré tel qu'écrit sur le passeport, signalé à l'assureur.
+    """
+
+    class Verification(models.TextChoices):
+        VERIFIED = "verified", _("Vérifié (ANRPTS)")
+        DECLARED = "declared", _("Déclaré (sans eID)")
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="travelers", verbose_name=_("voyage"))
+    nni = models.CharField(_("NNI"), max_length=10, db_index=True)
+    full_name = models.CharField(max_length=120, verbose_name=_("nom (passeport)"))
+    full_name_ar = models.CharField(max_length=120, blank=True, verbose_name=_("nom en arabe"))
+    passport_number = models.CharField(max_length=20, verbose_name=_("n° de passeport"))
+    birth_date = models.DateField(verbose_name=_("date de naissance"))
+    verification = models.CharField(max_length=10, choices=Verification.choices, verbose_name=_("identité"))
+    eid_reference = models.CharField(max_length=64, blank=True, verbose_name=_("référence ANRPTS"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("ajouté le"))
+
+    class Meta:
+        verbose_name = _("voyageur")
+        verbose_name_plural = _("voyageurs")
+        ordering = ["pk"]
+
+    def __str__(self):
+        return self.full_name
+
+    def age_on(self, day: date) -> int:
+        years = day.year - self.birth_date.year
+        return years - ((day.month, day.day) < (self.birth_date.month, self.birth_date.day))
 
 
 class Quote(models.Model):
@@ -144,6 +207,10 @@ class Policy(models.Model):
     def insurer(self):
         return self.product.insurer
 
+    @property
+    def is_travel(self) -> bool:
+        return self.asset.kind == InsuredAsset.Kind.TRIP
+
     @staticmethod
     def compute_end(starts_on: date, months: int) -> date:
         return add_months(starts_on, months) - timedelta(days=1)
@@ -157,7 +224,15 @@ class Claim(models.Model):
         THEFT = "theft", _("Vol")
         FIRE = "fire", _("Incendie")
         GLASS = "glass", _("Bris de glace")
+        MEDICAL = "medical", _("Frais médicaux")
+        REPATRIATION = "repatriation", _("Rapatriement")
+        BAGGAGE = "baggage", _("Bagages")
+        DELAY = "delay", _("Retard")
         OTHER = "other", _("Autre")
+
+    # Types proposés selon le produit du contrat.
+    AUTO_KINDS = ("accident", "theft", "fire", "glass", "other")
+    TRAVEL_KINDS = ("medical", "repatriation", "baggage", "delay", "theft", "other")
 
     class Status(models.TextChoices):
         SUBMITTED = "submitted", _("Déclaré")
@@ -167,7 +242,9 @@ class Claim(models.Model):
     policy = models.ForeignKey(Policy, on_delete=models.PROTECT, related_name="claims", verbose_name=_("police"))
     declared_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+",
                                     verbose_name=_("déclaré par"))
-    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.ACCIDENT, verbose_name=_("type"))
+    kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.ACCIDENT, verbose_name=_("type"))
+    traveler = models.ForeignKey(Traveler, null=True, blank=True, on_delete=models.PROTECT, related_name="claims",
+                                 verbose_name=_("voyageur concerné"))
     occurred_on = models.DateField(verbose_name=_("date du sinistre"))
     place = models.CharField(max_length=200, default="", verbose_name=_("lieu"))
     description = models.TextField(verbose_name=_("description"))

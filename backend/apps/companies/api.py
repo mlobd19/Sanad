@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from apps.accounts.api import UserSerializer
 from apps.accounts.services import LoginError
 from apps.accounts.tokens import issue_token
+from apps.policies import api as policy_api
 from apps.policies.api import ClaimSerializer, PolicySerializer, claim_error, django_errors, logo_url, truthy
 from apps.policies.body_types import body_type
 from apps.policies.models import Order, Policy
@@ -193,8 +194,8 @@ class QuoteSelectionView(APIView):
 
 
 def order_data(order: Order) -> dict:
-    policies = list(order.policies.select_related("product__insurer", "asset").prefetch_related(
-        "attestations", "renewals"))
+    policies = list(order.policies.select_related("product__insurer", "asset__trip").prefetch_related(
+        "attestations", "renewals", "asset__trip__travelers__attestations"))
     return {"id": order.pk, "total": sum(p.premium for p in policies), "created_at": order.created_at,
             "policies": PolicySerializer(policies, many=True).data}
 
@@ -234,6 +235,47 @@ class OrderPayView(APIView):
                                                    request.data.get("payer_phone", ""))
         return Response({"payment_id": str(payment.id), "reference": payment.external_ref, "amount": payment.amount,
                          "instructions": instructions}, status=status.HTTP_201_CREATED)
+
+
+# --- Missions (assurance voyage des salariés) -----------------------------------------------------------
+# Mêmes vues que l'app (policies/api.py), rattachées à l'entreprise du membre ; les salariés n'ont pas
+# besoin de compte Sanad. Commande et paiement : /company/orders (entreprise vérifiée, mobile money).
+
+
+class CompanyTrips:
+    permission_classes = [IsCompanyMember]
+
+    @staticmethod
+    def company_for(request):
+        return services.member_company(request.user)[0]
+
+
+class CompanyTripListView(CompanyTrips, policy_api.TripListView):
+    def get(self, request):
+        company = self.company_for(request)
+        trips = policy_api.Trip.objects.filter(asset__company=company).select_related("asset") \
+            .prefetch_related("travelers").order_by("-departure_on")
+        return Response(policy_api.TripSerializer(trips, many=True).data)
+
+
+class CompanyTripDetailView(CompanyTrips, policy_api.TripDetailView):
+    pass
+
+
+class CompanyTravelerListView(CompanyTrips, policy_api.TravelerListView):
+    pass
+
+
+class CompanyTravelerDetailView(CompanyTrips, policy_api.TravelerDetailView):
+    pass
+
+
+class CompanyTripQuoteView(CompanyTrips, policy_api.TripQuoteView):
+    pass
+
+
+class CompanyTravelerCheckView(CompanyTrips, policy_api.TravelerCheckView):
+    pass
 
 
 # --- Contrats -------------------------------------------------------------------------------------------

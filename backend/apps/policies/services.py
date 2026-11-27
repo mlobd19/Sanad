@@ -3,6 +3,8 @@
 brouillon → payée → active  (validation assureur, ou automatique si l'assureur est en API)
                   ↘ refusée → remboursement
 active → résiliée (révoque l'attestation) | expirée
+
+Mêmes transitions pour l'auto et le voyage (préparation du voyage et devis : travel.py).
 """
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -17,7 +19,8 @@ from apps.audit.models import record
 from apps.catalog.models import DEFAULT_DURATION, DURATIONS, Product
 from apps.notifications.service import notify
 
-from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Policy, Quote, VehicleUsage, normalize_plate
+from . import travel
+from .models import Claim, ClaimPhoto, Commission, InsuredAsset, Policy, Quote, Traveler, VehicleUsage, normalize_plate
 
 QUOTE_VALIDITY = timedelta(hours=48)
 REQUIRED_VEHICLE_ATTRIBUTES = {"fiscal_power", "usage"}
@@ -51,7 +54,11 @@ def compute_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO, mo
 
 
 def build_quotes(customer, asset: InsuredAsset, branch=Product.Branch.AUTO, months: int = DEFAULT_DURATION) -> list[Quote]:
-    """Devis de tous les assureurs actifs pour ce bien et cette durée (droits vérifiés par l'appelant)."""
+    """Devis auto de tous les assureurs actifs pour ce véhicule et cette durée (droits vérifiés par l'appelant).
+
+    Voyage : travel.build_travel_quotes."""
+    if asset.kind != InsuredAsset.Kind.VEHICLE:
+        raise ValidationError("Devis auto : choisissez un véhicule.")
     months = parse_duration(months)
     missing = REQUIRED_VEHICLE_ATTRIBUTES - set(asset.attributes)
     if asset.kind == InsuredAsset.Kind.VEHICLE and missing:
@@ -116,7 +123,11 @@ def scan_registration_card(user, upload) -> dict:
 
 
 def _has_overlapping_cover(asset, starts_on, ends_on, exclude=None):
+    """Auto : même immatriculation déjà couverte. Voyage : un voyageur (NNI) déjà couvert (travel.py)."""
+    if asset.kind == InsuredAsset.Kind.TRIP:
+        return bool(travel.covered_travelers(asset.trip, exclude=exclude))
     qs = Policy.objects.filter(
+        asset__kind=InsuredAsset.Kind.VEHICLE,
         asset__reference__iexact=asset.reference,
         status__in=[Policy.Status.PAID, Policy.Status.ACTIVE],
         starts_on__lte=ends_on,
@@ -137,12 +148,22 @@ def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal
     if hasattr(quote, "policy"):
         raise ValidationError("Ce devis a déjà été utilisé.")
     today = timezone.localdate()
-    starts_on = starts_on or today
-    if starts_on < today or starts_on > today + timedelta(days=60):
-        raise ValidationError("La date d'effet doit être comprise entre aujourd'hui et J+60.")
-    ends_on = Policy.compute_end(starts_on, quote.duration_months)
-    if _has_overlapping_cover(quote.asset, starts_on, ends_on):
-        raise ValidationError("Ce véhicule est déjà couvert sur cette période.")
+    if quote.asset.kind == InsuredAsset.Kind.TRIP:
+        # Voyage : couvert du départ au retour ; voyageurs et dates revérifiés.
+        trip = quote.asset.trip
+        travel.check_quote_matches_trip(quote, trip)
+        travel.check_dates(trip.departure_on, trip.return_on, today)
+        starts_on, ends_on = trip.departure_on, trip.return_on
+        if _has_overlapping_cover(quote.asset, starts_on, ends_on):
+            raise ValidationError("Un voyageur est déjà couvert par un autre contrat voyage sur ces dates.",
+                                  code="traveler_overlap")
+    else:
+        starts_on = starts_on or today
+        if starts_on < today or starts_on > today + timedelta(days=60):
+            raise ValidationError("La date d'effet doit être comprise entre aujourd'hui et J+60.")
+        ends_on = Policy.compute_end(starts_on, quote.duration_months)
+        if _has_overlapping_cover(quote.asset, starts_on, ends_on):
+            raise ValidationError("Ce véhicule est déjà couvert sur cette période.")
     policy = Policy.objects.create(
         quote=quote,
         customer=customer,
@@ -155,11 +176,13 @@ def create_policy(customer, quote: Quote, starts_on: date | None = None, renewal
         company=company,
         order=order,
     )
-    record("policy.created", policy, actor=customer, premium=policy.premium, months=quote.duration_months)
+    record("policy.created", policy, actor=customer, premium=policy.premium, months=quote.duration_months,
+           days=quote.attributes_snapshot.get("days"))
     return policy
 
 
 OVERLAP_REFUSAL = "Véhicule déjà couvert sur cette période : paiement remboursé."
+TRAVEL_OVERLAP_REFUSAL = "Voyageur déjà couvert sur ces dates : paiement remboursé."
 
 
 def on_payment_confirmed(policy: Policy):
@@ -174,10 +197,18 @@ def on_payment_confirmed(policy: Policy):
     # véhicule peuvent être payés l'un après l'autre (ou un particulier et une flotte) : on revérifie ici.
     # Verrou sur toutes les fiches de cette immatriculation : deux confirmations simultanées passent
     # l'une après l'autre, et la seconde voit la première.
-    list(InsuredAsset.objects.select_for_update().filter(reference=policy.asset.reference))
-    if _has_overlapping_cover(policy.asset, policy.starts_on, policy.ends_on, exclude=policy):
-        return _refuse(policy, actor=None, reason=OVERLAP_REFUSAL, refund_note="Véhicule déjà couvert",
-                       template="policy_refused_overlap")
+    if policy.is_travel:
+        # Voyage : même règle par voyageur. Verrou sur les fiches de ces NNI (tous voyages confondus).
+        nnis = list(policy.asset.trip.travelers.values_list("nni", flat=True))
+        list(Traveler.objects.select_for_update().filter(nni__in=nnis))
+        if _has_overlapping_cover(policy.asset, policy.starts_on, policy.ends_on, exclude=policy):
+            return _refuse(policy, actor=None, reason=TRAVEL_OVERLAP_REFUSAL, refund_note="Voyageur déjà couvert",
+                           template="policy_refused_overlap_travel")
+    else:
+        list(InsuredAsset.objects.select_for_update().filter(reference=policy.asset.reference))
+        if _has_overlapping_cover(policy.asset, policy.starts_on, policy.ends_on, exclude=policy):
+            return _refuse(policy, actor=None, reason=OVERLAP_REFUSAL, refund_note="Véhicule déjà couvert",
+                           template="policy_refused_overlap")
     if policy.product.insurer.auto_validate:
         return _activate(policy, actor=None)
     return policy
@@ -191,7 +222,7 @@ def _check_agent(agent, policy):
 
 
 def _activate(policy: Policy, actor, insurer_reference: str = "") -> Policy:
-    from apps.attestations.services import issue_attestation
+    from apps.attestations.services import issue_attestation, issue_travel_attestations
 
     policy.status = Policy.Status.ACTIVE
     policy.decided_by = actor
@@ -209,6 +240,15 @@ def _activate(policy: Policy, actor, insurer_reference: str = "") -> Policy:
         period=timezone.localdate().strftime("%Y-%m"),
     )
     record("policy.activated", policy, actor=actor)
+    if policy.is_travel:
+        issue_travel_attestations(policy)  # une par voyageur
+        trip = policy.asset.trip
+        context = {"destinations_fr": travel.country_names(trip.destinations, "fr"),
+                   "destinations_ar": travel.country_names(trip.destinations, "ar"),
+                   "start": f"{trip.departure_on:%d/%m}", "end": f"{trip.return_on:%d/%m}"}
+        transaction.on_commit(lambda: notify("sms", policy.customer.phone, "attestation_issued_travel", context,
+                                             language=policy.customer.language))
+        return policy
     attestation = issue_attestation(policy)
     transaction.on_commit(
         lambda: notify(
@@ -289,9 +329,9 @@ def expire_policies(today: date | None = None) -> int:
 
 def policies_due_for_reminder(days: int, today: date | None = None):
     today = today or timezone.localdate()
-    return Policy.objects.filter(status=Policy.Status.ACTIVE, ends_on=today + timedelta(days=days)).select_related(
-        "customer", "asset"
-    )
+    # Rappel de renouvellement : auto seulement (un voyage ne se renouvelle pas).
+    return Policy.objects.filter(status=Policy.Status.ACTIVE, ends_on=today + timedelta(days=days),
+                                 asset__kind=InsuredAsset.Kind.VEHICLE).select_related("customer", "asset")
 
 
 # --- Portail assureur -----------------------------------------------------------
@@ -319,13 +359,24 @@ def parse_statuses(raw: str | None) -> list[str]:
     return statuses
 
 
-def insurer_policies(agent, statuses: list[str] | None = None):
+def parse_branch(raw: str | None) -> str | None:
+    """Filtre par produit : « auto », « travel » ou rien (tous)."""
+    if not raw:
+        return None
+    if raw not in (Product.Branch.AUTO, Product.Branch.TRAVEL):
+        raise ValidationError(f"Produit inconnu : {raw}.")
+    return raw
+
+
+def insurer_policies(agent, statuses: list[str] | None = None, branch: str | None = None):
     insurer = agent_insurer(agent)
     qs = Policy.objects.filter(product__insurer=insurer).select_related(
-        "product__insurer", "asset", "customer", "company"
-    ).prefetch_related("attestations", "payments", "renewals", "order__payments")
+        "product__insurer", "asset__trip", "customer", "company"
+    ).prefetch_related("attestations", "payments", "renewals", "order__payments", "asset__trip__travelers__attestations")
     if statuses:
         qs = qs.filter(status__in=statuses)
+    if branch:
+        qs = qs.filter(product__branch=branch)
     return qs
 
 
@@ -334,10 +385,12 @@ def insurer_policy(agent, policy_id: int) -> Policy:
     return insurer_policies(agent).get(pk=policy_id)
 
 
-def insurer_commissions(agent) -> dict:
-    """Relevés mensuels et détail des commissions de la compagnie de l'agent."""
+def insurer_commissions(agent, branch: str | None = None) -> dict:
+    """Relevés mensuels et détail des commissions de la compagnie de l'agent (filtre facultatif par produit)."""
     insurer = agent_insurer(agent)
     qs = Commission.objects.filter(insurer=insurer)
+    if branch:
+        qs = qs.filter(policy__product__branch=branch)
     months = (
         qs.values("period")
         .annotate(
@@ -397,8 +450,14 @@ def declare_claim(customer, policy: Policy, data: dict, photos: list) -> Claim:
         raise ValidationError("Un sinistre se déclare sur un contrat en cours ou échu.", code="policy_inactive")
 
     kind = str(data.get("kind") or "")
-    if kind not in Claim.Kind.values:
+    if kind not in (Claim.TRAVEL_KINDS if policy.is_travel else Claim.AUTO_KINDS):
         raise ValidationError("Choisissez le type de sinistre.", code="invalid_kind")
+    traveler = None
+    if policy.is_travel and data.get("traveler"):
+        traveler = policy.asset.trip.travelers.filter(pk=str(data["traveler"])).first() \
+            if str(data["traveler"]).isdigit() else None
+        if traveler is None:
+            raise ValidationError("Choisissez le voyageur concerné.", code="invalid_traveler")
     try:
         occurred_on = date.fromisoformat(str(data.get("occurred_on") or ""))
     except ValueError:
@@ -427,7 +486,7 @@ def declare_claim(customer, policy: Policy, data: dict, photos: list) -> Claim:
 
     with transaction.atomic():
         claim = Claim.objects.create(
-            policy=policy, declared_by=customer, kind=kind, occurred_on=occurred_on, place=place,
+            policy=policy, declared_by=customer, kind=kind, traveler=traveler, occurred_on=occurred_on, place=place,
             description=description, third_party_plate=" ".join(str(data.get("third_party_plate") or "").upper().split())[:40],
             injuries=bool(data.get("injuries")),
         )

@@ -41,6 +41,37 @@ def issue_attestation(policy) -> Attestation:
     return attestation
 
 
+@transaction.atomic
+def issue_travel_attestations(policy) -> list[Attestation]:
+    """Voyage : une attestation signée par voyageur, même numérotation que l'auto.
+
+    Le jeton ne porte que le strict nécessaire (fin du passeport, destinations, dates) : le nom et la
+    date de naissance restent en base, et la vérification publique les masque.
+    """
+    trip = policy.asset.trip
+    issued = []
+    for traveler in trip.travelers.all():
+        number = _next_number()
+        payload = {
+            "v": 1,
+            "n": number,
+            "b": "travel",
+            "pp": traveler.passport_number[-3:],
+            "d": trip.destinations,
+            "i": policy.product.insurer.slug,
+            "g": policy.product.code,
+            "f": policy.starts_on.isoformat(),
+            "t": policy.ends_on.isoformat(),
+            "k": signing.key_id(),
+        }
+        attestation = Attestation.objects.create(
+            policy=policy, traveler=traveler, number=number, payload=payload, token=signing.sign(payload)
+        )
+        record("attestation.issued", attestation, number=number, traveler=traveler.pk)
+        issued.append(attestation)
+    return issued
+
+
 def revoke_attestations(policy, reason: str, actor=None):
     now = timezone.now()
     for att in policy.attestations.filter(status=Attestation.Status.VALID):
@@ -66,7 +97,7 @@ def check(token: str) -> dict:
         return {"authentic": False, "status": "invalid", "message": "Attestation non authentique."}
 
     att = (
-        Attestation.objects.select_related("policy__product__insurer", "policy__customer")
+        Attestation.objects.select_related("policy__product__insurer", "policy__customer", "policy__asset", "traveler")
         .filter(token=token)
         .first()
     )
@@ -84,10 +115,30 @@ def check(token: str) -> dict:
     else:
         status, message = "valid", "Attestation valide."
 
+    if att.traveler_id:
+        from apps.policies.travel import country_names, mask_passport
+
+        traveler = att.traveler
+        return {
+            "authentic": True,
+            "status": status,
+            "message": message,
+            "product": "travel",
+            "number": payload["n"],
+            "insurer": policy.product.insurer.name,
+            "cover": policy.product.name,
+            "valid_from": payload["f"],
+            "valid_to": payload["t"],
+            "holder": mask_name(traveler.full_name),
+            "passport": mask_passport(traveler.passport_number),
+            "destinations": country_names(payload["d"], "fr"),
+            "destinations_ar": country_names(payload["d"], "ar"),
+        }
     return {
         "authentic": True,
         "status": status,
         "message": message,
+        "product": "auto",
         "number": payload["n"],
         "plate": format_plate(payload["p"]),
         "insurer": policy.product.insurer.name,
@@ -118,7 +169,7 @@ def attestation_for(user, attestation_id: int) -> Attestation:
     Attestation.DoesNotExist pour tout autre compte (on ne révèle pas qu'elle existe).
     """
     qs = Attestation.objects.select_related(
-        "policy__customer", "policy__asset", "policy__product__insurer"
+        "policy__customer", "policy__asset", "policy__product__insurer", "traveler"
     ).filter(pk=attestation_id)
     if user.role == user.Role.INSURER_AGENT and user.insurer_id:
         return qs.get(policy__product__insurer_id=user.insurer_id)
@@ -131,10 +182,13 @@ def attestation_for(user, attestation_id: int) -> Attestation:
 
 
 def attestation_pdf(attestation: Attestation, actor=None) -> bytes:
-    """PDF A4 bilingue. Une attestation révoquée ne se télécharge plus."""
+    """PDF A4 bilingue (voyage : français, arabe et anglais). Une attestation révoquée ne se télécharge plus."""
     from .pdf import render
+    from .pdf_travel import render as render_travel
 
     if attestation.status != Attestation.Status.VALID:
         raise AttestationRevoked("Cette attestation a été révoquée : elle ne peut plus être téléchargée.")
     record("attestation.pdf_downloaded", attestation, actor=actor)
+    if attestation.traveler_id:
+        return render_travel(attestation, specimen=settings.ATTESTATION_SPECIMEN)
     return render(attestation, specimen=settings.ATTESTATION_SPECIMEN)

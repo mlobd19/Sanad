@@ -14,6 +14,9 @@ class Attestation(models.Model):
         REVOKED = "revoked", _("Révoquée")
 
     policy = models.ForeignKey("policies.Policy", on_delete=models.PROTECT, related_name="attestations", verbose_name=_("police"))
+    # Voyage : une attestation par voyageur (même numérotation) ; auto : aucune.
+    traveler = models.ForeignKey("policies.Traveler", null=True, blank=True, on_delete=models.PROTECT,
+                                 related_name="attestations", verbose_name=_("voyageur"))
     number = models.CharField(max_length=24, unique=True, verbose_name=_("numéro"))
     payload = models.JSONField(verbose_name=_("contenu signé"))
     token = models.TextField(unique=True, verbose_name=_("jeton"))

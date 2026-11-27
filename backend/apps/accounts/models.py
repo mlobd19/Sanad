@@ -180,7 +180,12 @@ class IdentityCheck(models.Model):
         PHONE_MISMATCH = "phone_mismatch", _("Téléphone de l'eID différent du compte")
         UNAVAILABLE = "unavailable", _("ANRPTS injoignable")
 
+    class Purpose(models.TextChoices):
+        PROFILE = "profile", _("Profil du compte")
+        TRAVELER = "traveler", _("Voyageur d'un contrat voyage")
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="identity_checks", verbose_name=_("compte"))
+    purpose = models.CharField(max_length=10, choices=Purpose.choices, default=Purpose.PROFILE, verbose_name=_("objet"))
     provider = models.CharField(max_length=20, verbose_name=_("source"))
     nni = models.CharField(_("NNI"), max_length=20)
     outcome = models.CharField(max_length=16, choices=Outcome.choices, verbose_name=_("résultat"))

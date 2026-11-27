@@ -40,12 +40,30 @@ class ClientTypeFilter(admin.SimpleListFilter):
         return queryset
 
 
+class BranchFilter(admin.SimpleListFilter):
+    """Filtre par produit : auto ou voyage."""
+
+    title = _("produit")
+    parameter_name = "produit"
+    field = "product__branch"
+
+    def lookups(self, request, model_admin):
+        return [("auto", _("Auto")), ("travel", _("Voyage"))]
+
+    def queryset(self, request, queryset):
+        return queryset.filter(**{self.field: self.value()}) if self.value() else queryset
+
+
+class PolicyBranchFilter(BranchFilter):
+    field = "policy__product__branch"
+
+
 @admin.register(Policy)
 class PolicyAdmin(ReadOnlyMixin, admin.ModelAdmin):
     list_display = ("id", "plate_display", "client_display", "insurer_display", "premium_display", "status_display",
                     "period_display")
     list_display_links = ("id", "plate_display")
-    list_filter = ("status", "product__insurer", ClientTypeFilter)
+    list_filter = ("status", BranchFilter, "product__insurer", ClientTypeFilter)
     search_fields = ("asset__reference", "customer__phone", "customer__full_name", "company__legal_name",
                      "company__nif", "insurer_reference")
     date_hierarchy = "created_at"
@@ -53,20 +71,44 @@ class PolicyAdmin(ReadOnlyMixin, admin.ModelAdmin):
     fieldsets = (
         (_("Contrat"), {"fields": ("status_display", "product", "premium_display", "starts_on", "ends_on",
                                    "insurer_reference")}),
-        (_("Client"), {"fields": ("customer", "company", "asset", "order")}),
+        (_("Client"), {"fields": ("customer", "company", "asset", "order", "trip_display", "travelers_display")}),
         (_("Décision de l'assureur"), {"fields": ("decided_by", "decided_at", "refusal_reason")}),
         (_("Historique"), {"fields": ("quote", "renewal_of", "created_at", "updated_at"), "classes": ("collapse",)}),
     )
     readonly_fields = ("status_display", "product", "premium_display", "starts_on", "ends_on", "insurer_reference",
                        "customer", "company", "asset", "order", "decided_by", "decided_at", "refusal_reason", "quote",
-                       "renewal_of", "created_at", "updated_at")
+                       "renewal_of", "created_at", "updated_at", "trip_display", "travelers_display")
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("asset", "customer", "company", "product__insurer")
+        return super().get_queryset(request).select_related("asset__trip", "customer", "company", "product__insurer")
 
-    @admin.display(description=_("immatriculation"), ordering="asset__reference")
+    @admin.display(description=_("véhicule ou voyage"), ordering="asset__reference")
     def plate_display(self, policy):
+        if policy.is_travel:
+            return format_html('{}<span class="sn-sub">{}</span>', gettext("Voyage"), policy.asset.reference)
         return policy.asset.reference
+
+    @admin.display(description=_("voyage"))
+    def trip_display(self, policy):
+        if not policy.is_travel:
+            return "—"
+        from .travel import country_names
+
+        trip = policy.asset.trip
+        return format_html('{} · <span class="sn-mono">{} → {}</span>', country_names(trip.destinations),
+                           trip.departure_on.strftime("%d/%m/%Y"), trip.return_on.strftime("%d/%m/%Y"))
+
+    @admin.display(description=_("voyageurs"))
+    def travelers_display(self, policy):
+        if not policy.is_travel:
+            return "—"
+        rows = [
+            format_html('{} {} <span class="sn-sub sn-mono">{} · {}</span>', t.full_name,
+                        pill(t.verification, t.get_verification_display()),
+                        t.passport_number, t.birth_date.strftime("%d/%m/%Y"))
+            for t in policy.asset.trip.travelers.all()
+        ]
+        return format_html("<br>".join(["{}"] * len(rows)), *rows) if rows else "—"
 
     @admin.display(description=_("client"))
     def client_display(self, policy):
@@ -219,11 +261,11 @@ class ClaimAdmin(admin.ModelAdmin):
 
     list_display = ("number_display", "plate", "holder", "insurer", "kind", "occurred_on", "injuries", "status_display",
                     "created_at")
-    list_filter = ("status", "kind", "policy__product__insurer", "injuries")
+    list_filter = ("status", PolicyBranchFilter, "kind", "policy__product__insurer", "injuries")
     search_fields = ("policy__asset__reference", "description", "place", "policy__customer__phone",
                      "policy__company__legal_name")
-    fields = ("policy", "declared_by", "kind", "occurred_on", "place", "description", "third_party_plate", "injuries",
-              "status", "closing_note", "handled_by", "created_at", "updated_at")
+    fields = ("policy", "declared_by", "kind", "traveler", "occurred_on", "place", "description", "third_party_plate",
+              "injuries", "status", "closing_note", "handled_by", "created_at", "updated_at")
     readonly_fields = fields
     inlines = [ClaimPhotoInline]
     actions = ["take", "close"]
@@ -301,7 +343,7 @@ class ClaimAdmin(admin.ModelAdmin):
 @admin.register(Commission)
 class CommissionAdmin(ReadOnlyMixin, admin.ModelAdmin):
     list_display = ("policy", "insurer", "rate_display", "amount_display", "period", "paid_display")
-    list_filter = ("insurer", "period", "is_paid")
+    list_filter = (PolicyBranchFilter, "insurer", "period", "is_paid")
     readonly_fields = ("policy", "insurer", "rate", "amount", "period", "is_paid", "created_at")
     actions = ["mark_paid"]
 

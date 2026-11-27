@@ -158,6 +158,8 @@ REST_FRAMEWORK = {
         "password": env("PASSWORD_THROTTLE_RATE", "10/hour"),
         "scan": env("SCAN_THROTTLE_RATE", "20/hour"),
         "identity": env("IDENTITY_THROTTLE_RATE", "5/hour"),  # vérifications d'identité numérique (eID), par compte
+        # Voyageurs d'un contrat voyage (eID de chaque voyageur) : une famille ou une mission en compte plusieurs.
+        "traveler_check": env("TRAVELER_CHECK_RATE", "30/hour"),
     },
 }
 

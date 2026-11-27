@@ -24,6 +24,15 @@ TEMPLATES = {
         "fr": "Votre attestation d'assurance n° {number} est prête : {url}",
         "ar": "شهادة التأمين رقم {number} جاهزة: {url}",
     },
+    "attestation_issued_travel": {
+        "fr": "Assurance voyage active ({destinations_fr}, du {start} au {end}). "
+              "Les attestations des voyageurs sont dans l'app {platform}.",
+        "ar": "تأمين السفر ساري ({destinations_ar}، من {start} إلى {end}). شهادات المسافرين في تطبيق {platform}.",
+    },
+    "policy_refused_overlap_travel": {
+        "fr": "Un voyageur est déjà assuré sur ces dates : contrat voyage non émis. Vous êtes remboursé de {amount} MRU.",
+        "ar": "أحد المسافرين مؤمَّن بالفعل في هذه التواريخ: لم يصدر عقد السفر. سيتم رد مبلغ {amount} أوقية.",
+    },
     "policy_refused": {
         "fr": "L'assureur n'a pas pu valider votre demande. Vous êtes remboursé de {amount} MRU.",
         "ar": "لم تتمكن شركة التأمين من قبول طلبك. سيتم رد مبلغ {amount} أوقية.",

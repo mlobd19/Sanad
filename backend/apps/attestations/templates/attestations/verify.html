@@ -45,6 +45,21 @@
   {% else %}
     <div class="result bad"><h1>Attestation non authentique</h1></div>
   {% endif %}
+  {% if result.number and result.product == "travel" %}
+  {# Assurance voyage : lue aussi par les consulats et les hôpitaux, d'où les libellés anglais. #}
+  <dl>
+    <dt>N°</dt><dd>{{ result.number }}</dd>
+    <dt>Voyageur <small>/ Traveller</small></dt><dd>{{ result.holder }}</dd>
+    <dt>Passeport <small>/ Passport</small></dt><dd>{{ result.passport }}</dd>
+    <dt>Destination(s)</dt><dd>{{ result.destinations }}</dd>
+    <dt>Assureur <small>/ Insurer</small></dt><dd>{{ result.insurer }}</dd>
+    <dt>Formule <small>/ Cover</small></dt><dd>{{ result.cover }}</dd>
+    <dt>Du <small>/ From</small></dt><dd>{{ result.valid_from }}</dd>
+    <dt>Au <small>/ To</small></dt><dd>{{ result.valid_to }}</dd>
+  </dl>
+  <p class="note">Les données personnelles sont masquées. Comparez la fin du numéro de passeport avec le passeport présenté.<br>
+  Personal data is masked. Compare the last digits of the passport number with the passport shown.</p>
+  {% else %}
   {% if result.number %}
   <dl>
     <dt>N°</dt><dd>{{ result.number }}</dd>
@@ -57,6 +72,7 @@
   </dl>
   {% endif %}
   <p class="note">Les données personnelles sont masquées. En cas de doute, comparez l'immatriculation avec celle du véhicule.</p>
+  {% endif %}
 </main>
 </body>
 </html>

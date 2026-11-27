@@ -13,9 +13,9 @@ from apps.accounts.storage import private_file_response
 from apps.attestations.models import Attestation
 from apps.audit.models import record
 
-from . import registration_scan, services
+from . import registration_scan, services, travel
 from .body_types import body_type
-from .models import Claim, Commission, InsuredAsset, Policy, Quote, VehicleUsage, normalize_plate
+from .models import Claim, Commission, InsuredAsset, Policy, Quote, Traveler, Trip, VehicleUsage, normalize_plate
 
 
 def django_errors(fn):
@@ -84,13 +84,26 @@ class QuoteSerializer(serializers.ModelSerializer):
     coverages = serializers.JSONField(source="product.coverages")
     indicative = serializers.BooleanField(source="product.is_indicative")
     insurer_logo = serializers.SerializerMethodField()
+    branch = serializers.CharField(source="product.branch")
+    limits = serializers.JSONField(source="product.limits")
+    days = serializers.SerializerMethodField()
+    travelers = serializers.SerializerMethodField()
 
     class Meta:
         model = Quote
         fields = [
             "id", "insurer", "insurer_legal_name", "insurer_slug", "insurer_logo", "product", "product_code",
-            "coverages", "indicative", "premium", "duration_months", "expires_at",
+            "coverages", "indicative", "premium", "duration_months", "expires_at", "branch", "limits", "days",
+            "travelers",
         ]
+
+    def get_days(self, quote):
+        return quote.attributes_snapshot.get("days")
+
+    def get_travelers(self, quote):
+        """Voyage : nombre de voyageurs du devis (la prime est leur total)."""
+        travelers = quote.attributes_snapshot.get("travelers")
+        return len(travelers) if travelers is not None else None
 
     def get_insurer_logo(self, quote):
         return logo_url(quote.product.insurer)
@@ -104,6 +117,32 @@ class AttestationSerializer(serializers.ModelSerializer):
         fields = ["id", "number", "status", "issued_at", "verify_url"]
 
 
+class TravelerSerializer(serializers.ModelSerializer):
+    attestation = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Traveler
+        fields = ["id", "nni", "full_name", "full_name_ar", "passport_number", "birth_date", "verification",
+                  "attestation"]
+
+    def get_attestation(self, traveler):
+        att = next((a for a in traveler.attestations.all() if a.status == Attestation.Status.VALID), None)
+        return AttestationSerializer(att).data if att else None
+
+
+class TripSerializer(serializers.ModelSerializer):
+    days = serializers.IntegerField(read_only=True)
+    travelers = TravelerSerializer(many=True, read_only=True)
+    locked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Trip
+        fields = ["id", "asset_id", "destinations", "departure_on", "return_on", "days", "travelers", "locked"]
+
+    def get_locked(self, trip):
+        return travel.is_locked(trip)
+
+
 class PolicySerializer(serializers.ModelSerializer):
     insurer = serializers.CharField(source="product.insurer.name", read_only=True)
     product = serializers.CharField(source="product.name", read_only=True)
@@ -114,18 +153,34 @@ class PolicySerializer(serializers.ModelSerializer):
     insurer_logo = serializers.SerializerMethodField()
     duration_months = serializers.IntegerField(source="quote.duration_months", read_only=True)
     body_type = serializers.SerializerMethodField()
+    branch = serializers.CharField(source="product.branch", read_only=True)
+    trip = serializers.SerializerMethodField()
+    limits = serializers.JSONField(source="product.limits", read_only=True)
+    assistance_phone = serializers.CharField(source="product.insurer.assistance_phone", read_only=True)
 
     class Meta:
         model = Policy
         fields = [
             "id", "insurer", "insurer_logo", "product", "plate", "body_type", "premium", "status", "status_label",
             "starts_on", "ends_on", "duration_months", "refusal_reason", "attestation", "asset_id", "renewed", "created_at",
+            "branch", "trip", "limits", "assistance_phone",
         ]
+
+    def get_trip(self, policy):
+        """Voyage : destinations, dates et voyageurs (chacun avec son attestation). Auto : null."""
+        if not policy.is_travel:
+            return None
+        trip = policy.asset.trip
+        return {"id": trip.pk, "destinations": trip.destinations, "departure_on": trip.departure_on,
+                "return_on": trip.return_on, "days": trip.days,
+                "travelers": TravelerSerializer(trip.travelers.all(), many=True).data}
 
     def get_insurer_logo(self, policy):
         return logo_url(policy.product.insurer)
 
     def get_body_type(self, policy):
+        if policy.is_travel:
+            return None
         return body_type((policy.asset.attributes or {}).get("make"))
 
     def get_renewed(self, policy):
@@ -140,7 +195,8 @@ class AssetListView(APIView):
     permission_classes = [IsCustomer]
 
     def get(self, request):
-        return Response(AssetSerializer(request.user.assets.all(), many=True).data)
+        # Véhicules seulement : les voyages ont leur propre parcours (/api/trips).
+        return Response(AssetSerializer(request.user.assets.filter(kind=InsuredAsset.Kind.VEHICLE), many=True).data)
 
     def post(self, request):
         serializer = AssetSerializer(data=request.data)
@@ -193,7 +249,7 @@ class QuoteView(APIView):
 
     @django_errors
     def post(self, request, asset_id):
-        asset = get_object_or_404(InsuredAsset, pk=asset_id, owner=request.user)
+        asset = get_object_or_404(InsuredAsset, pk=asset_id, owner=request.user, kind=InsuredAsset.Kind.VEHICLE)
         months = services.parse_duration(request.data.get("months"))
         quotes = services.compute_quotes(request.user, asset, months=months)
         return Response(QuoteSerializer(quotes, many=True).data, status=status.HTTP_201_CREATED)
@@ -203,7 +259,8 @@ class PolicyListView(APIView):
     permission_classes = [IsCustomer]
 
     def get(self, request):
-        qs = request.user.policies.select_related("product__insurer", "asset").prefetch_related("attestations")
+        qs = request.user.policies.select_related("product__insurer", "asset__trip").prefetch_related(
+            "attestations", "asset__trip__travelers__attestations")
         return Response(PolicySerializer(qs, many=True).data)
 
     @django_errors
@@ -230,11 +287,12 @@ class PolicyDetailView(APIView):
 class ClaimSerializer(serializers.ModelSerializer):
     number = serializers.CharField(read_only=True)
     photos = serializers.SerializerMethodField()
+    traveler = serializers.CharField(source="traveler.full_name", default=None, read_only=True)
 
     class Meta:
         model = Claim
         fields = ["id", "number", "kind", "occurred_on", "place", "description", "third_party_plate", "injuries",
-                  "status", "closing_note", "photos", "created_at", "updated_at"]
+                  "status", "closing_note", "photos", "traveler", "created_at", "updated_at"]
 
     def get_photos(self, claim):
         return len(claim.photos.all())  # nombre seulement : les fichiers restent privés
@@ -259,13 +317,113 @@ class ClaimView(APIView):
 
     def post(self, request, policy_id):
         policy = get_object_or_404(Policy, pk=policy_id, customer=request.user)
-        data = {key: request.data.get(key) for key in ("kind", "occurred_on", "place", "description", "third_party_plate")}
+        data = {key: request.data.get(key)
+                for key in ("kind", "occurred_on", "place", "description", "third_party_plate", "traveler")}
         data["injuries"] = truthy(request.data.get("injuries"))
         try:
             claim = services.declare_claim(request.user, policy, data, request.FILES.getlist("photos"))
         except DjangoValidationError as exc:
             return claim_error(exc)
         return Response(ClaimSerializer(claim).data, status=status.HTTP_201_CREATED)
+
+
+# --- Voyage ------------------------------------------------------------------------
+# Parcours : voyage (destinations, dates) → voyageurs → devis → contrat (POST /api/policies) →
+# paiement. Mêmes vues pour l'espace entreprise, avec `company` (companies/api.py).
+
+
+def trip_error(exc: DjangoValidationError) -> Response:
+    """Erreur métier avec son code, traduit par l'app (français / arabe)."""
+    return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
+
+
+class TripViews:
+    """Logique commune particulier / entreprise : `company_for(request)` donne l'entreprise ou None."""
+
+    @staticmethod
+    def company_for(request):
+        return None
+
+    def trip(self, request, trip_id):
+        try:
+            return travel.trip_for(request.user, trip_id, company=self.company_for(request))
+        except Trip.DoesNotExist:
+            raise Http404 from None
+
+
+class TripListView(TripViews, APIView):
+    permission_classes = [IsCustomer]
+
+    def post(self, request):
+        try:
+            trip = travel.create_trip(request.user, request.data.get("destinations"), request.data.get("departure_on"),
+                                      request.data.get("return_on"), company=self.company_for(request))
+        except DjangoValidationError as exc:
+            return trip_error(exc)
+        return Response(TripSerializer(trip).data, status=status.HTTP_201_CREATED)
+
+
+class TripDetailView(TripViews, APIView):
+    permission_classes = [IsCustomer]
+
+    def get(self, request, trip_id):
+        return Response(TripSerializer(self.trip(request, trip_id)).data)
+
+
+class TravelerCheckView(APIView):
+    """Nom officiel d'un voyageur d'après son NNI (eID), avant de l'ajouter. Limité par compte."""
+
+    permission_classes = [IsCustomer]
+    throttle_scope = "traveler_check"
+
+    def post(self, request):
+        try:
+            result = travel.check_traveler(request.user, request.data.get("nni"))
+        except DjangoValidationError as exc:
+            return trip_error(exc)
+        return Response({k: result[k] for k in ("status", "full_name", "full_name_ar")})
+
+
+class TravelerListView(TripViews, APIView):
+    permission_classes = [IsCustomer]
+    throttle_scope = "traveler_check"
+
+    def post(self, request, trip_id):
+        trip = self.trip(request, trip_id)
+        d = request.data
+        try:
+            travel.add_traveler(request.user, trip, nni=d.get("nni"), passport_number=d.get("passport_number"),
+                                birth_date=d.get("birth_date"), full_name=d.get("full_name", ""),
+                                company=self.company_for(request))
+        except DjangoValidationError as exc:
+            return trip_error(exc)
+        return Response(TripSerializer(self.trip(request, trip_id)).data, status=status.HTTP_201_CREATED)
+
+
+class TravelerDetailView(TripViews, APIView):
+    permission_classes = [IsCustomer]
+
+    def delete(self, request, trip_id, traveler_id):
+        trip = self.trip(request, trip_id)
+        try:
+            travel.remove_traveler(request.user, trip, traveler_id)
+        except Traveler.DoesNotExist:
+            raise Http404 from None
+        except DjangoValidationError as exc:
+            return trip_error(exc)
+        return Response(TripSerializer(self.trip(request, trip_id)).data)
+
+
+class TripQuoteView(TripViews, APIView):
+    permission_classes = [IsCustomer]
+
+    def post(self, request, trip_id):
+        trip = self.trip(request, trip_id)
+        try:
+            quotes = travel.build_travel_quotes(request.user, trip)
+        except DjangoValidationError as exc:
+            return trip_error(exc)
+        return Response(QuoteSerializer(quotes, many=True).data, status=status.HTTP_201_CREATED)
 
 
 # --- Portail assureur ---------------------------------------------------------
@@ -342,7 +500,7 @@ class InsurerPolicyListView(APIView):
     @django_errors
     def get(self, request):
         statuses = services.parse_statuses(request.query_params.get("status"))
-        qs = services.insurer_policies(request.user, statuses)
+        qs = services.insurer_policies(request.user, statuses, services.parse_branch(request.query_params.get("branch")))
         return Response(InsurerPolicySerializer(qs, many=True).data)
 
 
@@ -367,13 +525,15 @@ class InsurerDecisionView(APIView):
 
 class CommissionSerializer(serializers.ModelSerializer):
     policy_id = serializers.IntegerField(source="policy.id")
-    plate = serializers.CharField(source="policy.asset.reference")
+    plate = serializers.CharField(source="policy.asset.reference")  # voyage : codes des pays
     product = serializers.CharField(source="policy.product.name")
+    branch = serializers.CharField(source="policy.product.branch")
     premium = serializers.IntegerField(source="policy.premium")
 
     class Meta:
         model = Commission
-        fields = ["id", "policy_id", "plate", "product", "premium", "rate", "amount", "period", "is_paid", "created_at"]
+        fields = ["id", "policy_id", "plate", "product", "branch", "premium", "rate", "amount", "period", "is_paid",
+                  "created_at"]
 
 
 class InsurerCommissionView(APIView):
@@ -381,7 +541,7 @@ class InsurerCommissionView(APIView):
 
     @django_errors
     def get(self, request):
-        data = services.insurer_commissions(request.user)
+        data = services.insurer_commissions(request.user, services.parse_branch(request.query_params.get("branch")))
         return Response({
             "indicative": data["indicative"],
             "months": data["months"],
@@ -401,8 +561,8 @@ class InsurerClaimSerializer(ClaimSerializer):
     def get_policy(self, claim):
         policy = claim.policy
         return {"id": policy.pk, "plate": policy.asset.reference, "product": policy.product.name,
-                "make": policy.asset.attributes.get("make", ""), "starts_on": policy.starts_on,
-                "ends_on": policy.ends_on, "insurer_reference": policy.insurer_reference}
+                "branch": policy.product.branch, "make": policy.asset.attributes.get("make", ""),
+                "starts_on": policy.starts_on, "ends_on": policy.ends_on, "insurer_reference": policy.insurer_reference}
 
     def get_customer(self, claim):
         # Le contact du dossier est le déclarant ; pour une flotte, on indique aussi l'entreprise titulaire.

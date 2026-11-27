@@ -203,7 +203,8 @@ def invite_member(admin, *, full_name: str, email: str, phone: str, role: str = 
 
 def fleet(user):
     company, _ = member_company(user)
-    return company.assets.prefetch_related("policies__product__insurer").order_by("reference")
+    return company.assets.filter(kind=InsuredAsset.Kind.VEHICLE).prefetch_related(
+        "policies__product__insurer").order_by("reference")
 
 
 def add_vehicle(user, reference: str, attributes: dict) -> InsuredAsset:
@@ -220,7 +221,7 @@ def add_vehicle(user, reference: str, attributes: dict) -> InsuredAsset:
     usage = USAGES.get(str(attributes.get("usage", "")).strip().lower())
     if usage is None:
         raise ValidationError("Usage inconnu : personnel ou commercial.")
-    if company.assets.filter(reference__iexact=plate).exists():
+    if company.assets.filter(kind=InsuredAsset.Kind.VEHICLE, reference__iexact=plate).exists():
         raise ValidationError(f"{plate} est déjà dans la flotte.")
     attrs = {"fiscal_power": power, "usage": usage}
     make = str(attributes.get("make", "")).strip()
@@ -278,7 +279,7 @@ def quote_selection(user, asset_ids: list[int], months: int = 12) -> list[dict]:
     """Offres de chaque compagnie pour toute la sélection : prix par véhicule et total."""
     company, _ = member_company(user)
     ids = {int(i) for i in asset_ids or []}
-    assets = list(company.assets.filter(pk__in=ids))
+    assets = list(company.assets.filter(pk__in=ids, kind=InsuredAsset.Kind.VEHICLE))
     if not ids or len(assets) != len(ids):
         raise ValidationError("Sélectionnez des véhicules de votre flotte.")
     offers: dict[int, dict] = {}
@@ -312,6 +313,8 @@ def create_order(user, quote_ids: list[int], starts_on: date | None = None) -> O
         try:
             policy_services.create_policy(user, quote, starts_on=starts_on, company=company, order=order)
         except ValidationError as exc:
+            if quote.asset.kind == InsuredAsset.Kind.TRIP:
+                raise  # mission : un seul contrat, l'erreur garde son code (traduit par l'app)
             raise ValidationError(f"{quote.asset.reference} : {exc.messages[0]}") from exc
     record("order.created", order, actor=user, policies=len(quotes), total=order.total)
     return order
@@ -338,8 +341,8 @@ def pay_order(user, order: Order, provider: str, payer_phone: str = ""):
 
 def company_policies(user, statuses: list[str] | None = None):
     company, _ = member_company(user)
-    qs = Policy.objects.filter(company=company).select_related("product__insurer", "asset").prefetch_related(
-        "attestations", "renewals")
+    qs = Policy.objects.filter(company=company).select_related("product__insurer", "asset__trip").prefetch_related(
+        "attestations", "renewals", "asset__trip__travelers__attestations")
     if statuses:
         qs = qs.filter(status__in=statuses)
     return qs
