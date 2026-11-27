@@ -11,7 +11,10 @@ export const metadata: Metadata = {
   title: "Sanad",
   description: "Toutes vos assurances, un seul espace.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/favicon-32.png", sizes: "32x32", type: "image/png" }],
+    apple: "/apple-touch-icon.png", // iOS ne lit pas le SVG : PNG 180 px
+  },
   appleWebApp: { capable: true, title: "Sanad", statusBarStyle: "default" },
 };
 

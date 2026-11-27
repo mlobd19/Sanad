@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ClaimsSection } from "@/components/ClaimsSection";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { KhaimaMark } from "@/components/Logo";
+import { SanadMark } from "@/components/Logo";
 import { App, ErrorBox, Loading, StatusPill, TopBar } from "@/components/Shell";
 import { usePolicyQr } from "@/components/usePolicyQr";
 import { ApiError, downloadFile } from "@/lib/api";
@@ -87,7 +87,7 @@ export default function ContractPage() {
                   <small>{t("attestationShort")}</small>
                   <strong>N° <bdi>{att.number}</bdi></strong>
                 </div>
-                <KhaimaMark size={30} color="var(--on-ink)" />
+                <SanadMark size={30} color="var(--on-ink)" />
               </header>
               <div className="body">
                 {qr ? <img className="qr" src={qr} alt="QR code" /> : <div className="qr" aria-hidden="true" />}

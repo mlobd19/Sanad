@@ -1,38 +1,72 @@
-// Logo « khaïma » : la tente mauritanienne, l'abri qui protège.
+"use client";
 
-type Props = { size?: number; color?: string; sun?: string; title?: string };
+import { useId } from "react";
 
-export function KhaimaMark({ size = 32, color = "var(--green)", sun = "var(--sand)", title }: Props) {
+// Logo « l'arche et l'élan » : l'arche protège, la courbe s'élance et en sort. On avance, couvert.
+// Même tracé partout : icône de l'app (public/icon.svg), attestation PDF (attestations/pdf.py),
+// back-office (admin/base_site.html) et page de vérification (attestations/verify.html).
+
+export const ARCH = "M14 70A34 34 0 0 1 82 70";
+export const ELAN = "M20 80C40 78 52 64 60 50C64 43 68 37 73 32";
+
+/** Nom latin et nom arabe du logo empilé : ils font partie du dessin, comme le symbole. */
+const BRAND = "Sanad";
+const BRAND_AR = "سند";
+
+type MarkProps = { size?: number; color?: string; title?: string };
+
+/** Symbole seul. Trait en currentColor (`color`, par défaut --green), point toujours --sand.
+ *  L'élan coupe l'arche par un masque (jamais par un trait couleur du fond) : juste sur tous les fonds. */
+export function SanadMark({ size = 32, color = "var(--green)", title }: MarkProps) {
+  const mask = `arche-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`; // un masque par instance
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 96 96"
+      style={{ color, flexShrink: 0 }}
       role={title ? "img" : undefined}
       aria-label={title}
       aria-hidden={title ? undefined : true}
     >
-      <circle cx="76" cy="22" r="7" fill={sun} />
-      <path
-        d="M12 74C28 66 36 44 48 16C60 44 68 66 84 74"
-        fill="none"
-        stroke={color}
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M39 76C41 64 44 57 48 54C52 57 55 64 57 76z" fill={color} />
-      <path d="M8 82h80" stroke={color} strokeWidth="7" strokeLinecap="round" />
+      <defs>
+        <mask id={mask}>
+          <rect width="96" height="96" fill="white" />
+          <path d={ELAN} stroke="black" strokeWidth="15" strokeLinecap="round" fill="none" />
+        </mask>
+      </defs>
+      <path d={ARCH} mask={`url(#${mask})`} fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+      <path d={ELAN} fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+      <circle cx="80" cy="24" r="7" fill="var(--sand)" />
     </svg>
   );
 }
 
-/** Logo + nom. `onDark` : version blanche pour les fonds vert foncé. */
+/** Symbole + nom sur une ligne. `onDark` : version en-tête, blanche sur le vert profond. */
 export function Wordmark({ name, size = 18, onDark = false }: { name: string; size?: number; onDark?: boolean }) {
   return (
     <span className="wordmark" style={{ fontSize: size, color: onDark ? "#fff" : "var(--ink)" }}>
-      <KhaimaMark size={size * 1.55} color={onDark ? "#fff" : "var(--green)"} />
+      <SanadMark size={size * 1.55} color={onDark ? "#fff" : "var(--green)"} />
       {name}
+    </span>
+  );
+}
+
+/** Version empilée et centrée : symbole, « Sanad », « سند » en vert en dessous.
+ *  `onDark` : sur le vert profond des en-têtes (symbole blanc, « سند » en vert clair). */
+export function StackedLogo({ size = 72, onDark = false }: { size?: number; onDark?: boolean }) {
+  return (
+    <span className="logo-stacked" style={{ color: onDark ? "#fff" : "var(--ink)" }}>
+      <SanadMark size={size} color={onDark ? "#fff" : "var(--green)"} />
+      <span className="logo-stacked-name" style={{ fontSize: size * 0.42 }} lang="fr" dir="ltr">{BRAND}</span>
+      <span
+        className="logo-stacked-ar"
+        style={{ fontSize: size * 0.25, color: onDark ? "var(--green-on-deep)" : "var(--green)" }}
+        lang="ar"
+        dir="rtl"
+      >
+        {BRAND_AR}
+      </span>
     </span>
   );
 }

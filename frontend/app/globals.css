@@ -12,6 +12,7 @@
   --green-tint: #e6f3ec;
   --green-soft: #d4ebdf;
   --on-deep: #cfe3d9;
+  --green-on-deep: #8fd3b8; /* vert clair lisible sur --green-deep (« سند » du logo empilé) */
   --sand: #f0a43a;
   --sand-tint: #fdeccf;
   --sand-text: #4e2f05;
@@ -127,6 +128,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* --- Éléments --- */
 .wordmark { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 700; }
+.logo-stacked { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none; }
+.logo-stacked-name { font-family: var(--display); font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
+.logo-stacked-ar { font-family: "Noto Kufi Arabic", system-ui, sans-serif; font-weight: 700; line-height: 1.3; }
 .eyebrow { font-weight: 700; font-size: 13px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 4px 0 0; }
 [dir="rtl"] .eyebrow { letter-spacing: 0; }
 .title { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0; }

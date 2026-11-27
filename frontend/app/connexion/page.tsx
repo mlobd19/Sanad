@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState, type KeyboardEvent } from "react";
 
-import { Wordmark } from "@/components/Logo";
+import { StackedLogo } from "@/components/Logo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
 import { OtpLogin, type OtpResult } from "@/components/OtpLogin";
 import { ProLoginForm } from "@/components/ProAuth";
@@ -61,15 +61,13 @@ function Login() {
   return (
     <div className="app" style={{ background: "var(--green-deep)" }}>
       <div style={{ padding: "28px 24px 32px", display: "flex", flexDirection: "column", gap: 28, color: "#fff" }}>
-        <div className="between">
-          <Link href="/" aria-label={t("appName")} style={{ color: "#fff", textDecoration: "none" }}>
-            <Wordmark name={t("appName")} size={22} onDark />
-          </Link>
-          <div className="head-actions">
-            <LanguageButton />
-            <ThemeIconButton />
-          </div>
+        <div className="head-actions" style={{ justifyContent: "flex-end" }}>
+          <LanguageButton />
+          <ThemeIconButton />
         </div>
+        <Link href="/" aria-label={t("appName")} style={{ alignSelf: "center", textDecoration: "none" }}>
+          <StackedLogo size={72} onDark />
+        </Link>
         <h1 className="title" style={{ fontSize: 34, lineHeight: 1.12, color: "#fff" }}>{t("tagline")}</h1>
       </div>
 

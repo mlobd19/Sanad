@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { KhaimaMark, Wordmark } from "@/components/Logo";
+import { StackedLogo, Wordmark } from "@/components/Logo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
@@ -78,14 +78,13 @@ function Landing() {
   return (
     <div className="app" style={{ background: "var(--green-deep)" }}>
       <header style={{ padding: "24px 24px 32px", display: "flex", flexDirection: "column", gap: 24, color: "#fff" }}>
-        <div className="between">
-          <Wordmark name={t("appName")} size={22} onDark />
-          <div className="head-actions">
-            <LanguageButton />
-            <ThemeIconButton />
-          </div>
+        <div className="head-actions" style={{ justifyContent: "flex-end" }}>
+          <LanguageButton />
+          <ThemeIconButton />
         </div>
-        <KhaimaMark size={84} color="#fff" />
+        <div style={{ alignSelf: "center" }}>
+          <StackedLogo size={84} onDark />
+        </div>
         <div className="stack" style={{ gap: 10 }}>
           <h1 className="title" style={{ fontSize: 34, lineHeight: 1.12, color: "#fff" }}>{t("tagline")}</h1>
           <p style={{ margin: 0, color: "var(--on-deep)", fontSize: 16, lineHeight: 1.5 }}>{t("landingIntro")}</p>
