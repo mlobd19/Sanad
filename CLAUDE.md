@@ -79,8 +79,10 @@ compile_translations` ; sinon le test des traductions échoue.
     HMAC et idempotents, remboursements ; un paiement porte une police OU une
     commande (`policies.Order`), remboursable ligne par ligne
   - `attestations` : numéro `SN-AAAA-NNNNNN`, signature Ed25519, QR, vérification
-    publique `/v/<jeton>`, révocation, PDF bilingue (`pdf.py`, fpdf2 + HarfBuzz
-    pour l'arabe ; mention « SPÉCIMEN » tant que `ATTESTATION_SPECIMEN` est vrai)
+    publique `/v/<jeton>` (logo et nom en tête), révocation, PDF bilingue (`pdf.py`, fpdf2 + HarfBuzz
+    pour l'arabe ; symbole arche et élan en tête, vectoriel, `logo.py` : fpdf2 ne lit pas
+    les masques, la coupure passe par un `clipPath` ; mention « SPÉCIMEN »
+    tant que `ATTESTATION_SPECIMEN` est vrai ; le ZIP des attestations d'une flotte passe par le même rendu)
   - `notifications` : SMS (et e-mail) derrière une interface, modèles FR + AR.
     **Tous les messages aux clients partent par SMS**, jamais par WhatsApp
     (attestation, refus, sinistres, rappels de renouvellement).
@@ -107,7 +109,8 @@ compile_translations` ; sinon le test des traductions échoue.
     déduit de « marque et modèle » côté backend (`policies/body_types.py`,
     champ `body_type` de l'API), sans aucun champ de plus dans le formulaire.
   - Composants partagés : `components/Shell.tsx` (TopBar, Stepper, BottomNav…),
-    `Logo.tsx` (logo khaïma), `InsurerLogo.tsx`, `OtpLogin.tsx`, `ProAuth.tsx`,
+    `Logo.tsx` (logo arche et élan : `SanadMark`, `Wordmark`, `StackedLogo` ;
+    l'élan coupe l'arche par un masque SVG, jamais par un trait couleur du fond), `InsurerLogo.tsx`, `OtpLogin.tsx`, `ProAuth.tsx`,
     `ClaimForm.tsx`.
   - Validation des champs : `components/FormValidation.tsx` (monté dans le layout)
     remplace la bulle du navigateur (langue et style du système) par un message
@@ -216,7 +219,8 @@ compile_translations` ; sinon le test des traductions échoue.
 ## Design
 
 Maquettes de référence (V2, contraste renforcé) : toile « Sanad – Maquettes »
-dans Claude. Palette dans `globals.css` (`--green #08603F`,
+dans Claude. Logo : piste A « L'arche et l'élan » (page « Logo · nouvelles pistes ») ;
+icône de l'app `public/icon.svg` (+ PNG 192 / 512, `icon-maskable-512.png`, `apple-touch-icon.png`, `favicon-32.png`). Palette dans `globals.css` (`--green #08603F`,
 `--green-deep #062F22`, `--sand #F0A43A`, `--ink #0B1A14`). Contraste élevé,
 cibles tactiles ≥ 44 px, vrais `<button>` / `<a>`, libellés accessibles.
 

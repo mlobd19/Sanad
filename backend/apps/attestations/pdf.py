@@ -12,6 +12,8 @@ from fpdf.enums import XPos, YPos
 
 from apps.policies.models import format_plate
 
+from .logo import symbol_svg
+
 FONTS = Path(__file__).parent / "fonts"
 
 # Palette de l'app (globals.css)
@@ -84,8 +86,10 @@ def render(attestation, *, specimen: bool) -> bytes:
     # --- En-tête -----------------------------------------------------------------
     pdf.set_fill_color(*DEEP)
     pdf.rect(0, 0, PAGE_W, 30, style="F")
-    pdf.write_at(MARGIN, 9, 90, "Sanad", size=17, bold=True, color=(255, 255, 255))
-    pdf.write_at(MARGIN, 18, 90, "Courtage d'assurance digital", size=8.5, color=ON_DEEP)
+    # Symbole « l'arche et l'élan » en blanc sur le vert profond (vectoriel, net à toute échelle).
+    pdf.image(io.BytesIO(symbol_svg("#ffffff")), x=MARGIN, y=5, w=19, h=19, alt_text="Logo Sanad")
+    pdf.write_at(MARGIN + 23, 9, 90, "Sanad", size=17, bold=True, color=(255, 255, 255))
+    pdf.write_at(MARGIN + 23, 18, 90, "Courtage d'assurance digital", size=8.5, color=ON_DEEP)
     pdf.write_at(PAGE_W - MARGIN - 90, 8, 90, "سند", size=17, bold=True, color=(255, 255, 255), align="R", arabic=True)
     pdf.write_at(PAGE_W - MARGIN - 90, 18, 90, "منصة رقمية لوساطة التأمين", size=8.5, color=ON_DEEP, align="R", arabic=True)
 

@@ -93,6 +93,7 @@ def test_full_auto_journey(customer_client, agent_client, outbox, django_capture
     page = APIClient().get(f"/v/{token}")
     html = page.content.decode()
     assert page.status_code == 200 and html.count("Attestation valide") == 1  # pas de mention répétée
+    assert '<span>Sanad</span>' in html and 'class="brand"' in html  # logo et nom de la plateforme
     assert "/" not in check["valid_from"]  # API : format ISO conservé
     day, month, year = check["valid_from"][8:10], check["valid_from"][5:7], check["valid_from"][:4]
     assert f"{day}/{month}/{year}" in html  # page : « 21/11/2026 »

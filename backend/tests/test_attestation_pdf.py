@@ -126,3 +126,23 @@ def test_pdf_shows_arabic_name_on_the_arabic_side(customer_client, attestation, 
     User.objects.filter(pk=attestation.policy.customer_id).update(full_name_ar="")  # pas de nom arabe fourni
     assert customer_client.get(f"/api/attestations/{attestation.id}/pdf").status_code == 200
     assert not [w for w in written if w[1] == "kufi" and w[0] == ""]
+
+
+def test_pdf_carries_sanad_logo_and_name(customer_client, attestation, monkeypatch):
+    """Symbole « l'arche et l'élan » (vectoriel) en tête de l'attestation, avec le nom en français et en arabe."""
+    from apps.attestations import pdf as pdf_module
+    from apps.attestations.logo import symbol_svg
+
+    drawn = []
+    original = pdf_module.AttestationPdf.image
+
+    def spy(self, name, *args, **kwargs):
+        drawn.append(name.getvalue() if hasattr(name, "getvalue") else name)
+        return original(self, name, *args, **kwargs)
+
+    monkeypatch.setattr(pdf_module.AttestationPdf, "image", spy)
+    resp = customer_client.get(f"/api/attestations/{attestation.id}/pdf")
+    assert resp.status_code == 200
+    assert symbol_svg("#ffffff") in drawn
+    text = pdf_text(resp.content)
+    assert "Sanad" in text and "Document généré par Sanad." in text
