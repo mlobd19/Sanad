@@ -512,7 +512,7 @@ function CommissionsTab() {
               </div>
               <span className="big num">{money(m.amount, lang)}</span>
               <span className="ink2 small">
-                {t("policiesCount", { count: num(m.policies, lang) })} · {t("premiumsTotal", { amount: money(m.premiums, lang) })}
+                {t("policiesCount", { count: m.policies })} · {t("premiumsTotal", { amount: money(m.premiums, lang) })}
               </span>
               <span className="small" style={{ fontWeight: 600 }}>
                 {t("paidAmount", { amount: money(m.paid, lang) })} · {t("dueAmount", { amount: money(m.due, lang) })}

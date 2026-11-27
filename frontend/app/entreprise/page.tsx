@@ -351,8 +351,8 @@ function FleetTab({ selection, setSelection, onCompare }: {
         </div>
       )}
       {selection.length > 0 && (
-        <div className="actionbar" role="region" aria-label={t("selectedCount", { count: num(selection.length, lang) })}>
-          <strong>{t("selectedCount", { count: num(selection.length, lang) })}</strong>
+        <div className="actionbar" role="region" aria-label={t("selectedCount", { count: selection.length })}>
+          <strong>{t("selectedCount", { count: selection.length })}</strong>
           <div className="row" style={{ gap: 8 }}>
             <button type="button" className="btn outline" onClick={() => setSelection([])}>{t("clearSelection")}</button>
             <button type="button" className="btn primary" onClick={onCompare}>{t("compareOffers")}</button>
@@ -466,7 +466,7 @@ function ImportCard({ onImported }: { onImported: () => void }) {
       {result && (
         <div className="stack" role="status" style={{ gap: 6 }}>
           <div className={`banner ${result.errors.length ? "sand" : "green"}`}>
-            <strong>{t("importResult", { count: num(result.created.length, lang) })}</strong>
+            <strong>{t("importResult", { count: result.created.length })}</strong>
           </div>
           {result.errors.length > 0 && (
             <ul className="import-errors">
@@ -544,7 +544,7 @@ function QuotesTab({ selection, verified, onBackToFleet, onPaid }: {
 
   return (
     <>
-      <SectionHead title={t("offersFor", { count: num(selection.length, lang) })}>
+      <SectionHead title={t("offersFor", { count: selection.length })}>
         <div className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <label htmlFor="starts-on">{t("startsOn")}</label>
           <input id="starts-on" className="input" type="date" value={startsOn} style={{ height: 44, width: "auto" }}
@@ -777,7 +777,7 @@ function ContractsTab({ onDeclare }: { onDeclare: (policyId: number) => void }) 
                     <td data-label={t("colStatus")}>
                       <span className={STATUS_PILL[p.status] ?? "pill quiet"}>{t(`status_${p.status}`)}</span>
                       {p.status === "refused" && p.refusal_reason && <span className="sub">{p.refusal_reason}</span>}
-                      {p.status === "active" && left <= 30 && <span className="sub due">{t("dueIn", { days: num(left, lang) })}</span>}
+                      {p.status === "active" && left <= 30 && <span className="sub due">{t("dueIn", { days: left })}</span>}
                     </td>
                     <td data-label={t("period")} className="num">
                       {date(p.starts_on, lang)}<span className="sub">{t("validTo")} {date(p.ends_on, lang)}</span>
@@ -910,7 +910,7 @@ function ClaimsTab({ declareFor, setDeclareFor }: {
                   <td data-label={t("colStatus")}>
                     <span className={CLAIM_PILL[c.status]}>{t(`claimStatus_${c.status}` as Key)}</span>
                     {c.injuries && <span className="sub">{t("injuriesFlag")}</span>}
-                    {c.photos > 0 && <span className="sub">{t("claimPhotoCount", { n: num(c.photos, lang) })}</span>}
+                    {c.photos > 0 && <span className="sub">{t("claimPhotoCount", { n: c.photos })}</span>}
                   </td>
                   <td data-label={t("claimInsurerNote")} style={{ maxWidth: 320 }}>
                     {c.closing_note || <span className="muted">—</span>}

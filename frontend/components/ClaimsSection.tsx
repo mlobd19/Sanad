@@ -4,7 +4,7 @@ import { Icon } from "@/components/Icon";
 import { Link } from "@/components/NavLink";
 import { Skeleton } from "@/components/Shell";
 import type { Claim, ClaimStatus, Policy } from "@/lib/api";
-import { date, num } from "@/lib/format";
+import { date } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useLoad } from "@/lib/useLoad";
 
@@ -28,7 +28,7 @@ export function ClaimsSection({ policy }: { policy: Policy }) {
           </div>
           <span className="small ink2">
             {t(`claimKind_${c.kind}` as Key)} · {date(c.occurred_on, lang)}
-            {c.photos > 0 && ` · ${t("claimPhotoCount", { n: num(c.photos, lang) })}`}
+            {c.photos > 0 && ` · ${t("claimPhotoCount", { n: c.photos })}`}
           </span>
           {c.closing_note && (
             <p className="banner sand small" style={{ margin: 0, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>

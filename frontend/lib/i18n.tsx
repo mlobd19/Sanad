@@ -31,7 +31,7 @@ const fr = {
   devicesTitle: "Appareils connectés",
   devicesHint: "Vous restez connecté 30 jours sur chaque téléphone. Téléphone perdu ou prêté ? Fermez les autres connexions.",
   logoutOthers: "Déconnecter mes autres appareils",
-  logoutOthersDone: "{n} autre(s) appareil(s) déconnecté(s).",
+  logoutOthersDone: "one: {n} autre appareil déconnecté. | other: {n} autres appareils déconnectés.",
   logoutOthersNone: "Aucun autre appareil n'était connecté.",
   // Apparence (mode sombre)
   theme: "Apparence",
@@ -63,7 +63,7 @@ const fr = {
   health: "Santé",
   home: "Habitation",
   travel: "Voyage",
-  renewTitle: "Votre assurance auto expire dans {days} jour(s)",
+  renewTitle: "zero: Votre assurance auto expire aujourd'hui | one: Votre assurance auto expire dans {days} jour | other: Votre assurance auto expire dans {days} jours",
   renewText: "Renouvelez sans rien ressaisir.",
   renew: "Renouveler",
   seeAttestation: "Voir l'attestation",
@@ -148,7 +148,7 @@ const fr = {
   kyc_none: "Non vérifiée",
   kyc_verified: "Vérifiée",
   idCheck: "Vérifier mon identité",
-  idCheckHint: "Saisissez votre NNI : votre identité numérique Houwiyeti est vérifiée auprès de l'ANRPTS. Votre nom est repris de l'ANRPTS.",
+  idCheckHint: "Saisissez votre NNI : votre identité numérique Houwiyeti est vérifiée auprès de l'ANRPTS, qui fournit aussi votre nom.",
   idChecking: "Vérification en cours…",
   idVerified: "Identité vérifiée avec Houwiyeti.",
   idNniNotFound: "Ce NNI est introuvable. Vérifiez les chiffres saisis et réessayez.",
@@ -188,8 +188,8 @@ const fr = {
   codeDigit: "Chiffre {n}",
   codeAuto: "La connexion se fait toute seule au 6e chiffre.",
   resendIn: "Renvoyer dans",
-  activeCount: "{count} contrat(s) actif(s)",
-  renewIn: "renouvellement dans {days} jour(s)",
+  activeCount: "one: {count} contrat actif | other: {count} contrats actifs",
+  renewIn: "zero: renouvellement aujourd'hui | one: renouvellement dans {days} jour | other: renouvellement dans {days} jours",
   expiresShort: "Expire le {date}",
   showAttestation: "Montrer mon attestation",
   cheapest: "Le moins cher",
@@ -221,7 +221,7 @@ const fr = {
   rcRegulated: "Tarif RC fixé par l'État : même prix chez tous les assureurs.",
   indicativeNote: "Tarifs indicatifs (démo), en attente des grilles officielles des assureurs.",
   indicative: "Indicatif",
-  offersCount: "{count} offre(s)",
+  offersCount: "one: {count} offre | other: {count} offres",
   // Portail assureur
   portalName: "Portail assureur",
   portalSections: "Sections du portail",
@@ -271,7 +271,7 @@ const fr = {
   noCommissions: "Aucune commission pour l'instant. Elles apparaissent à la validation des polices.",
   commissionNote: "Taux de commission provisoire, en attente du contrat de partenariat : montants indicatifs.",
   commissionDetail: "Détail par police",
-  policiesCount: "{count} police(s)",
+  policiesCount: "one: {count} police | other: {count} polices",
   premiumsTotal: "Primes : {amount}",
   paidAmount: "Payé : {amount}",
   dueAmount: "Reste dû : {amount}",
@@ -342,7 +342,7 @@ const fr = {
   selectVehicle: "Sélectionner {plate}",
   colCurrentContract: "Contrat en cours",
   noContract: "Aucun contrat",
-  selectedCount: "{count} véhicule(s) sélectionné(s)",
+  selectedCount: "one: {count} véhicule sélectionné | other: {count} véhicules sélectionnés",
   clearSelection: "Vider la sélection",
   compareOffers: "Comparer les offres",
   addVehicleTitle: "Ajouter un véhicule",
@@ -351,10 +351,10 @@ const fr = {
   importHint: "Une ligne par véhicule, séparateur point-virgule. Usage : personnel ou commercial.",
   importFile: "Fichier CSV",
   importBtn: "Importer",
-  importResult: "{count} véhicule(s) ajouté(s).",
+  importResult: "one: {count} véhicule ajouté. | other: {count} véhicules ajoutés.",
   lineN: "Ligne {line}",
   noSelection: "Sélectionnez d'abord des véhicules dans l'onglet Flotte.",
-  offersFor: "Offres pour {count} véhicule(s)",
+  offersFor: "one: Offres pour {count} véhicule | other: Offres pour {count} véhicules",
   allFormulas: "Toutes",
   perVehicle: "Détail par véhicule",
   orderOffer: "Commander cette offre",
@@ -365,7 +365,7 @@ const fr = {
   seeContracts: "Voir les contrats",
   downloadZip: "Toutes les attestations (ZIP)",
   companyNoContracts: "Aucun contrat pour l'instant.",
-  dueIn: "Échéance dans {days} jour(s)",
+  dueIn: "zero: Échéance aujourd'hui | one: Échéance dans {days} jour | other: Échéance dans {days} jours",
   companyInfo: "Informations",
   documentsTitle: "Pièces justificatives",
   docHint: "PDF, JPEG ou PNG, 8 Mo au plus. Une nouvelle pièce remplace la précédente pour la vérification.",
@@ -394,7 +394,7 @@ const fr = {
   claimStatus_in_review: "Pris en charge",
   claimStatus_closed: "Clos",
   claimInsurerNote: "Message de l'assureur",
-  claimPhotoCount: "{n} photo(s)",
+  claimPhotoCount: "one: {n} photo | other: {n} photos",
   claimKind: "Que s'est-il passé ?",
   claimDate: "Date du sinistre",
   claimPlace: "Lieu",
@@ -483,7 +483,7 @@ const ar: Record<Key, string> = {
   devicesTitle: "الأجهزة المتصلة",
   devicesHint: "تبقى متصلا 30 يوما على كل هاتف. هاتف مفقود أو معار؟ أغلق الجلسات الأخرى.",
   logoutOthers: "تسجيل الخروج من أجهزتي الأخرى",
-  logoutOthersDone: "تم تسجيل الخروج من {n} جهاز آخر.",
+  logoutOthersDone: "one: تم تسجيل الخروج من جهاز آخر واحد. | two: تم تسجيل الخروج من جهازين آخرين. | few: تم تسجيل الخروج من {n} أجهزة أخرى. | many: تم تسجيل الخروج من {n} جهازًا آخر. | other: تم تسجيل الخروج من {n} جهاز آخر.",
   logoutOthersNone: "لم يكن أي جهاز آخر متصلا.",
   theme: "المظهر",
   themeAuto: "تلقائي",
@@ -513,7 +513,7 @@ const ar: Record<Key, string> = {
   health: "الصحة",
   home: "المسكن",
   travel: "السفر",
-  renewTitle: "ينتهي تأمين سيارتك خلال {days} يوم",
+  renewTitle: "zero: ينتهي تأمين سيارتك اليوم | one: ينتهي تأمين سيارتك خلال يوم واحد | two: ينتهي تأمين سيارتك خلال يومين | few: ينتهي تأمين سيارتك خلال {days} أيام | many: ينتهي تأمين سيارتك خلال {days} يومًا | other: ينتهي تأمين سيارتك خلال {days} يوم",
   renewText: "جدّده دون إعادة إدخال بياناتك.",
   renew: "تجديد",
   seeAttestation: "عرض الشهادة",
@@ -592,7 +592,7 @@ const ar: Record<Key, string> = {
   kyc_none: "لم يتم التحقق",
   kyc_verified: "تم التحقق",
   idCheck: "تحقق من هويتي",
-  idCheckHint: "أدخل رقمك الوطني: يتم التحقق من هويتك الرقمية «هويتي» لدى الوكالة الوطنية لسجل السكان والوثائق المؤمنة. يؤخذ اسمك من الوكالة.",
+  idCheckHint: "أدخل رقمك الوطني: يتم التحقق من هويتك الرقمية «هويتي» لدى الوكالة الوطنية لسجل السكان والوثائق المؤمنة، التي تزودنا باسمك أيضا.",
   idChecking: "جارٍ التحقق…",
   idVerified: "تم التحقق من هويتك عبر «هويتي».",
   idNniNotFound: "هذا الرقم الوطني غير موجود. تحقق من الأرقام المدخلة وأعد المحاولة.",
@@ -629,8 +629,8 @@ const ar: Record<Key, string> = {
   codeDigit: "الرقم {n}",
   codeAuto: "يتم الدخول تلقائيا عند الرقم السادس.",
   resendIn: "إعادة الإرسال بعد",
-  activeCount: "{count} عقد ساري",
-  renewIn: "التجديد بعد {days} يوم",
+  activeCount: "one: عقد ساري واحد | two: عقدان ساريان | few: {count} عقود سارية | many: {count} عقدًا ساريًا | other: {count} عقد ساري",
+  renewIn: "zero: التجديد اليوم | one: التجديد بعد يوم واحد | two: التجديد بعد يومين | few: التجديد بعد {days} أيام | many: التجديد بعد {days} يومًا | other: التجديد بعد {days} يوم",
   expiresShort: "ينتهي في {date}",
   showAttestation: "عرض شهادتي",
   cheapest: "الأرخص",
@@ -662,7 +662,7 @@ const ar: Record<Key, string> = {
   rcRegulated: "تعريفة المسؤولية المدنية تحددها الدولة: نفس السعر لدى جميع الشركات.",
   indicativeNote: "أسعار إرشادية (تجريبية) في انتظار التعريفات الرسمية لشركات التأمين.",
   indicative: "إرشادي",
-  offersCount: "{count} عرض",
+  offersCount: "one: عرض واحد | two: عرضان | few: {count} عروض | many: {count} عرضًا | other: {count} عرض",
   portalName: "بوابة شركات التأمين",
   portalSections: "أقسام البوابة",
   tabPending: "طلبات للمصادقة",
@@ -711,7 +711,7 @@ const ar: Record<Key, string> = {
   noCommissions: "لا توجد عمولات حاليا. تظهر عند المصادقة على الوثائق.",
   commissionNote: "نسبة العمولة مؤقتة في انتظار عقد الشراكة: المبالغ إرشادية.",
   commissionDetail: "التفاصيل حسب الوثيقة",
-  policiesCount: "{count} وثيقة",
+  policiesCount: "zero: لا وثائق | one: وثيقة واحدة | two: وثيقتان | few: {count} وثائق | many: {count} وثيقة | other: {count} وثيقة",
   premiumsTotal: "الأقساط: {amount}",
   paidAmount: "المدفوع: {amount}",
   dueAmount: "المتبقي: {amount}",
@@ -781,7 +781,7 @@ const ar: Record<Key, string> = {
   selectVehicle: "تحديد {plate}",
   colCurrentContract: "العقد الحالي",
   noContract: "لا يوجد عقد",
-  selectedCount: "{count} سيارة محددة",
+  selectedCount: "one: سيارة واحدة محددة | two: سيارتان محددتان | few: {count} سيارات محددة | many: {count} سيارة محددة | other: {count} سيارة محددة",
   clearSelection: "إلغاء التحديد",
   compareOffers: "مقارنة العروض",
   addVehicleTitle: "إضافة سيارة",
@@ -790,10 +790,10 @@ const ar: Record<Key, string> = {
   importHint: "سطر لكل سيارة، والفاصل فاصلة منقوطة. الاستعمال: personnel أو commercial.",
   importFile: "ملف CSV",
   importBtn: "استيراد",
-  importResult: "أضيفت {count} سيارة.",
+  importResult: "zero: لم تُضف أي سيارة. | one: أضيفت سيارة واحدة. | two: أضيفت سيارتان. | few: أضيفت {count} سيارات. | many: أضيفت {count} سيارة. | other: أضيفت {count} سيارة.",
   lineN: "السطر {line}",
   noSelection: "حددوا أولا سيارات من تبويب الأسطول.",
-  offersFor: "عروض لـ {count} سيارة",
+  offersFor: "one: عروض لسيارة واحدة | two: عروض لسيارتين | few: عروض لـ {count} سيارات | many: عروض لـ {count} سيارة | other: عروض لـ {count} سيارة",
   allFormulas: "الكل",
   perVehicle: "التفاصيل حسب السيارة",
   orderOffer: "طلب هذا العرض",
@@ -804,7 +804,7 @@ const ar: Record<Key, string> = {
   seeContracts: "عرض العقود",
   downloadZip: "كل الشهادات (ZIP)",
   companyNoContracts: "لا توجد عقود بعد.",
-  dueIn: "ينتهي خلال {days} يوم",
+  dueIn: "zero: ينتهي اليوم | one: ينتهي خلال يوم واحد | two: ينتهي خلال يومين | few: ينتهي خلال {days} أيام | many: ينتهي خلال {days} يومًا | other: ينتهي خلال {days} يوم",
   companyInfo: "المعلومات",
   documentsTitle: "الوثائق الثبوتية",
   docHint: "PDF أو JPEG أو PNG، بحد أقصى 8 ميغابايت. تحل الوثيقة الجديدة محل السابقة في التحقق.",
@@ -833,7 +833,7 @@ const ar: Record<Key, string> = {
   claimStatus_in_review: "قيد المعالجة",
   claimStatus_closed: "مغلق",
   claimInsurerNote: "رسالة شركة التأمين",
-  claimPhotoCount: "{n} صورة",
+  claimPhotoCount: "one: صورة واحدة | two: صورتان | few: {n} صور | many: {n} صورة | other: {n} صورة",
   claimKind: "ماذا حدث؟",
   claimDate: "تاريخ الحادث",
   claimPlace: "المكان",
@@ -905,6 +905,33 @@ const LANG_KEY = "sanad.lang";
 export const LANG_BOOT_SCRIPT =
   `try{if(localStorage.getItem("${LANG_KEY}")==="ar"){var d=document.documentElement;d.lang="ar";d.dir="rtl"}}catch(e){}`;
 
+const LOCALES: Record<Lang, string> = { fr: "fr-FR", ar: "ar-MR" };
+
+/**
+ * Remplit un texte avec ses variables. Texte qui dépend d'un nombre : formes « catégorie: texte »
+ * séparées par « | », catégories d'Intl.PluralRules (français : one, other ; arabe : zero, one, two,
+ * few, many, other), « zero » valant pour 0 dans les deux langues, « other » par défaut. La forme est
+ * choisie d'après la variable numérique, écrite avec les chiffres de la langue (ex. « 1 contrat
+ * actif », « 2 contrats actifs », « عقدان ساريان »). Jamais de « (s) ».
+ */
+function translate(text: string, lang: Lang, vars?: Record<string, string | number>): string {
+  const count = Object.values(vars ?? {}).find((v): v is number => typeof v === "number");
+  if (text.includes("|")) {
+    const forms: Record<string, string> = {};
+    for (const part of text.split("|")) {
+      const colon = part.indexOf(":");
+      forms[part.slice(0, colon).trim()] = part.slice(colon + 1).trim();
+    }
+    const category =
+      count === undefined ? "other" : count === 0 && forms.zero ? "zero" : new Intl.PluralRules(LOCALES[lang]).select(count);
+    text = forms[category] ?? forms.other;
+    const digits = new Intl.NumberFormat(LOCALES[lang]);
+    vars = Object.fromEntries(Object.entries(vars ?? {}).map(([k, v]) => [k, typeof v === "number" ? digits.format(v) : v]));
+  }
+  for (const [k, v] of Object.entries(vars ?? {})) text = text.replace(`{${k}}`, String(v));
+  return text;
+}
+
 type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (key: Key, vars?: Record<string, string | number>) => string };
 
 const I18nContext = createContext<Ctx | null>(null);
@@ -938,11 +965,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: Key, vars?: Record<string, string | number>) => {
-      let text = dictionaries[lang][key] ?? fr[key];
-      for (const [k, v] of Object.entries(vars ?? {})) text = text.replace(`{${k}}`, String(v));
-      return text;
-    },
+    (key: Key, vars?: Record<string, string | number>) => translate(dictionaries[lang][key] ?? fr[key], lang, vars),
     [lang],
   );
 
