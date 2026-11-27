@@ -3,7 +3,8 @@
 Sanad (سند, « appui, soutien ») est une plateforme d'assurance digitale pour la
 **Mauritanie** : un portail unique pour souscrire des assurances auprès de
 plusieurs compagnies (modèle courtier digital). Le MVP couvre **l'assurance auto**
-de bout en bout. Le porteur du projet est Mohamed Lemine OUBEID.
+et **l'assurance voyage** (formule unique « Monde entier ») de bout en bout, pour les
+particuliers et les entreprises. Le porteur du projet est Mohamed Lemine OUBEID.
 
 Langue de travail : **français** (code commenté en français, messages de commit
 en français). Les utilisateurs finaux lisent **français et arabe**.
@@ -70,16 +71,26 @@ compile_translations` ; sinon le test des traductions échoue.
   - `companies` : entreprises (NIF, RC, statut de vérification), pièces,
     membres (administrateur / gestionnaire), flotte, devis groupés, commandes ;
     tout part de `services.member_company(user)`
-  - `catalog` : compagnies, produits, facteurs tarifaires, logos ;
-    commandes `seed_demo` et `import_logos`
+  - `catalog` : compagnies, produits (branche `auto` ou `travel`), facteurs tarifaires, logos ;
+    voyage : plafonds en euros (`Product.limits`, frais médicaux ≥ 30 000 € validés par
+    `Product.clean`), assistance 24 h/24 (`Insurer.assistance_phone`), facteurs `trip_days` et `age`
+    (`Product.travel_premiums`) ; commandes `seed_demo` et `import_logos`
   - `policies` : véhicules, devis, polices (cycle de vie dans `services.py`),
     sinistres, commissions, portail assureur (API `/api/insurer/*`, toujours
-    filtrée sur la compagnie de l'agent via `services.insurer_*`)
+    filtrée sur la compagnie de l'agent via `services.insurer_*`, filtre `?branch=auto|travel`).
+    **Voyage** : un voyage est un bien assuré de type `trip` (`Trip` : destinations ISO,
+    départ, retour ; `Traveler` : NNI, nom, passeport, naissance, `verified` / `declared`) ;
+    préparation et devis dans `travel.py` (`/api/trips…`, `/api/company/trips…`), même cycle
+    de vie que l'auto dans `services.py`. Pays : `countries.json` (FR, AR, EN), identique à
+    `frontend/lib/countries.json` (test)
   - `payments` : un adaptateur par opérateur (`providers.py`), callbacks signés
     HMAC et idempotents, remboursements ; un paiement porte une police OU une
     commande (`policies.Order`), remboursable ligne par ligne
   - `attestations` : numéro `SN-AAAA-NNNNNN`, signature Ed25519, QR, vérification
-    publique `/v/<jeton>` (logo et nom en tête), révocation, PDF bilingue (`pdf.py`, fpdf2 + HarfBuzz
+    publique `/v/<jeton>` (logo et nom en tête), révocation ; voyage : une attestation par voyageur
+    (`Attestation.traveler`), PDF français, arabe et anglais (`pdf_travel.py` : nom et n° de passeport,
+    naissance, destinations, dates, garanties et plafonds, assistance 24 h/24, mention Schengen) ;
+    PDF bilingue de l'auto (`pdf.py`, fpdf2 + HarfBuzz
     pour l'arabe ; symbole arche et élan en tête, vectoriel, `logo.py` : fpdf2 ne lit pas
     les masques, la coupure passe par un `clipPath` ; mention « SPÉCIMEN »
     tant que `ATTESTATION_SPECIMEN` est vrai ; le ZIP des attestations d'une flotte passe par le même rendu)
@@ -138,6 +149,12 @@ compile_translations` ; sinon le test des traductions échoue.
     24 px au moins entre le texte du bandeau vert et les cartes (la carte chevauche le bandeau,
     jamais son texte). Si un petit écran ne tient pas, on réduit les tuiles (`--tile-height`),
     jamais les espaces entre sections.
+  - **Assurance voyage** : `/voyage` (destinations et dates) → `/voyage/[id]/voyageurs` (« M'ajouter »
+    pré-rempli avec le NNI du profil, nom affiché dès le NNI vérifié, sinon « nom du passeport ») →
+    `/voyage/[id]/offres` → `/paiement/[id]` (écran commun, étapes du voyage via `useFlow`) →
+    contrat (attestation PDF de chaque voyageur, assistance 24 h/24). Composants partagés avec
+    l'onglet « Missions » de l'espace entreprise : `components/Travel.tsx` (`base` "" ou
+    "company/"). Pays : `lib/countries.ts`. Onglet Contrats : filtre Tous / Auto / Voyage.
   - **Chargement** : jamais d'indicateur plein écran ; squelettes (`components/Skeletons.tsx`,
     blocs `--line`) aux dimensions du contenu, et tout ce qui dépend des données bascule d'un
     coup (rien ne doit être poussé ensuite). Dernières données de chaque écran en mémoire
@@ -212,6 +229,20 @@ compile_translations` ; sinon le test des traductions échoue.
   période couverte ; `submitted → in_review → closed` (note de clôture
   obligatoire, envoyée au client). Traité par l'assureur dans son portail,
   ou par l'équipe au back-office en renfort. Photos en stockage privé.
+- **Voyage « Monde entier »** (valable partout, Schengen compris) : 1 à 92 jours, départ et
+  retour compris (aller-retour dans la journée = 1 jour), départ au plus tôt aujourd'hui ;
+  contrat du départ au retour ; plusieurs voyageurs (9 au plus pour un particulier, 50 pour
+  une entreprise), un paiement, **une attestation par voyageur**. Chaque voyageur :
+  `verify_eid(NNI)` → eID valide : nom officiel de l'ANRPTS, jamais modifiable ; pas d'eID
+  (souvent un enfant) : nom saisi tel que sur le passeport, marqué « déclaré », visible par
+  l'assureur ; NNI introuvable ou injoignable : refusé, mêmes messages que le profil. Résultat
+  gardé 30 min par compte ; limite propre `TRAVELER_CHECK_RATE` (30/h). **Un NNI, un seul
+  contrat voyage à la fois** : vérifié au devis et à la confirmation du paiement (sinon
+  `paid → refused`, remboursement). Voyageurs figés une fois payé. Tarif par voyageur : tranches
+  de durée (1-8, 9-15, 16-31, 32-62, 63-92 j) × âge au départ (moins de 16, 16-65, plus de 65
+  majoré). Aucune offre sous 30 000 € de frais médicaux. Pas de rappel de renouvellement.
+  Sinistre voyage : types frais médicaux, rapatriement, bagages, retard, vol, autre ;
+  voyageur concerné ; rappel d'appeler d'abord l'assistance 24 h/24.
 - Particulier : **identité vérifiée avant tout paiement** (eID Houwiyeti auprès
   de l'ANRPTS, jamais à la main au back-office) ; devis et police brouillon
   restent possibles. NNI introuvable → « Ce NNI est introuvable. Vérifiez les
@@ -235,12 +266,15 @@ compile_translations` ; sinon le test des traductions échoue.
 
 ## Données et marques
 
-- Catalogue démo (`seed_demo`) : **NASR, MAR, MEDINA Assurances, IMAN Assurance**.
+- Catalogue démo (`seed_demo`) : **NASR, MAR, MEDINA Assurances, IMAN Assurance** ;
+  voyage « Monde entier » chez NASR, MAR et IMAN (MEDINA : auto seulement), plafonds et
+  numéros d'assistance fictifs.
   Agents démo `agent@<code>.test` (`+22220000001` à `+22220000004`), mot de
   passe = `DEMO_PASSWORD`, posé **uniquement en DEMO_MODE** (jamais en dur dans
   le code). Compte équipe démo : groupe « Équipe Sanad », jamais superutilisateur. Registre eID
   simulé : NNI `1234567890` = « Sidi Mohamed » / « سيدي محمد », `111…` NNI
-  introuvable, `000…` pas d'eID valide, `999…` injoignable, tout autre NNI à 10 chiffres valide avec un nom
+  introuvable, `000…` pas d'eID valide (voyage : voyageur sans eID, nom déclaré), `999…` injoignable,
+  tout autre NNI à 10 chiffres valide avec un nom
   fictif (toujours le même pour un NNI) ; jamais de téléphone renvoyé. **Les primes sont fictives** et
   marquées `is_indicative` (« Indicatif » dans l'app) : ne jamais les présenter
   comme de vrais tarifs.
@@ -275,8 +309,8 @@ profond des en-têtes, fond blanc du QR code et des logos des compagnies.
 
 ## Pas encore fait (feuille de route)
 
-1. Espace entreprise, suite : **voyage**, puis **santé de groupe** (l'auto de la
-   flotte est faite ; un plan par produit)
+1. Espace entreprise, suite : **santé de groupe** (l'auto de la flotte et le voyage
+   des salariés sont faits ; un plan par produit)
 2. Adaptateur ANRPTS réel pour l'eID Houwiyeti (`verify_eid`, dès réception de
    la documentation ; déclaration de sinistre et sinistres de flotte faits)
 3. Mise en ligne (Render : Django + PostgreSQL, Next.js ; code SMS du
@@ -290,7 +324,7 @@ profond des en-têtes, fond blanc du QR code et des logos des compagnies.
 1. **Compte entreprise distinct** des comptes particuliers.
 2. Pièces à l'ouverture : **NIF et Registre du Commerce**.
 3. Paiement : **mobile money uniquement** (pas de virement sur facture).
-4. Produits : **Auto, Santé et Voyage** (dans cet ordre : auto faite).
+4. Produits : **Auto, Santé et Voyage** (dans cet ordre : auto et voyage faits).
 5. Un gérant peut utiliser le même numéro que son compte particulier.
 6. Inscription libre en ligne ; pas de paiement avant vérification NIF + RC.
 Connexion : email + mot de passe + code SMS (mécanisme des comptes pro).
