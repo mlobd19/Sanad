@@ -10,6 +10,7 @@ import { PortalAuthShell } from "@/components/PortalAuthShell";
 import { PhoneInput } from "@/components/PhoneInput";
 import { api, ApiError, setToken } from "@/lib/api";
 import { useI18n, type Key } from "@/lib/i18n";
+import { ErrorLine } from "@/components/Shell";
 
 type Form = {
   legal_name: string; nif: string; rc_number: string; address: string;
@@ -119,7 +120,7 @@ export default function CompanySignupPage() {
         </fieldset>
 
         <p className="note" style={{ margin: 0 }}>{t("signupDocsNote")}</p>
-        {error && <p className="error" role="alert">{error}</p>}
+        <ErrorLine message={error} />
         <button className="btn primary block tall" disabled={busy || form.phone.length < 8 || form.password.length < 10}>
           {busy ? <span className="spinner sm" /> : t("signupSubmit")}
         </button>

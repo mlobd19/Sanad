@@ -1,14 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { ClaimsSection } from "@/components/ClaimsSection";
+import { useHideTopBar } from "@/components/ClientChrome";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { SanadMark } from "@/components/Logo";
-import { App, ErrorBox, Loading, StatusPill, TopBar } from "@/components/Shell";
+import { Link } from "@/components/NavLink";
+import { ErrorBox, ErrorLine, StatusPill } from "@/components/Shell";
+import { ContractSkeleton } from "@/components/Skeletons";
 import { usePolicyQr } from "@/components/usePolicyQr";
 import { ApiError, downloadFile } from "@/lib/api";
 import { date, formatPlate } from "@/lib/format";
@@ -45,14 +47,14 @@ export default function ContractPage() {
     }
   }
 
-  if (!policy && !error) return <App><TopBar title={t("contractTitle")} back="/contrats" /><Loading /></App>;
-
   const att = policy?.attestation;
-  const insured = policy?.status === "active" && att;
+  const insured = Boolean(policy?.status === "active" && att);
+  // Contrat assuré : l'en-tête vert de l'écran remplace la barre du haut du layout.
+  useHideTopBar(insured);
 
   return (
-    <App>
-      {insured ? (
+    <>
+      {insured && (
         <header className="success-head">
           <div className="row" style={{ gap: 6 }}>
             <Link href="/" className="iconbtn" aria-label={t("back")}><Icon name="back" size={24} strokeWidth={2.2} /></Link>
@@ -68,12 +70,11 @@ export default function ContractPage() {
             </div>
           </div>
         </header>
-      ) : (
-        <TopBar title={t("contractTitle")} back="/contrats" />
       )}
 
       <main className="content">
         {error && <ErrorBox message={error} />}
+        {!policy && !error && <ContractSkeleton />}
         {policy?.status === "paid" && <div className="banner sand" role="status"><strong>{t("waitingInsurer")}</strong></div>}
         {policy?.status === "refused" && (
           <div className="banner red">{t("refusedText", { reason: policy.refusal_reason })}</div>
@@ -109,7 +110,7 @@ export default function ContractPage() {
               <Icon name="expand" size={22} strokeWidth={2.2} />
               {t("showForControl")}
             </Link>
-            {pdfError && <p className="error" role="alert">{pdfError}</p>}
+            <ErrorLine message={pdfError} />
             <div className="grid2">
               <button
                 type="button"
@@ -145,6 +146,6 @@ export default function ContractPage() {
         )}
         {policy && (policy.status === "active" || policy.status === "expired") && <ClaimsSection policy={policy} />}
       </main>
-    </App>
+    </>
   );
 }

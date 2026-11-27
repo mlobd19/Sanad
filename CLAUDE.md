@@ -112,6 +112,28 @@ compile_translations` ; sinon le test des traductions échoue.
     `Logo.tsx` (logo arche et élan : `SanadMark`, `Wordmark`, `StackedLogo` ;
     l'élan coupe l'arche par un masque SVG, jamais par un trait couleur du fond), `InsurerLogo.tsx`, `OtpLogin.tsx`, `ProAuth.tsx`,
     `ClaimForm.tsx`.
+  - **Navigation et transitions** (app client et espace entreprise ; portail assureur et
+    back-office inchangés) : les écrans client sont dans le groupe `app/(client)/`, avec un
+    layout partagé (`components/ClientChrome.tsx`) qui rend **une seule fois** la TopBar (titre,
+    retour, étape) et la BottomNav, décrites par `lib/screens.ts` (une entrée par écran, avec sa
+    profondeur : accueil 0 → véhicule 1 → devis 2 → paiement 3 → contrat 4 → sinistre /
+    contrôle 5 ; onglets accueil, contrats, profil au niveau 0) ; le garde-fou du compte y est
+    posé une fois (`SpaceProvider` de `lib/spaces.ts`). Transitions de vue React
+    (`<ViewTransition>`, types `nav-forward` / `nav-back` / `nav-tab`, `lib/transitions.ts`) :
+    avancer → glissement vers la gauche, revenir → vers la droite, entre onglets (et onglets de
+    l'espace entreprise, `addTransitionType("nav-tab")`) → fondu ; **sens inversés en arabe** ;
+    220 ms, ease-out ; TopBar et BottomNav ne s'animent jamais (`sn-topbar`, `sn-bottomnav`) ;
+    aucune animation avec « réduire les animations ». Toujours `Link` de
+    `components/NavLink.tsx` (le sens est calculé) ; `useNav().push` seulement après une action
+    (paiement, formulaire). Nouvel écran client : l'ajouter à `lib/screens.ts`. Un écran qui
+    remplace la barre du haut (contrat assuré) : `useHideTopBar`.
+  - **Chargement** : jamais d'indicateur plein écran ; squelettes (`components/Skeletons.tsx`,
+    blocs `--line`) aux dimensions du contenu, et tout ce qui dépend des données bascule d'un
+    coup (rien ne doit être poussé ensuite). Dernières données de chaque écran en mémoire
+    (`lib/cache.ts`, `useLoad`, `cachedPolicy`, `prefetch` de l'écran suivant probable),
+    vidées à chaque `setToken` (connexion, déconnexion). Erreur de formulaire : `ErrorLine`
+    (place réservée). Langue et sens de lecture posés avant l'affichage (`LANG_BOOT_SCRIPT`) ;
+    barre du haut et étapes de même hauteur en français et en arabe.
   - Validation des champs : `components/FormValidation.tsx` (monté dans le layout)
     remplace la bulle du navigateur (langue et style du système) par un message
     sous le champ, traduit (`field*` dans `lib/i18n.tsx`). Garder les attributs

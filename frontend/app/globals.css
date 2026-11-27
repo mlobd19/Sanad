@@ -103,9 +103,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* --- Structure --- */
 .app { max-width: 480px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
+.screen { flex: 1; display: flex; flex-direction: column; } /* écran de l'app client, dans sa transition de vue */
+.landing { flex: 1; display: flex; flex-direction: column; background: var(--green-deep); }
 .topbar { background: var(--card); border-bottom: 1px solid var(--line); padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 0; z-index: 5; }
 .topbar .head { display: flex; align-items: center; gap: 6px; }
-.topbar h1 { margin: 0; font-family: var(--display); font-size: 21px; font-weight: 700; }
+.topbar h1 { margin: 0; font-family: var(--display); font-size: 21px; font-weight: 700; line-height: 28px; } /* même hauteur en français et en arabe */
 .content { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .content.with-nav { padding-bottom: 104px; }
 .footer-cta { position: sticky; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 12px 16px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; }
@@ -185,6 +187,7 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 .input { height: 52px; border-radius: 14px; border: 2px solid var(--line-strong); padding: 0 14px; background: var(--card); font-size: 16px; width: 100%; }
 .input:focus { border-color: var(--green); outline: none; box-shadow: 0 0 0 3px var(--green-soft); }
 .error { color: var(--red); font-size: 14px; font-weight: 600; margin: 0; }
+.error-slot { min-height: 1.45em; } /* place réservée : le formulaire ne saute pas quand l'erreur s'affiche */
 /* Erreur sous un champ (components/FormValidation.tsx) */
 .field-error { color: var(--red); font-size: 14px; font-weight: 600; margin: 0; }
 .input[aria-invalid="true"] { border-color: var(--red); }
@@ -214,7 +217,7 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 .radio[aria-checked="true"] .dot { border: 7px solid var(--green); }
 
 .stepper { margin: 0; padding: 0 4px; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-.stepper li { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); text-align: center; }
+.stepper li { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--muted); text-align: center; } /* même hauteur en français et en arabe */
 .stepper .dot { width: 28px; height: 28px; border-radius: 14px; border: 2px solid var(--line-strong); background: var(--card); color: var(--muted); font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: center; }
 .stepper li.done { color: var(--green); font-weight: 600; }
 .stepper li.done .dot { background: var(--green); border-color: var(--green); color: var(--on-green); }
@@ -283,6 +286,7 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 .portal-tabs [role="tab"][aria-selected="true"] { color: var(--green-dark); border-bottom-color: var(--green); font-weight: 700; }
 .portal-tabs .count { min-width: 26px; height: 26px; border-radius: 13px; padding: 0 8px; background: var(--sand); color: var(--on-sand); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .portal-main { padding-top: 24px; padding-bottom: 48px; display: flex; flex-direction: column; gap: 16px; }
+.portal-panel { display: flex; flex-direction: column; gap: 16px; } /* contenu d'un onglet, dans sa transition de vue */
 .portal-main h2 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 700; }
 .portal .btn { min-height: 44px; font-size: 15px; border-radius: 12px; padding: 0 16px; }
 .btn.danger { background: var(--card); border-color: var(--red); color: var(--red); }
@@ -393,3 +397,42 @@ table.mini .sub, .doc-row .sub { display: block; color: var(--muted); font-size:
 
 /* Indicateur de chargement dans un bouton plein : même couleur que son texte, dans les deux modes. */
 .btn .spinner.sm { border-top-color: currentColor; }
+
+/* --- Squelettes : blocs gris aux dimensions du contenu, pendant le premier chargement --------- */
+.skeleton { display: block; flex-shrink: 0; max-width: 100%; background: var(--line); opacity: 0.6; animation: skeleton-pulse 1.4s ease-in-out infinite; }
+@keyframes skeleton-pulse { 50% { opacity: 0.3; } }
+
+/* --- Transitions entre écrans (React <ViewTransition>, lib/transitions.ts) --------------------
+   nav-forward : on avance dans le parcours, l'écran glisse vers la gauche (vers la droite en arabe) ;
+   nav-back : on revient, sens inverse ; nav-fade : entre onglets, simple fondu.
+   220 ms, ease-out. Barre du haut et barre du bas : nom à part, jamais animées. */
+:root { --nav-duration: 220ms; --nav-shift: 56px; }
+::view-transition { pointer-events: none; } /* l'écran reste utilisable pendant l'animation */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-group(sn-topbar), ::view-transition-group(sn-bottomnav) { animation: none; z-index: 100; }
+::view-transition-old(sn-topbar), ::view-transition-old(sn-bottomnav) { display: none; }
+::view-transition-new(sn-topbar), ::view-transition-new(sn-bottomnav) { animation: none; }
+::view-transition-group(.nav-forward), ::view-transition-group(.nav-back), ::view-transition-group(.nav-fade) { animation-duration: var(--nav-duration); animation-timing-function: ease-out; }
+
+::view-transition-old(.nav-forward) { --nav-to: calc(-1 * var(--nav-shift)); animation: var(--nav-duration) ease-out both nav-leave; }
+::view-transition-new(.nav-forward) { --nav-from: var(--nav-shift); animation: var(--nav-duration) ease-out both nav-enter; }
+::view-transition-old(.nav-back) { --nav-to: var(--nav-shift); animation: var(--nav-duration) ease-out both nav-leave; }
+::view-transition-new(.nav-back) { --nav-from: calc(-1 * var(--nav-shift)); animation: var(--nav-duration) ease-out both nav-enter; }
+/* Arabe (dir="rtl") : on lit de droite à gauche, les sens s'inversent. */
+html[dir="rtl"]::view-transition-old(.nav-forward) { --nav-to: var(--nav-shift); }
+html[dir="rtl"]::view-transition-new(.nav-forward) { --nav-from: calc(-1 * var(--nav-shift)); }
+html[dir="rtl"]::view-transition-old(.nav-back) { --nav-to: calc(-1 * var(--nav-shift)); }
+html[dir="rtl"]::view-transition-new(.nav-back) { --nav-from: var(--nav-shift); }
+::view-transition-old(.nav-fade) { animation: var(--nav-duration) ease-out both nav-fade-out; }
+::view-transition-new(.nav-fade) { animation: var(--nav-duration) ease-out both nav-fade-in; }
+
+@keyframes nav-leave { to { opacity: 0; translate: var(--nav-to) 0; } }
+@keyframes nav-enter { from { opacity: 0; translate: var(--nav-from) 0; } }
+@keyframes nav-fade-out { to { opacity: 0; } }
+@keyframes nav-fade-in { from { opacity: 0; } }
+
+/* « Réduire les animations » : aucune transition d'écran, aucun squelette qui pulse. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  .skeleton { animation: none; }
+}

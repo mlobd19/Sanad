@@ -5,7 +5,7 @@
  * Toute redirection liée au rôle passe par ce fichier.
  */
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { api, ApiError, getToken, setToken, type User } from "@/lib/api";
 
@@ -59,14 +59,17 @@ export async function logout(router: Navigate, role?: Role) {
   router.replace(loginUrl(role));
 }
 
-/**
- * Garde-fou commun à tous les espaces :
- * non connecté → /connexion (bon onglet) ; autre rôle → son propre espace ; sinon, le compte connecté.
- */
-export function useSpace(expected: Role) {
+type SpaceValue = { user: User | null; setUser: (user: User) => void };
+type SpaceContextValue = SpaceValue & { role: Role };
+
+/** Compte confirmé par le garde-fou du layout partagé (app/(client)/layout.tsx), pour tous ses écrans. */
+const SpaceContext = createContext<SpaceContextValue | null>(null);
+
+function useGuard(expected: Role, enabled: boolean): SpaceValue {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   useEffect(() => {
+    if (!enabled) return;
     if (!getToken()) {
       router.replace(loginUrl(expected));
       return;
@@ -80,8 +83,28 @@ export function useSpace(expected: Role) {
         if (err instanceof ApiError && err.status === 401) setToken(null); // jeton expiré ou révoqué
         router.replace(loginUrl(expected));
       });
-  }, [router, expected]);
+  }, [router, expected, enabled]);
   return { user, setUser };
+}
+
+/**
+ * Garde-fou commun à tous les espaces :
+ * non connecté → /connexion (bon onglet) ; autre rôle → son propre espace ; sinon, le compte connecté.
+ * Sous un SpaceProvider du même rôle, le compte vient du layout : pas de nouvelle vérification
+ * à chaque écran (la navigation reste instantanée).
+ */
+export function useSpace(expected: Role): SpaceValue {
+  const shared = useContext(SpaceContext);
+  const inherited = shared?.role === expected ? shared : null;
+  const own = useGuard(expected, !inherited);
+  return inherited ?? own;
+}
+
+/** Garde-fou posé une fois par un layout pour tous ses écrans. `enabled` faux : pas de garde-fou
+ *  (page d'accueil d'un visiteur), les écrans retombent alors sur le leur. */
+export function SpaceProvider({ role, enabled, children }: { role: Role; enabled: boolean; children: ReactNode }) {
+  const value = useGuard(role, enabled);
+  return createElement(SpaceContext.Provider, { value: enabled ? { ...value, role } : null }, children);
 }
 
 /** Sur /connexion et la page d'accueil : un compte déjà connecté va directement dans son espace.

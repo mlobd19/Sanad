@@ -1,44 +1,57 @@
 "use client";
 
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { DURATION_LABEL, DurationPicker, parseMonths } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { App, ErrorBox, Loading, Stepper, TopBar } from "@/components/Shell";
+import { useNav } from "@/components/NavLink";
+import { ErrorBox } from "@/components/Shell";
+import { QuotesSkeleton } from "@/components/Skeletons";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { api, ApiError, type Asset, type Months, type Policy, type Quote } from "@/lib/api";
+import { cache } from "@/lib/cache";
 import { date, formatPlate, money } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
+import { prefetch, useLoad } from "@/lib/useLoad";
 
 const FORMULA_ORDER = ["rc", "tiers-etendu", "tous-risques"];
 
 const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial" };
 
+/** Devis d'un véhicule pour une durée, gardés en mémoire (lib/cache.ts). */
+const quotesKey = (assetId: string, months: Months) => `quotes/${assetId}/${months}`;
+
+/** Formule et offre retenues : celles déjà choisies si elles existent encore, sinon la première formule. */
+function choose(qs: Quote[], current: string, insurer: string) {
+  const code = qs.some((q) => q.product_code === current)
+    ? current
+    : FORMULA_ORDER.find((c) => qs.some((q) => q.product_code === c)) ?? qs[0]?.product_code ?? "";
+  const same = qs.find((q) => q.product_code === code && q.insurer_slug === insurer);
+  return { code, picked: (same ?? qs.find((q) => q.product_code === code))?.id ?? null };
+}
+
 function QuotesScreen() {
   const { t, lang } = useI18n();
-  const router = useRouter();
+  const nav = useNav();
   const { assetId } = useParams<{ assetId: string }>();
   const search = useSearchParams();
   const renewalOf = search.get("renouvellement");
   const { user } = useSpace("customer");
-  const [asset, setAsset] = useState<Asset | null>(null);
-  const [quotes, setQuotes] = useState<Quote[] | null>(null);
-  const [picked, setPicked] = useState<number | null>(null);
-  const [formula, setFormula] = useState<string>("");
+  const asset = useLoad<Asset[]>("assets", !!user).data?.find((a) => String(a.id) === assetId) ?? null;
   const [months, setMonths] = useState<Months>(parseMonths(search.get("duree")));
+  // Derniers devis connus pour ce véhicule et cette durée : affichés tout de suite, puis actualisés.
+  const [quotes, setQuotes] = useState<Quote[] | null>(() => cache.get<Quote[]>(quotesKey(assetId, months)) ?? null);
+  const [formula, setFormula] = useState<string>(() => (quotes ? choose(quotes, "", "").code : ""));
+  const [picked, setPicked] = useState<number | null>(() => (quotes ? choose(quotes, "", "").picked : null));
   const [loading, setLoading] = useState(false);
   const [startsOn, setStartsOn] = useState(search.get("debut") ?? new Date().toISOString().slice(0, 10));
   const [editDate, setEditDate] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const dateInput = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (user) api<Asset[]>("assets").then((list) => setAsset(list.find((a) => String(a.id) === assetId) ?? null)).catch(() => undefined);
-  }, [user, assetId]);
 
   // Choix en cours, relu au rechargement des devis (sans relancer leur chargement).
   const choice = useRef({ formula: "", insurer: "" });
@@ -49,14 +62,11 @@ function QuotesScreen() {
     setLoading(true);
     api<Quote[]>(`assets/${assetId}/quotes`, { body: { months } })
       .then((qs) => {
-        const { formula: current, insurer } = choice.current;
-        const code = qs.some((q) => q.product_code === current)
-          ? current
-          : FORMULA_ORDER.find((c) => qs.some((q) => q.product_code === c)) ?? qs[0]?.product_code ?? "";
-        const same = qs.find((q) => q.product_code === code && q.insurer_slug === insurer);
+        const { code, picked: id } = choose(qs, choice.current.formula, choice.current.insurer);
+        cache.set(quotesKey(assetId, months), qs);
         setQuotes(qs);
         setFormula(code);
-        setPicked((same ?? qs.find((q) => q.product_code === code))?.id ?? null);
+        setPicked(id);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -70,6 +80,11 @@ function QuotesScreen() {
     if (user) load();
   }, [user, load]);
 
+  // Écran suivant : les moyens de paiement sont prêts avant d'y aller.
+  useEffect(() => {
+    if (user) prefetch("payments/providers");
+  }, [user]);
+
   useEffect(() => {
     if (editDate) dateInput.current?.focus();
   }, [editDate]);
@@ -82,20 +97,13 @@ function QuotesScreen() {
       const policy = await api<Policy>("policies", {
         body: { quote_id: picked, starts_on: startsOn, ...(renewalOf ? { renewal_of: Number(renewalOf) } : {}) },
       });
-      router.push(`/paiement/${policy.id}`);
+      cache.set(`policies/${policy.id}`, policy); // l'écran de paiement s'affiche complet tout de suite
+      nav.push(`/paiement/${policy.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("error"));
       setBusy(false);
     }
   }
-
-  const header = (
-    <TopBar title={t("quotesTitle")} back="/vehicule">
-      <Stepper current={1} />
-    </TopBar>
-  );
-
-  if (!quotes && !error) return <App>{header}<Loading /></App>;
 
   const formulas = quotes
     ? [...new Map(quotes.map((q) => [q.product_code, q.product])).entries()].sort(
@@ -115,8 +123,7 @@ function QuotesScreen() {
   }
 
   return (
-    <App>
-      {header}
+    <>
       <main className="content">
         {asset && (
           <div className="row ink2" style={{ gap: 12, fontSize: 14 }}>
@@ -131,6 +138,7 @@ function QuotesScreen() {
             </div>
           </div>
         )}
+        {!quotes && !error && <QuotesSkeleton vehicle={!asset} />}
         {error && <ErrorBox message={error} onRetry={quotes ? undefined : load} />}
         {quotes && quotes.length === 0 && <p className="ink2">{t("noQuotes")}</p>}
         {quotes && quotes.length > 0 && (
@@ -219,13 +227,13 @@ function QuotesScreen() {
           </button>
         </div>
       )}
-    </App>
+    </>
   );
 }
 
 export default function QuotesPage() {
   return (
-    <Suspense fallback={<App><Loading /></App>}>
+    <Suspense fallback={<main className="content"><QuotesSkeleton /></main>}>
       <QuotesScreen />
     </Suspense>
   );

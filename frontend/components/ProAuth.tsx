@@ -8,6 +8,7 @@ import { OtpCodeForm, type OtpResult } from "@/components/OtpLogin";
 import { api, ApiError, setToken } from "@/lib/api";
 import { useI18n, type Key } from "@/lib/i18n";
 import { enterSpace, loginUrl } from "@/lib/spaces";
+import { ErrorLine } from "./Shell";
 
 /** Pages communes aux comptes professionnels (assureurs et entreprises). */
 export const FORGOT_PASSWORD_URL = "/connexion/mot-de-passe-oublie";
@@ -98,7 +99,7 @@ export function ProLoginForm({ titleKey, introKey, footer }: { titleKey: Key; in
       </div>
       <PasswordField id="password" label={t("proPassword")} value={password} onChange={setPassword}
         autoComplete="current-password" show={showPassword} onToggle={() => setShowPassword((v) => !v)} />
-      {error && <p className="error" role="alert">{error}</p>}
+      <ErrorLine message={error} />
       <Link href={FORGOT_PASSWORD_URL} className="small" style={{ fontWeight: 700, alignSelf: "flex-start" }}>
         {t("forgotPassword")}
       </Link>
@@ -147,7 +148,7 @@ export function ForgotPasswordForm() {
             value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
       )}
-      {error && <p className="error" role="alert">{error}</p>}
+      <ErrorLine message={error} />
       <div className="grow" />
       {!sent && (
         <button className="btn primary block tall" disabled={busy || !email}>
@@ -228,7 +229,7 @@ function SetPasswordInner() {
         autoComplete="new-password" show={show} onToggle={() => setShow((v) => !v)} minLength={10} />
       <PasswordField id="confirm-password" label={t("confirmPassword")} value={confirm} onChange={setConfirm}
         autoComplete="new-password" show={show} />
-      {error && <p className="error" role="alert">{error}</p>}
+      <ErrorLine message={error} />
       <div className="grow" />
       <button className="btn primary block tall" disabled={busy || password.length < 10 || !confirm}>
         {busy ? <span className="spinner sm" /> : t("savePassword")}

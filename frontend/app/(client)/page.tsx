@@ -1,19 +1,21 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
 import { StackedLogo, Wordmark } from "@/components/Logo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
-import { App, BottomNav, ErrorBox, Loading, StatusPill } from "@/components/Shell";
+import { Link } from "@/components/NavLink";
+import { ErrorBox, Skeleton, StatusPill } from "@/components/Shell";
+import { HomeContractsSkeleton } from "@/components/Skeletons";
 import { LanguageButton } from "@/components/LanguageButton";
-import { api, type Policy } from "@/lib/api";
+import { type Policy } from "@/lib/api";
 import { addDays, date, daysUntil, displayName, formatPlate } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useHasToken, useSpace } from "@/lib/spaces";
+import { prefetch, useLoad } from "@/lib/useLoad";
 
 const SERVICES: { key: Key; icon: string; on: boolean }[] = [
   { key: "auto", icon: "car", on: true },
@@ -64,7 +66,8 @@ function ContractCard({ p, raised }: { p: Policy; raised?: boolean }) {
  *  (un compte d'un autre rôle est renvoyé vers son espace par useSpace). */
 export default function HomePage() {
   const hasToken = useHasToken();
-  if (hasToken === null) return <App><Loading /></App>;
+  // Le navigateur n'est pas encore lu : l'en-tête vert, commun aux deux pages.
+  if (hasToken === null) return <header className="hero" style={{ flex: 1 }} aria-busy="true" />;
   return hasToken ? <CustomerHome /> : <Landing />;
 }
 
@@ -76,7 +79,7 @@ function Landing() {
     { href: "/connexion?espace=pro", icon: "shield", title: "entryInsurer", hint: "entryInsurerHint" },
   ];
   return (
-    <div className="app" style={{ background: "var(--green-deep)" }}>
+    <div className="landing">
       <header style={{ padding: "24px 24px 32px", display: "flex", flexDirection: "column", gap: 24, color: "#fff" }}>
         <div className="head-actions" style={{ justifyContent: "flex-end" }}>
           <LanguageButton />
@@ -141,27 +144,20 @@ function CustomerHome() {
   const { t, lang } = useI18n();
   const evening = useEvening();
   const { user } = useSpace("customer");
-  const [policies, setPolicies] = useState<Policy[] | null>(null);
-  const [error, setError] = useState("");
-
-  const load = useCallback(() => {
-    setError("");
-    api<Policy[]>("policies").then(setPolicies).catch((e) => setError(e.message));
-  }, []);
-
+  // Dernière liste connue tout de suite (lib/cache.ts), actualisée une fois le compte confirmé.
+  const { data: policies, error, reload } = useLoad<Policy[]>("policies", !!user);
+  // Écran suivant le plus probable : la liste des véhicules est prête avant d'y aller.
   useEffect(() => {
-    if (user) load();
-  }, [user, load]);
-
-  if (!user || (!policies && !error)) return <App><Loading /></App>;
+    if (user) prefetch("assets");
+  }, [user]);
 
   const current = (policies ?? []).filter((p) => ["active", "paid", "draft"].includes(p.status));
   const active = current.filter((p) => p.status === "active");
   const nextEnd = active.filter((p) => !p.renewed).map((p) => daysUntil(p.ends_on)).sort((a, b) => a - b)[0];
-  const firstName = displayName(user, lang).split(" ")[0];
+  const firstName = user ? displayName(user, lang).split(" ")[0] : "";
 
   return (
-    <App>
+    <>
       <header className="hero">
         <div className="between">
           <Wordmark name={t("appName")} size={17} onDark />
@@ -171,7 +167,12 @@ function CustomerHome() {
           </div>
         </div>
         <div className="stack" style={{ gap: 4 }}>
-          <h1>{firstName ? t(evening ? "eveningName" : "helloName", { name: `⁨${firstName}⁩` }) : t(evening ? "evening" : "hello")}</h1>
+          {user ? (
+            <h1>{firstName ? t(evening ? "eveningName" : "helloName", { name: `⁨${firstName}⁩` }) : t(evening ? "evening" : "hello")}</h1>
+          ) : (
+            <Skeleton width={190} height={34} style={{ opacity: 0.25 }} />
+          )}
+          {!policies && <Skeleton width={150} height={18} style={{ opacity: 0.25 }} />}
           {active.length > 0 && (
             <span className="sub">
               {t("activeCount", { count: active.length })}
@@ -182,39 +183,44 @@ function CustomerHome() {
       </header>
 
       <main className="content with-nav overlap">
-        {error && <ErrorBox message={error} onRetry={load} />}
+        {error && <ErrorBox message={error} onRetry={reload} />}
 
-        {current.length === 0 ? (
-          <div className="card raised">
-            <p style={{ margin: 0, fontSize: 16 }}>{t("noContracts")}</p>
-            <Link href="/vehicule" className="btn primary block">{t("seeQuotes")}</Link>
-          </div>
+        {!policies && !error ? (
+          <HomeContractsSkeleton />
         ) : (
-          current.map((p, i) => <ContractCard key={p.id} p={p} raised={i === 0} />)
-        )}
-
-        <section className="stack">
-          <h2 className="eyebrow">{t("subscribe")}</h2>
-          <div className="grid2">
-            {SERVICES.map((s) =>
-              s.on ? (
-                <Link key={s.key} href="/vehicule" className="tile on">
-                  <Icon name={s.icon} size={26} strokeWidth={2} />
-                  <strong>{t(s.key)}</strong>
-                  <span className="state">{t("available")}</span>
-                </Link>
-              ) : (
-                <div key={s.key} className="tile" aria-disabled="true">
-                  <Icon name={s.icon} size={26} strokeWidth={2} />
-                  <strong>{t(s.key)}</strong>
-                  <span className="state">{t("soon")}</span>
-                </div>
-              ),
+          <>
+            {current.length === 0 ? (
+              <div className="card raised">
+                <p style={{ margin: 0, fontSize: 16 }}>{t("noContracts")}</p>
+                <Link href="/vehicule" className="btn primary block">{t("seeQuotes")}</Link>
+              </div>
+            ) : (
+              current.map((p, i) => <ContractCard key={p.id} p={p} raised={i === 0} />)
             )}
-          </div>
-        </section>
+
+            <section className="stack">
+              <h2 className="eyebrow">{t("subscribe")}</h2>
+              <div className="grid2">
+                {SERVICES.map((s) =>
+                  s.on ? (
+                    <Link key={s.key} href="/vehicule" className="tile on">
+                      <Icon name={s.icon} size={26} strokeWidth={2} />
+                      <strong>{t(s.key)}</strong>
+                      <span className="state">{t("available")}</span>
+                    </Link>
+                  ) : (
+                    <div key={s.key} className="tile" aria-disabled="true">
+                      <Icon name={s.icon} size={26} strokeWidth={2} />
+                      <strong>{t(s.key)}</strong>
+                      <span className="state">{t("soon")}</span>
+                    </div>
+                  ),
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </main>
-      <BottomNav />
-    </App>
+    </>
   );
 }

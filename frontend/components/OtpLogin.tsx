@@ -6,6 +6,7 @@ import { PhoneInput } from "@/components/PhoneInput";
 import { api, ApiError, type User } from "@/lib/api";
 import { formatPhone } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
+import { ErrorLine } from "./Shell";
 
 const RESEND_DELAY = 30;
 
@@ -137,7 +138,7 @@ export function OtpCodeForm({ sentTo, onSubmit, onResend, onBack, backLabel }: C
         </div>
         <span className="small muted" style={{ marginTop: 6 }}>{t("codeAuto")}</span>
       </fieldset>
-      {error && <p className="error" role="alert">{error}</p>}
+      <ErrorLine message={error} />
       <div className="between">
         <button type="button" className="btn link" onClick={onBack}>{backLabel}</button>
         {wait > 0 ? (
@@ -222,7 +223,7 @@ export function OtpLogin({ title, intro, onVerified }: Props) {
         <label htmlFor="phone">{t("phoneLabel")}</label>
         <PhoneInput id="phone" value={phone} onChange={setPhone} />
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
+      <ErrorLine message={error} />
       <div className="grow" />
       <button className="btn primary block tall" disabled={busy || phone.length < 8}>{t("sendCode")}</button>
     </form>

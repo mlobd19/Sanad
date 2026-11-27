@@ -1,27 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DURATION_LABEL } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
-import { App, ErrorBox, Loading, Stepper, TopBar } from "@/components/Shell";
+import { Link, useNav } from "@/components/NavLink";
+import { ErrorBox } from "@/components/Shell";
+import { PaymentSkeleton } from "@/components/Skeletons";
 import { PhoneInput } from "@/components/PhoneInput";
 import { api, ApiError, type PaymentStart, type Policy, type Provider } from "@/lib/api";
+import { cache } from "@/lib/cache";
 import { date, formatPhone, formatPlate, localPhone, money } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
+import { cachedPolicy } from "@/lib/useLoad";
 
 export default function PaymentPage() {
   const { t, lang } = useI18n();
-  const router = useRouter();
+  const nav = useNav();
   const { policyId } = useParams<{ policyId: string }>();
   const { user } = useSpace("customer");
   const [kycNeeded, setKycNeeded] = useState(false);
-  const [policy, setPolicy] = useState<Policy | null>(null);
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [provider, setProvider] = useState("");
+  // Contrat et moyens de paiement déjà connus (lib/cache.ts) : affichés tout de suite, puis actualisés.
+  const [policy, setPolicy] = useState<Policy | null>(() => cachedPolicy(policyId));
+  const [providers, setProviders] = useState<Provider[]>(() => cache.get<Provider[]>("payments/providers") ?? []);
+  const [provider, setProvider] = useState(() => providers[0]?.code ?? "");
   const [payer, setPayer] = useState("");
   const [payment, setPayment] = useState<PaymentStart | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,9 +38,11 @@ export default function PaymentPage() {
     setKycNeeded(user.kyc_status !== "verified");
     Promise.all([api<Policy>(`policies/${policyId}`), api<Provider[]>("payments/providers")])
       .then(([p, list]) => {
+        cache.set(`policies/${policyId}`, p);
+        cache.set("payments/providers", list);
         setPolicy(p);
         setProviders(list);
-        setProvider(list[0]?.code ?? "");
+        setProvider((current) => (list.some((x) => x.code === current) ? current : list[0]?.code ?? ""));
       })
       .catch((e) => setError(e.message));
   }, [user, policyId]);
@@ -48,10 +54,11 @@ export default function PaymentPage() {
 
   const poll = useCallback(async () => {
     const p = await api<Policy>(`policies/${policyId}`);
+    cache.set(`policies/${policyId}`, p);
     setPolicy(p);
-    if (p.status === "active") router.replace(`/contrats/${p.id}`);
+    if (p.status === "active") nav.replace(`/contrats/${p.id}`);
     if (p.status !== "draft") stopPolling();
-  }, [policyId, router]);
+  }, [policyId, nav]);
 
   useEffect(() => stopPolling, []);
 
@@ -89,20 +96,13 @@ export default function PaymentPage() {
     setPayment(null);
   }
 
-  const header = (
-    <TopBar title={t("payTitle")} back="/">
-      <Stepper current={2} />
-    </TopBar>
-  );
-
-  if (!policy && !error) return <App>{header}<Loading /></App>;
+  if (!policy && !error) return <main className="content"><PaymentSkeleton /></main>;
 
   const providerLabel = providers.find((p) => p.code === provider)?.label ?? "";
   const waitingInsurer = policy?.status === "paid";
 
   return (
-    <App>
-      {header}
+    <>
       <main className="content">
         {error && <ErrorBox message={error} />}
         {policy && (
@@ -203,6 +203,6 @@ export default function PaymentPage() {
           )}
         </div>
       )}
-    </App>
+    </>
   );
 }

@@ -1,17 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { useI18n } from "@/lib/i18n";
 
 import { Icon } from "./Icon";
+import { Link } from "./NavLink";
 
+/** Barre du haut, rendue une seule fois par le layout de l'app client (app/(client)/layout.tsx).
+ *  Nom de transition fixe : elle ne glisse pas avec l'écran (app/globals.css). */
 export function TopBar({ title, back, children }: { title: string; back?: string; children?: ReactNode }) {
   const { t } = useI18n();
   return (
-    <header className="topbar">
+    <header className="topbar" style={{ viewTransitionName: "sn-topbar" }}>
       <div className="head">
         {back && (
           <Link href={back} className="iconbtn" aria-label={t("back")}>
@@ -25,6 +27,7 @@ export function TopBar({ title, back, children }: { title: string; back?: string
   );
 }
 
+/** Barre du bas des trois onglets, rendue une seule fois par le layout de l'app client. */
 export function BottomNav() {
   const { t } = useI18n();
   const path = usePathname();
@@ -34,7 +37,7 @@ export function BottomNav() {
     { href: "/profil", label: t("navProfile"), icon: "user" },
   ];
   return (
-    <nav className="bottomnav" aria-label="Navigation principale">
+    <nav className="bottomnav" aria-label="Navigation principale" style={{ viewTransitionName: "sn-bottomnav" }}>
       {items.map((item) => {
         const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
         return (
@@ -48,12 +51,20 @@ export function BottomNav() {
   );
 }
 
-export function Loading() {
+/** Bloc gris aux dimensions du contenu attendu, pendant le premier chargement d'un écran. */
+export function Skeleton({ width = "100%", height = 16, radius = 8, style }: {
+  width?: number | string; height?: number | string; radius?: number; style?: CSSProperties;
+}) {
+  return <span className="skeleton" aria-hidden="true" style={{ width, height, borderRadius: radius, ...style }} />;
+}
+
+/** Écran en cours de chargement : squelettes (enfants) annoncés aux lecteurs d'écran. */
+export function SkeletonGroup({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
   const { t } = useI18n();
   return (
-    <div className="center" role="status">
-      <div className="spinner" />
-      <span className="muted">{t("loading")}</span>
+    <div className={className} style={style} role="status" aria-busy="true">
+      <span className="sr-only">{t("loading")}</span>
+      {children}
     </div>
   );
 }
@@ -70,6 +81,12 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
       )}
     </div>
   );
+}
+
+/** Message d'erreur d'un formulaire : sa ligne est toujours là (vide sans erreur), pour que le
+ *  contenu ne saute pas quand il apparaît. Annoncé aux lecteurs d'écran dès qu'il change. */
+export function ErrorLine({ message, style }: { message?: string; style?: CSSProperties }) {
+  return <p className="error error-slot" role="alert" style={style}>{message}</p>;
 }
 
 /** Étapes nommées du parcours de souscription : 0 véhicule, 1 offre, 2 paiement, 3 attestation. */
@@ -95,8 +112,4 @@ export function StatusPill({ status }: { status: string }) {
   const { t } = useI18n();
   const tone = status === "active" ? "" : status === "paid" || status === "draft" ? "warn" : status === "refused" ? "bad" : "quiet";
   return <span className={`pill ${tone}`}>{t(`status_${status}` as Parameters<typeof t>[0])}</span>;
-}
-
-export function App({ children }: { children: ReactNode }) {
-  return <div className="app">{children}</div>;
 }

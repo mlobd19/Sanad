@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 
 export type Lang = "fr" | "ar";
 
@@ -899,6 +899,12 @@ const ar: Record<Key, string> = {
 const dictionaries: Record<Lang, Record<Key, string>> = { fr, ar };
 const LANG_KEY = "sanad.lang";
 
+/** Script exécuté dans <head> avant le rendu (app/layout.tsx) : langue et sens de lecture enregistrés
+ *  posés tout de suite sur <html>, sinon une page en arabe s'afficherait d'abord de gauche à droite
+ *  puis basculerait (tout le contenu sauterait). */
+export const LANG_BOOT_SCRIPT =
+  `try{if(localStorage.getItem("${LANG_KEY}")==="ar"){var d=document.documentElement;d.lang="ar";d.dir="rtl"}}catch(e){}`;
+
 type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (key: Key, vars?: Record<string, string | number>) => string };
 
 const I18nContext = createContext<Ctx | null>(null);
@@ -906,7 +912,9 @@ const I18nContext = createContext<Ctx | null>(null);
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("fr");
 
-  useEffect(() => {
+  // Avant le premier affichage côté navigateur (pas après) : les textes passent en arabe dans la
+  // même image que l'hydratation.
+  useLayoutEffect(() => {
     try {
       const saved = localStorage.getItem(LANG_KEY);
       if (saved === "ar" || saved === "fr") setLangState(saved);
@@ -915,7 +923,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   }, [lang]);

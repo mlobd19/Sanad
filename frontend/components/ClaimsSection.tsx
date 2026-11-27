@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-
 import { Icon } from "@/components/Icon";
+import { Link } from "@/components/NavLink";
+import { Skeleton } from "@/components/Shell";
 import type { Claim, ClaimStatus, Policy } from "@/lib/api";
 import { date, num } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
@@ -18,6 +18,7 @@ export function ClaimsSection({ policy }: { policy: Policy }) {
   return (
     <section className="card" aria-labelledby="claims-title">
       <h2 id="claims-title" className="eyebrow" style={{ margin: 0 }}>{t("claimsTitle")}</h2>
+      {!claims && <Skeleton width="60%" height={18} />}
       {claims && claims.length === 0 && <p className="small ink2" style={{ margin: 0 }}>{t("noClaims")}</p>}
       {claims?.map((c) => (
         <article key={c.id} className="stack" style={{ gap: 4, paddingBlock: 8, borderTop: "1px solid var(--line)" }}>

@@ -1,7 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import {
+  addTransitionType,
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  ViewTransition,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import { ClaimForm } from "@/components/ClaimForm";
 import { DURATION_LABEL, DurationPicker } from "@/components/DurationPicker";
@@ -32,7 +43,10 @@ import {
 import { cleanPlate, date, daysUntil, formatPlate, money, num, plateInput } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
+import { SCREEN_ANIMATION } from "@/lib/transitions";
 import { useLoad } from "@/lib/useLoad";
+import { ErrorLine, Skeleton } from "@/components/Shell";
+import { TableSkeleton } from "@/components/Skeletons";
 
 type Tab = "fleet" | "quotes" | "contracts" | "claims" | "company";
 
@@ -61,37 +75,49 @@ export default function CompanySpacePage() {
   const { t } = useI18n();
   // Garde-fou commun : non connecté → /connexion (onglet pro) ; autre rôle → son propre espace.
   const { user } = useSpace("company_member");
-  const [me, setMe] = useState<CompanyMe | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  // Dernière fiche connue tout de suite (lib/cache.ts), actualisée une fois le compte confirmé.
+  const { data: me, error, reload } = useLoad<CompanyMe>("company/me", !!user);
+  const refreshMe = useCallback(async () => {
+    await reload();
+  }, [reload]);
 
-  async function load() {
-    try {
-      setMe(await api<CompanyMe>("company/me"));
-      setState("ready");
-    } catch {
-      setState("error");
-    }
+  if (me) return <Space me={me} refreshMe={refreshMe} />;
+
+  if (error) {
+    return (
+      <div className="portal-login">
+        <div className="box">
+          <main className="sheet center" style={{ color: "var(--ink)", minHeight: 280 }}>
+            <p className="error" role="alert">{t("error")}</p>
+            <button type="button" className="btn primary" onClick={() => window.location.reload()}>{t("retry")}</button>
+          </main>
+        </div>
+      </div>
+    );
   }
 
-  useEffect(() => {
-    if (user) load();
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (state === "ready" && me) return <Space me={me} refreshMe={load} />;
-
+  // Premier chargement : l'espace tel qu'il va s'afficher (en-tête, onglets, lignes).
   return (
-    <div className="portal-login">
-      <div className="box">
-        <main className="sheet center" style={{ color: "var(--ink)", minHeight: 280 }}>
-          {state === "loading" && <span className="spinner" aria-label={t("loading")} />}
-          {state === "error" && (
-            <>
-              <p className="error" role="alert">{t("error")}</p>
-              <button type="button" className="btn primary" onClick={() => window.location.reload()}>{t("retry")}</button>
-            </>
-          )}
-        </main>
-      </div>
+    <div className="portal" role="status" aria-busy="true">
+      <span className="sr-only">{t("loading")}</span>
+      <header className="portal-head">
+        <div className="portal-wrap">
+          <Skeleton width={56} height={56} radius={12} style={{ opacity: 0.25 }} />
+          <div className="grow stack" style={{ gap: 8 }}>
+            <Skeleton width={220} height={26} style={{ opacity: 0.25 }} />
+            <Skeleton width={280} height={16} style={{ opacity: 0.25 }} />
+          </div>
+        </div>
+      </header>
+      <nav className="portal-tabs" aria-hidden="true">
+        <div className="portal-wrap" style={{ alignItems: "center", minHeight: 56, gap: 18 }}>
+          {TABS.map(({ id }) => <Skeleton key={id} width={90} height={16} />)}
+        </div>
+      </nav>
+      <main className="portal-wrap portal-main">
+        <Skeleton width={200} height={26} />
+        <TableSkeleton rows={5} />
+      </main>
     </div>
   );
 }
@@ -99,7 +125,15 @@ export default function CompanySpacePage() {
 function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void> }) {
   const { t, lang } = useI18n();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("fleet");
+  const [tab, setTabNow] = useState<Tab>("fleet");
+  // Changer d'onglet est une transition « nav-tab » : simple fondu du contenu (lib/transitions.ts) ;
+  // l'en-tête et la barre d'onglets ne bougent pas.
+  const setTab = useCallback((next: Tab) => {
+    startTransition(() => {
+      addTransitionType("nav-tab");
+      setTabNow(next);
+    });
+  }, []);
   const [selection, setSelection] = useState<number[]>([]);
   // Contrat choisi dans « Contrats » pour déclarer un sinistre (ouvre le formulaire de l'onglet « Sinistres »).
   const [declareFor, setDeclareFor] = useState<number | null>(null);
@@ -110,7 +144,7 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
 
   useEffect(() => {
     // Après l'inscription : ouvrir directement l'onglet « Entreprise » (dépôt des pièces).
-    if (new URLSearchParams(window.location.search).get("onglet") === "entreprise") setTab("company");
+    if (new URLSearchParams(window.location.search).get("onglet") === "entreprise") setTabNow("company");
   }, []);
 
   function logout() {
@@ -175,17 +209,21 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
 
       <main className="portal-wrap portal-main" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         <StatusBanner me={me} onOpenCompany={() => setTab("company")} />
-        {tab === "fleet" && (
-          <FleetTab selection={selection} setSelection={setSelection} onCompare={() => setTab("quotes")} />
-        )}
-        {tab === "quotes" && (
-          <QuotesTab selection={selection} verified={company.status === "verified"}
-            onBackToFleet={() => setTab("fleet")}
-            onPaid={() => { setSelection([]); setTab("contracts"); }} />
-        )}
-        {tab === "contracts" && <ContractsTab onDeclare={(id) => { setDeclareFor(id); setTab("claims"); }} />}
-        {tab === "claims" && <ClaimsTab declareFor={declareFor} setDeclareFor={setDeclareFor} />}
-        {tab === "company" && <CompanyTab me={me} refreshMe={refreshMe} />}
+        <ViewTransition key={tab} enter={SCREEN_ANIMATION} exit={SCREEN_ANIMATION} default="none">
+          <div className="portal-panel">
+            {tab === "fleet" && (
+              <FleetTab selection={selection} setSelection={setSelection} onCompare={() => setTab("quotes")} />
+            )}
+            {tab === "quotes" && (
+              <QuotesTab selection={selection} verified={company.status === "verified"}
+                onBackToFleet={() => setTab("fleet")}
+                onPaid={() => { setSelection([]); setTab("contracts"); }} />
+            )}
+            {tab === "contracts" && <ContractsTab onDeclare={(id) => { setDeclareFor(id); setTab("claims"); }} />}
+            {tab === "claims" && <ClaimsTab declareFor={declareFor} setDeclareFor={setDeclareFor} />}
+            {tab === "company" && <CompanyTab me={me} refreshMe={refreshMe} />}
+          </div>
+        </ViewTransition>
       </main>
     </div>
   );
@@ -264,7 +302,7 @@ function FleetTab({ selection, setSelection, onCompare }: {
         <ImportCard onImported={reload} />
       </div>
       {error && <div className="banner red" role="alert">{error === "error" ? t("error") : error}</div>}
-      {!data && !error && <div className="center" style={{ minHeight: 160 }}><span className="spinner" aria-label={t("loading")} /></div>}
+      {!data && !error && <TableSkeleton />}
       {data && data.length === 0 && <div className="card"><p className="ink2" style={{ margin: 0 }}>{t("noVehicles")}</p></div>}
       {data && data.length > 0 && (
         <div className="ptable-wrap">
@@ -381,7 +419,7 @@ function AddVehicleCard({ onAdded }: { onAdded: () => void }) {
           </select>
         </div>
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
+      <ErrorLine message={error} />
       <button className="btn primary" disabled={busy || !plate || !power} style={{ alignSelf: "flex-start" }}>
         {busy ? <span className="spinner sm" /> : t("addVehicleBtn")}
       </button>
@@ -424,7 +462,7 @@ function ImportCard({ onImported }: { onImported: () => void }) {
         <input id="v-file" className="input file" type="file" accept=".csv,text/csv"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
+      <ErrorLine message={error} />
       {result && (
         <div className="stack" role="status" style={{ gap: 6 }}>
           <div className={`banner ${result.errors.length ? "sand" : "green"}`}>
@@ -517,7 +555,7 @@ function QuotesTab({ selection, verified, onBackToFleet, onPaid }: {
       {months < 12 && <p className="note" style={{ margin: 0 }}>{t("shortTermNote")}</p>}
       <p className="note" style={{ margin: 0 }}>{t("indicativeNote")}</p>
       {error && <div className="banner red" role="alert">{error}</div>}
-      {!offers && !error && <div className="center" style={{ minHeight: 160 }}><span className="spinner" aria-label={t("loading")} /></div>}
+      {!offers && !error && <TableSkeleton />}
       {offers && offers.length > 0 && (
         <div className="chips" role="group" aria-label={t("formula")}>
           <button type="button" aria-pressed={formula === "all"} onClick={() => setFormula("all")}>{t("allFormulas")}</button>
@@ -669,7 +707,7 @@ function OrderPayment({ order, verified, onPaid, onCancel }: {
               </button>
             </>
           )}
-          {error && <p className="error" role="alert">{error}</p>}
+          <ErrorLine message={error} />
           {!payment && !paid && <button type="button" className="btn link" onClick={onCancel}>{t("backToOffers")}</button>}
         </section>
       </div>
@@ -712,7 +750,7 @@ function ContractsTab({ onDeclare }: { onDeclare: (policyId: number) => void }) 
       <p className="note" style={{ margin: 0 }}>{t("indicativeNote")}</p>
       {dlError && <div className="banner red" role="alert">{dlError}</div>}
       {error && <div className="banner red" role="alert">{error === "error" ? t("error") : error}</div>}
-      {!data && !error && <div className="center" style={{ minHeight: 160 }}><span className="spinner" aria-label={t("loading")} /></div>}
+      {!data && !error && <TableSkeleton />}
       {data && rows.length === 0 && <div className="card"><p className="ink2" style={{ margin: 0 }}>{t("companyNoContracts")}</p></div>}
       {rows.length > 0 && (
         <div className="ptable-wrap">
@@ -839,7 +877,7 @@ function ClaimsTab({ declareFor, setDeclareFor }: {
       )}
 
       {error && <div className="banner red" role="alert">{error === "error" ? t("error") : error}</div>}
-      {!data && !error && <div className="center" style={{ minHeight: 160 }}><span className="spinner" aria-label={t("loading")} /></div>}
+      {!data && !error && <TableSkeleton />}
       {data && data.length === 0 && <div className="card"><p className="ink2" style={{ margin: 0 }}>{t("fleetNoClaims")}</p></div>}
       {data && data.length > 0 && (
         <div className="ptable-wrap">
@@ -969,7 +1007,7 @@ function DocumentRow({ kind, uploadedAt, canUpload, onUploaded, lang }: {
           </button>
         </div>
       )}
-      {error && <p className="error" role="alert" style={{ flexBasis: "100%" }}>{error}</p>}
+      <ErrorLine message={error} style={{ flexBasis: "100%" }} />
     </div>
   );
 }
@@ -1040,7 +1078,7 @@ function MembersCard({ admin }: { admin: boolean }) {
               </select>
             </div>
           </div>
-          {error && <p className="error" role="alert">{error}</p>}
+          <ErrorLine message={error} />
           {sent && <div className="banner green" role="status"><strong>{t("memberInvited", { email: sent })}</strong></div>}
           <button className="btn primary" disabled={busy || form.phone.length < 8} style={{ alignSelf: "flex-start" }}>
             {busy ? <span className="spinner sm" /> : t("inviteBtn")}

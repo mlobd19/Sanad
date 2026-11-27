@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { FormValidation } from "@/components/FormValidation";
-import { I18nProvider } from "@/lib/i18n";
+import { I18nProvider, LANG_BOOT_SCRIPT } from "@/lib/i18n";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
@@ -34,6 +34,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         {/* Applique le choix d'apparence enregistré avant le premier affichage (pas d'éclair blanc). */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        {/* Langue et sens de lecture enregistrés, avant le premier affichage (même principe). */}
+        <script dangerouslySetInnerHTML={{ __html: LANG_BOOT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link

@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
 
 import { Icon } from "@/components/Icon";
 import { InsurerLogo } from "@/components/InsurerLogo";
-import { Loading, ErrorBox } from "@/components/Shell";
+import { Link } from "@/components/NavLink";
+import { ErrorBox } from "@/components/Shell";
+import { ControlSkeleton } from "@/components/Skeletons";
 import { usePolicyQr } from "@/components/usePolicyQr";
 import { date, formatPlate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -29,8 +30,8 @@ export default function ControlPage() {
     };
   }, []);
 
-  if (error) return <main className="control"><ErrorBox message={error} /></main>;
-  if (!policy) return <main className="control"><Loading /></main>;
+  // Hors réseau pendant un contrôle : la dernière version connue reste affichée.
+  if (!policy) return <main className="control">{error ? <ErrorBox message={error} /> : <ControlSkeleton />}</main>;
   const att = policy.attestation;
 
   return (

@@ -1,5 +1,7 @@
 // Client de l'API Django. Le jeton est gardé dans le navigateur de l'utilisateur.
 
+import { cache } from "./cache";
+
 const TOKEN_KEY = "sanad.token";
 
 export function getToken(): string | null {
@@ -11,6 +13,7 @@ export function getToken(): string | null {
 }
 
 export function setToken(token: string | null) {
+  cache.clear(); // nouvelle connexion ou déconnexion : rien du compte précédent ne reste affiché
   try {
     if (token) localStorage.setItem(TOKEN_KEY, token);
     else localStorage.removeItem(TOKEN_KEY);
