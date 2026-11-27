@@ -299,8 +299,9 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 
 /* Assurance voyage : pays proposés à la saisie, plafonds des garanties (en euros). */
 .country-results { list-style: none; margin: 4px 0 0; padding: 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
-.country-results li { min-height: 44px; display: flex; align-items: center; padding: 0 10px; }
-.country-results button { all: unset; box-sizing: border-box; width: 100%; min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--ink); border-radius: 10px; }
+.country-results li { min-height: 44px; display: flex; align-items: center; }
+.country-results li.muted { padding-inline: 14px; }
+.country-results button { all: unset; box-sizing: border-box; width: 100%; min-height: 44px; display: flex; align-items: center; padding-inline: 14px; cursor: pointer; font-weight: 600; color: var(--ink); border-radius: 10px; }
 .country-results button:hover, .country-results button:focus-visible { background: var(--green-tint); outline: 2px solid var(--green); outline-offset: -2px; }
 .limits { margin: 0; display: grid; gap: 4px; font-size: 13px; text-align: start; }
 .limits div { display: flex; justify-content: space-between; gap: 12px; }
