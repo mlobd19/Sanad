@@ -11,8 +11,9 @@ import { SanadMark } from "@/components/Logo";
 import { Link } from "@/components/NavLink";
 import { ErrorBox, ErrorLine, StatusPill } from "@/components/Shell";
 import { ContractSkeleton } from "@/components/Skeletons";
+import { AssistanceLink, LimitsList, TripSummary, VerificationPill } from "@/components/Travel";
 import { usePolicyQr } from "@/components/usePolicyQr";
-import { ApiError, downloadFile } from "@/lib/api";
+import { ApiError, downloadFile, type Policy } from "@/lib/api";
 import { date, formatPlate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useSpace } from "@/lib/spaces";
@@ -80,7 +81,9 @@ export default function ContractPage() {
           <div className="banner red">{t("refusedText", { reason: policy.refusal_reason })}</div>
         )}
 
-        {policy && att ? (
+        {policy?.trip ? (
+          <TravelContract policy={policy} trip={policy.trip} pdfBusy={pdfBusy} onPdf={downloadPdf} pdfError={pdfError} />
+        ) : policy && att ? (
           <>
             <section className="card attestation" aria-label={t("attestationTitle")}>
               <header>
@@ -146,6 +149,72 @@ export default function ContractPage() {
         )}
         {policy && (policy.status === "active" || policy.status === "expired") && <ClaimsSection policy={policy} />}
       </main>
+    </>
+  );
+}
+
+/** Contrat voyage : voyage, assistance 24 h/24, attestation de chaque voyageur, garanties et plafonds. */
+function TravelContract({ policy, trip, pdfBusy, pdfError, onPdf }: {
+  policy: Policy;
+  trip: NonNullable<Policy["trip"]>;
+  pdfBusy: boolean;
+  pdfError: string;
+  onPdf: (attestationId: number, number: string) => void;
+}) {
+  const { t, lang } = useI18n();
+  return (
+    <>
+      <section className="card">
+        <div className="between" style={{ alignItems: "flex-start" }}>
+          <div className="row" style={{ gap: 10 }}>
+            <span className="iconbox" aria-hidden="true"><Icon name="plane" /></span>
+            <div className="stack" style={{ gap: 2 }}>
+              <strong>{policy.insurer} · {policy.product}</strong>
+              <span className="small ink2"><TripSummary trip={trip} travelers={trip.travelers.length} /></span>
+            </div>
+          </div>
+          {policy.status !== "active" && <StatusPill status={policy.status} />}
+        </div>
+      </section>
+      {policy.status === "active" && <AssistanceLink phone={policy.assistance_phone} insurer={policy.insurer} />}
+
+      <h2 className="eyebrow" style={{ margin: 0 }}>{t("travelAttestations")}</h2>
+      <ul className="stack" style={{ gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
+        {trip.travelers.map((x) => (
+          <li key={x.id} className="card" style={{ gap: 8 }}>
+            <div className="between" style={{ alignItems: "flex-start" }}>
+              <div className="stack" style={{ gap: 2, minWidth: 0 }}>
+                <strong>{lang === "ar" && x.full_name_ar ? x.full_name_ar : x.full_name}</strong>
+                <span className="small ink2">
+                  <bdi dir="ltr">{t("passportShort", { passport: x.passport_number })}</bdi> · {t("bornOn", { date: date(x.birth_date, lang) })}
+                </span>
+              </div>
+              <VerificationPill verification={x.verification} />
+            </div>
+            {x.attestation && policy.status === "active" && (
+              <div className="between" style={{ gap: 8 }}>
+                <bdi className="small" dir="ltr">N° <strong>{x.attestation.number}</strong></bdi>
+                <div className="row" style={{ gap: 6 }}>
+                  <a className="btn link" href={x.attestation.verify_url} target="_blank" rel="noreferrer">{t("verifyLink")}</a>
+                  <button type="button" className="btn outline" style={{ minHeight: 44, padding: "0 14px" }}
+                    onClick={() => onPdf(x.attestation!.id, x.attestation!.number)} disabled={pdfBusy}
+                    aria-label={`${t("downloadPdf")} · ${t("attestationOf", { name: x.full_name })}`}>
+                    <Icon name="download" size={18} strokeWidth={2} />
+                    {t("pdf")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      <ErrorLine message={pdfError} />
+
+      <section className="card" aria-label={t("limitsTitle")}>
+        <strong>{t("limitsTitle")}</strong>
+        <LimitsList limits={policy.limits} />
+        <span className="small muted">{date(policy.starts_on, lang)} → {date(policy.ends_on, lang)}</span>
+      </section>
     </>
   );
 }

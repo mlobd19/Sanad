@@ -150,7 +150,42 @@ export type Quote = {
   premium: number;
   duration_months: Months;
   expires_at: string;
+  branch: Branch;
+  /** Voyage : plafonds en euros (null = frais réels), durée en jours et nombre de voyageurs du devis. */
+  limits: TravelLimits;
+  days: number | null;
+  travelers: number | null;
 };
+
+export type Branch = "auto" | "travel";
+
+export type TravelLimits = Partial<Record<"medical" | "repatriation" | "baggage" | "delay" | "liability", number | null>>;
+
+export type Traveler = {
+  id: number;
+  nni: string;
+  full_name: string;
+  full_name_ar: string;
+  passport_number: string;
+  birth_date: string;
+  /** « verified » : nom officiel de l'ANRPTS ; « declared » : sans eID, nom saisi tel que sur le passeport. */
+  verification: "verified" | "declared";
+  attestation: Attestation | null;
+};
+
+export type Trip = {
+  id: number;
+  asset_id: number;
+  destinations: string[];
+  departure_on: string;
+  return_on: string;
+  days: number;
+  travelers: Traveler[];
+  /** Voyage payé : ses voyageurs ne changent plus. */
+  locked: boolean;
+};
+
+export type TravelerCheck = { status: Traveler["verification"]; full_name: string; full_name_ar: string };
 
 export type Attestation = { id: number; number: string; status: string; issued_at: string; verify_url: string };
 
@@ -174,6 +209,11 @@ export type Policy = {
   asset_id: number;
   renewed: boolean;
   created_at: string;
+  branch: Branch;
+  /** Voyage : destinations, dates et voyageurs (chacun avec son attestation) ; auto : null. */
+  trip: Omit<Trip, "asset_id" | "locked"> | null;
+  limits: TravelLimits;
+  assistance_phone: string;
 };
 
 export type Provider = { code: string; label: string };
@@ -209,6 +249,7 @@ export type CommissionItem = {
   rate: string;
   amount: number;
   period: string;
+  branch: Branch;
   is_paid: boolean;
   created_at: string;
 };
@@ -249,18 +290,20 @@ export type GroupOffer = {
 
 export type CompanyOrder = { id: number; total: number; created_at: string; policies: Policy[] };
 
-export type ClaimKind = "accident" | "theft" | "fire" | "glass" | "other";
+export type ClaimKind = "accident" | "theft" | "fire" | "glass" | "medical" | "repatriation" | "baggage" | "delay" | "other";
 export type ClaimStatus = "submitted" | "in_review" | "closed";
 
 /** Sinistre ; « photos » = nombre de fichiers (privés, jamais d'URL côté client). */
 export type Claim = {
   id: number; number: string; kind: ClaimKind; occurred_on: string; place: string; description: string;
   third_party_plate: string; injuries: boolean; status: ClaimStatus; closing_note: string; photos: number;
+  /** Voyage : nom du voyageur concerné. */
+  traveler: string | null;
   created_at: string; updated_at: string;
 };
 
 export type InsurerClaim = Claim & {
-  policy: { id: number; plate: string; product: string; make: string; starts_on: string; ends_on: string; insurer_reference: string };
+  policy: { id: number; plate: string; product: string; branch: Branch; make: string; starts_on: string; ends_on: string; insurer_reference: string };
   /** Le déclarant ; `company` : entreprise titulaire pour un véhicule de flotte. */
   customer: { full_name: string; phone: string; company: string | null };
   photo_ids: number[];

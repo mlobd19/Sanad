@@ -28,6 +28,7 @@ export function ClaimsSection({ policy }: { policy: Policy }) {
           </div>
           <span className="small ink2">
             {t(`claimKind_${c.kind}` as Key)} · {date(c.occurred_on, lang)}
+            {c.traveler && <> · <bdi>{c.traveler}</bdi></>}
             {c.photos > 0 && ` · ${t("claimPhotoCount", { n: c.photos })}`}
           </span>
           {c.closing_note && (

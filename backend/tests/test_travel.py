@@ -459,3 +459,25 @@ def test_traveler_checks_have_their_own_rate(settings):
 
     assert TravelerCheckView.throttle_scope == TravelerListView.throttle_scope == "traveler_check"
     assert MemoryBackend  # (journal des SMS : utilisé par les autres tests)
+
+
+# --- Back-office ----------------------------------------------------------------------------------------------------
+
+
+def test_backoffice_filters_by_product_and_shows_travelers(customer_client, auto_insurer, settings):
+    from django.test import Client
+
+    settings.DEBUG, settings.BACKOFFICE_2FA = True, "off"
+    policy = active_trip_policy(customer_client, auto_insurer, travelers=((CHILD_NO_EID, "Enfant Sans Eid"),))
+    _, pay = buy(customer_client, insurer="iman", plate="7777AB00")
+    simulate_callback(APIClient(), pay["reference"], pay["amount"])
+    staff = User.objects.create_user("+22230000088", password="Equipe-Sanad-2026", role=User.Role.STAFF,
+                                     is_staff=True, is_superuser=True)
+    client = Client()
+    client.force_login(staff)
+    page = client.get("/admin/policies/policy/?produit=travel").content.decode()
+    # Liste filtrée sur le voyage : le contrat voyage (codes des pays) sans le contrat auto.
+    assert ">ES<" in page.replace(" ", "") or "ES</span>" in page
+    assert "7777AB00" not in page and "Voyage" in page
+    detail = client.get(f"/admin/policies/policy/{policy.pk}/change/").content.decode()
+    assert "ENFANT SANS EID" in detail and "Déclaré (sans eID)" in detail and "Espagne" in detail

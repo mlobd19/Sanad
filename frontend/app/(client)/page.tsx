@@ -12,16 +12,17 @@ import { ErrorBox, Skeleton, StatusPill } from "@/components/Shell";
 import { HomeContractsSkeleton } from "@/components/Skeletons";
 import { LanguageButton } from "@/components/LanguageButton";
 import { type Policy } from "@/lib/api";
-import { addDays, date, daysUntil, displayName, formatPlate, num } from "@/lib/format";
+import { destinationsLabel } from "@/lib/countries";
+import { addDays, date, daysUntil, displayName, formatPlate, num, shortDate } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { useHasToken, useSpace } from "@/lib/spaces";
 import { prefetch, useLoad } from "@/lib/useLoad";
 
-const SERVICES: { key: Key; icon: string; on: boolean }[] = [
-  { key: "auto", icon: "car", on: true },
-  { key: "health", icon: "heart", on: false },
-  { key: "home", icon: "home", on: false },
-  { key: "travel", icon: "plane", on: false },
+const SERVICES: { key: Key; icon: string; href?: string }[] = [
+  { key: "auto", icon: "car", href: "/vehicule" },
+  { key: "health", icon: "heart" },
+  { key: "home", icon: "home" },
+  { key: "travel", icon: "plane", href: "/voyage" },
 ];
 
 /** Contrats qui demandent une action d'abord (en validation, brouillon à payer, expire dans 30 jours
@@ -29,7 +30,7 @@ const SERVICES: { key: Key; icon: string; on: boolean }[] = [
 function actionRank(p: Policy): number {
   if (p.status === "paid") return 0;
   if (p.status === "draft") return 1;
-  if (p.status === "active" && !p.renewed && daysUntil(p.ends_on) <= 30) return 2;
+  if (p.branch !== "travel" && p.status === "active" && !p.renewed && daysUntil(p.ends_on) <= 30) return 2;
   return 3;
 }
 
@@ -37,8 +38,39 @@ function orderContracts(policies: Policy[]): Policy[] {
   return [...policies].sort((a, b) => actionRank(a) - actionRank(b) || a.ends_on.localeCompare(b.ends_on));
 }
 
+/** Carte d'un contrat voyage : avion, destination(s), dates, nombre de voyageurs, statut. */
+function TripCard({ p, trip }: { p: Policy; trip: NonNullable<Policy["trip"]> }) {
+  const { t, lang } = useI18n();
+  return (
+    <div className="card raised contract-card">
+      <div className="row">
+        <span className="trip-icon" aria-hidden="true"><Icon name="plane" size={30} strokeWidth={1.8} /></span>
+        <div className="grow stack" style={{ gap: 6, minWidth: 0 }}>
+          <span className="plate trip-title">{destinationsLabel(trip.destinations, lang, 1)}</span>
+          <span className="contract-status"><StatusPill status={p.status} /></span>
+        </div>
+      </div>
+      <span className="row ink2 contract-insurer">
+        <Icon name="clock" size={20} strokeWidth={2} />
+        <span>{shortDate(trip.departure_on, lang)} → {shortDate(trip.return_on, lang)} · {t("travelersCount", { count: trip.travelers.length })}</span>
+      </span>
+      {p.status === "draft" ? (
+        <Link className="btn primary block" href={`/paiement/${p.id}`}>{t("payTitle")}</Link>
+      ) : p.status === "active" ? (
+        <Link className="btn dark block" href={`/contrats/${p.id}`}>
+          <Icon name="qr" size={20} strokeWidth={2} />
+          {t("seeAttestations")}
+        </Link>
+      ) : (
+        <Link className="btn outline block" href={`/contrats/${p.id}`}>{t("seeDetails")}</Link>
+      )}
+    </div>
+  );
+}
+
 function ContractCard({ p }: { p: Policy }) {
   const { t, lang } = useI18n();
+  if (p.trip) return <TripCard p={p} trip={p.trip} />;
   const days = daysUntil(p.ends_on);
   const renew = p.status === "active" && !p.renewed && days <= 30;
   return (
@@ -221,7 +253,8 @@ function CustomerHome() {
 
   const current = (policies ?? []).filter((p) => ["active", "paid", "draft"].includes(p.status));
   const active = current.filter((p) => p.status === "active");
-  const nextEnd = active.filter((p) => !p.renewed).map((p) => daysUntil(p.ends_on)).sort((a, b) => a - b)[0];
+  // Renouvellement : auto seulement (un voyage ne se renouvelle pas).
+  const nextEnd = active.filter((p) => !p.renewed && p.branch !== "travel").map((p) => daysUntil(p.ends_on)).sort((a, b) => a - b)[0];
   const firstName = user ? displayName(user, lang).split(" ")[0] : "";
 
   return (
@@ -270,8 +303,8 @@ function CustomerHome() {
               <h2 className="eyebrow" style={{ margin: 0 }}>{t("subscribe")}</h2>
               <div className="grid2">
                 {SERVICES.map((s) =>
-                  s.on ? (
-                    <Link key={s.key} href="/vehicule" className="tile on">
+                  s.href ? (
+                    <Link key={s.key} href={s.href} className="tile on">
                       <Icon name={s.icon} size={26} strokeWidth={2} />
                       <strong>{t(s.key)}</strong>
                       <span className="state">{t("available")}</span>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 
 import { InsurerLogo } from "@/components/InsurerLogo";
+import { VerificationPill } from "@/components/Travel";
 import { ThemeIconButton } from "@/components/ThemeChoice";
 import { LanguageButton } from "@/components/LanguageButton";
 import {
@@ -16,7 +17,9 @@ import {
   type InsurerCommissions,
   type InsurerMe,
   type InsurerPolicy,
+  type Branch,
 } from "@/lib/api";
+import { destinationsLabel } from "@/lib/countries";
 import { date, formatPhone, formatPlate, money, month, num, percent } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
@@ -41,6 +44,27 @@ const KYC_PILL: Record<InsurerPolicy["kyc_status"], string> = {
 const STATUS_PILL: Record<string, string> = { active: "pill", refused: "pill bad", paid: "pill warn" };
 
 const USAGE: Record<string, Key> = { personal: "usagePersonal", commercial: "usageCommercial" };
+
+/** Véhicule (plaque) ou voyage (destinations) : libellé court d'un contrat, d'une commission, d'un sinistre. */
+function coverLabel(item: { plate: string; branch?: Branch }, lang: "fr" | "ar"): string {
+  return item.branch === "travel" ? destinationsLabel(item.plate.split("-"), lang, 2) : formatPlate(item.plate);
+}
+
+/** Filtre par produit (tous, auto, voyage). */
+function BranchChips({ value, onChange }: { value: Branch | "all"; onChange: (b: Branch | "all") => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="chips" role="group" aria-label={t("filterProducts")}>
+      {(["all", "auto", "travel"] as const).map((b) => (
+        <button key={b} type="button" aria-pressed={value === b} onClick={() => onChange(b)}>
+          {t(b === "all" ? "filterAll" : b)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const branchQuery = (b: Branch | "all") => (b === "all" ? "" : `&branch=${b}`);
 
 const PROVIDERS: Record<string, Key> = {
   simulated: "provider_simulated",
@@ -120,8 +144,8 @@ function Portal({ me }: { me: InsurerMe }) {
     setDecision(null);
     setToast(
       kind === "validate"
-        ? { key: "validatedToast", vars: { plate: formatPlate(policy.plate), number: policy.attestation?.number ?? "" } }
-        : { key: "refusedToast", vars: { plate: formatPlate(policy.plate) } },
+        ? { key: "validatedToast", vars: { plate: coverLabel(policy, lang), number: policy.attestation?.number ?? "" } }
+        : { key: "refusedToast", vars: { plate: coverLabel(policy, lang) } },
     );
     pending.reload();
   }
@@ -277,13 +301,36 @@ function CustomerCell({ p }: { p: InsurerPolicy }) {
 
 function VehicleCell({ p }: { p: InsurerPolicy }) {
   const { t, lang } = useI18n();
+  if (p.trip) {
+    // Voyage : destinations, dates, voyageurs (nom vérifié ANRPTS ou déclaré, passeport, naissance).
+    return (
+      <td data-label={t("colCover")}>
+        <strong>{destinationsLabel(p.trip.destinations, lang, 3)}</strong>
+        <span className="sub">{date(p.trip.departure_on, lang)} → {date(p.trip.return_on, lang)} · {t("tripDays", { count: p.trip.days })}</span>
+        <ul className="stack" style={{ gap: 4, listStyle: "none", padding: 0, margin: "6px 0 0" }} aria-label={t("travelersTitle")}>
+          {p.trip.travelers.map((x) => (
+            <li key={x.id}>
+              <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                <bdi>{x.full_name}</bdi>
+                <VerificationPill verification={x.verification} />
+              </span>
+              <span className="sub">
+                <bdi dir="ltr">{t("passportShort", { passport: x.passport_number })}</bdi> · {t("bornOn", { date: date(x.birth_date, lang) })}
+                {" · "}{t("nniShort", { nni: x.nni })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </td>
+    );
+  }
   const details = [
     p.vehicle.make,
     p.vehicle.fiscal_power ? t("cvShort", { n: num(p.vehicle.fiscal_power, lang) }) : "",
     USAGE[p.vehicle.usage] ? t(USAGE[p.vehicle.usage]) : p.vehicle.usage,
   ].filter(Boolean);
   return (
-    <td data-label={t("vehicle")}>
+    <td data-label={t("colCover")}>
       <bdi className="plate" dir="ltr">{formatPlate(p.plate)}</bdi>
       {details.length > 0 && (
         <span className="sub">
@@ -292,6 +339,29 @@ function VehicleCell({ p }: { p: InsurerPolicy }) {
           ))}
         </span>
       )}
+    </td>
+  );
+}
+
+/** Attestation(s) d'une police : une pour un véhicule, une par voyageur pour un voyage. */
+function AttestationCell({ p }: { p: InsurerPolicy }) {
+  const { t } = useI18n();
+  if (p.trip) {
+    return (
+      <td data-label={t("colAttestation")} className="num">
+        {p.trip.travelers.map((x) => (
+          <span key={x.id} style={{ display: "block", marginBottom: 6 }}>
+            <bdi dir="ltr">{x.attestation?.number ?? "—"}</bdi>
+            {x.attestation && p.status === "active" && <PdfButton id={x.attestation.id} number={x.attestation.number} />}
+          </span>
+        ))}
+      </td>
+    );
+  }
+  return (
+    <td data-label={t("colAttestation")} className="num">
+      <bdi dir="ltr">{p.attestation?.number ?? "—"}</bdi>
+      {p.attestation && p.status === "active" && <PdfButton id={p.attestation.id} number={p.attestation.number} />}
     </td>
   );
 }
@@ -305,17 +375,21 @@ function PendingTab({ policies, error, reload, onDecide }: {
   onDecide: (policy: InsurerPolicy, kind: DecisionKind) => void;
 }) {
   const { t, lang } = useI18n();
+  const [branch, setBranch] = useState<Branch | "all">("all");
+  const shown = policies && policies.filter((p) => branch === "all" || p.branch === branch);
   return (
     <>
-      <SectionHead title={t("tabPending")} reload={reload} />
+      <SectionHead title={t("tabPending")} reload={reload}>
+        <BranchChips value={branch} onChange={setBranch} />
+      </SectionHead>
       <p className="note" style={{ margin: 0 }}>{t("indicativeNote")}</p>
-      <Loadable data={policies} error={error} reload={reload} empty={t("noPending")}>
+      <Loadable data={shown} error={error} reload={reload} empty={t("noPending")}>
         {(rows) => (
           <table className="ptable">
             <thead>
               <tr>
                 <th scope="col">{t("colCustomer")}</th>
-                <th scope="col">{t("vehicle")}</th>
+                <th scope="col">{t("colCover")}</th>
                 <th scope="col">{t("formula")}</th>
                 <th scope="col">{t("colPremium")}</th>
                 <th scope="col">{t("colPayment")}</th>
@@ -342,7 +416,7 @@ function PendingTab({ policies, error, reload, onDecide }: {
                         type="button"
                         className="btn primary"
                         onClick={() => onDecide(p, "validate")}
-                        aria-label={`${t("validate")} · ${formatPlate(p.plate)}`}
+                        aria-label={`${t("validate")} · ${coverLabel(p, lang)}`}
                       >
                         {t("validate")}
                       </button>
@@ -350,7 +424,7 @@ function PendingTab({ policies, error, reload, onDecide }: {
                         type="button"
                         className="btn danger"
                         onClick={() => onDecide(p, "refuse")}
-                        aria-label={`${t("refuse")} · ${formatPlate(p.plate)}`}
+                        aria-label={`${t("refuse")} · ${coverLabel(p, lang)}`}
                       >
                         {t("refuse")}
                       </button>
@@ -371,8 +445,9 @@ function PendingTab({ policies, error, reload, onDecide }: {
 function IssuedTab() {
   const { t, lang } = useI18n();
   const [filter, setFilter] = useState<"issued" | "refused">("issued");
+  const [branch, setBranch] = useState<Branch | "all">("all");
   const { data, error, reload } = useLoad<InsurerPolicy[]>(
-    `insurer/policies?status=${filter === "issued" ? "active,expired,cancelled" : "refused"}`,
+    `insurer/policies?status=${filter === "issued" ? "active,expired,cancelled" : "refused"}${branchQuery(branch)}`,
   );
 
   return (
@@ -382,6 +457,7 @@ function IssuedTab() {
           <button type="button" aria-pressed={filter === "issued"} onClick={() => setFilter("issued")}>{t("filterIssued")}</button>
           <button type="button" aria-pressed={filter === "refused"} onClick={() => setFilter("refused")}>{t("filterRefused")}</button>
         </div>
+        <BranchChips value={branch} onChange={setBranch} />
       </SectionHead>
       <Loadable data={data} error={error} reload={reload} empty={t(filter === "issued" ? "noIssued" : "noRefused")}>
         {(rows) =>
@@ -390,7 +466,7 @@ function IssuedTab() {
               <thead>
                 <tr>
                   <th scope="col">{t("colCustomer")}</th>
-                  <th scope="col">{t("vehicle")}</th>
+                  <th scope="col">{t("colCover")}</th>
                   <th scope="col">{t("formula")}</th>
                   <th scope="col">{t("colPremium")}</th>
                   <th scope="col">{t("colStatus")}</th>
@@ -413,10 +489,7 @@ function IssuedTab() {
                       {date(p.starts_on, lang)}
                       <span className="sub">{t("validTo")} {date(p.ends_on, lang)}</span>
                     </td>
-                    <td data-label={t("colAttestation")} className="num">
-                      <bdi dir="ltr">{p.attestation?.number ?? "—"}</bdi>
-                      {p.attestation && p.status === "active" && <PdfButton id={p.attestation.id} number={p.attestation.number} />}
-                    </td>
+                    <AttestationCell p={p} />
                     <td data-label={t("colInsurerRef")} className="num"><bdi dir="ltr">{p.insurer_reference || "—"}</bdi></td>
                   </tr>
                 ))}
@@ -427,7 +500,7 @@ function IssuedTab() {
               <thead>
                 <tr>
                   <th scope="col">{t("colCustomer")}</th>
-                  <th scope="col">{t("vehicle")}</th>
+                  <th scope="col">{t("colCover")}</th>
                   <th scope="col">{t("formula")}</th>
                   <th scope="col">{t("colPremium")}</th>
                   <th scope="col">{t("colRefusedOn")}</th>
@@ -490,12 +563,15 @@ function PdfButton({ id, number }: { id: number; number: string }) {
 
 function CommissionsTab() {
   const { t, lang } = useI18n();
-  const { data, error, reload } = useLoad<InsurerCommissions>("insurer/commissions");
+  const [branch, setBranch] = useState<Branch | "all">("all");
+  const { data, error, reload } = useLoad<InsurerCommissions>(`insurer/commissions${branch === "all" ? "" : `?branch=${branch}`}`);
   const badge = data?.indicative ? <span className="badge-sand">{t("indicative")}</span> : null;
 
   return (
     <>
-      <SectionHead title={t("tabCommissions")} reload={reload} />
+      <SectionHead title={t("tabCommissions")} reload={reload}>
+        <BranchChips value={branch} onChange={setBranch} />
+      </SectionHead>
       {data?.indicative && (
         <div className="banner sand">
           <span className="badge-sand">{t("indicative")}</span>
@@ -540,7 +616,7 @@ function CommissionsTab() {
               {rows.map((c) => (
                 <tr key={c.id}>
                   <td data-label={t("colPolicy")}>
-                    <bdi className="plate" dir="ltr">{formatPlate(c.plate)}</bdi>
+                    <bdi className="plate" dir="ltr">{coverLabel(c, lang)}</bdi>
                     <span className="sub">{t("policyNo", { id: num(c.policy_id, lang) })}</span>
                   </td>
                   <td data-label={t("formula")}>{c.product}</td>
@@ -605,7 +681,7 @@ function DecisionDialog({ decision, onClose, onDone }: {
     <dialog ref={ref} className="pdialog" aria-labelledby="decision-title" onClose={onClose}>
       <form onSubmit={submit} noValidate>
         <h2 id="decision-title">
-          {t(validate ? "validateTitle" : "refuseTitle")} <bdi dir="ltr">{formatPlate(policy.plate)}</bdi>
+          {t(validate ? "validateTitle" : "refuseTitle")} <bdi dir="ltr">{coverLabel(policy, lang)}</bdi>
         </h2>
         <p className="ink2" style={{ margin: 0 }}>{t(validate ? "validateText" : "refuseText")}</p>
         <div className="card" style={{ background: "var(--bg)", border: "none", gap: 4 }}>
@@ -715,7 +791,7 @@ function ClaimsTab({ onTaken, onClose }: { onTaken: (claim: InsurerClaim) => voi
               <tr>
                 <th scope="col">{t("colClaim")}</th>
                 <th scope="col">{t("colCustomer")}</th>
-                <th scope="col">{t("vehicle")}</th>
+                <th scope="col">{t("colCover")}</th>
                 <th scope="col">{t("colOccurred")}</th>
                 <th scope="col">{t("colCircumstances")}</th>
                 <th scope="col">{t("claimPhotos")}</th>
@@ -741,7 +817,7 @@ function ClaimsTab({ onTaken, onClose }: { onTaken: (claim: InsurerClaim) => voi
                     <span className="sub"><bdi dir="ltr">{formatPhone(c.customer.phone)}</bdi></span>
                   </td>
                   <td data-label={t("vehicle")}>
-                    <bdi className="plate" dir="ltr">{formatPlate(c.policy.plate)}</bdi>
+                    <bdi className="plate" dir="ltr">{coverLabel(c.policy, lang)}</bdi>
                     <span className="sub">{[c.policy.make, c.policy.product].filter(Boolean).join(" · ")}</span>
                   </td>
                   <td data-label={t("colOccurred")} className="num">
@@ -803,7 +879,7 @@ function CloseClaimDialog({ claim, onClose, onDone }: {
   onClose: () => void;
   onDone: (claim: InsurerClaim) => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -837,7 +913,7 @@ function CloseClaimDialog({ claim, onClose, onDone }: {
         <p className="ink2" style={{ margin: 0 }}>{t("closeClaimText")}</p>
         <div className="card" style={{ background: "var(--bg)", border: "none", gap: 4 }}>
           <strong><bdi>{claim.customer.company || claim.customer.full_name || t("noName")}</bdi></strong>
-          <span className="ink2 small"><bdi dir="ltr">{formatPlate(claim.policy.plate)}</bdi> · {t(`claimKind_${claim.kind}` as Key)}</span>
+          <span className="ink2 small"><bdi dir="ltr">{coverLabel(claim.policy, lang)}</bdi> · {t(`claimKind_${claim.kind}` as Key)}</span>
         </div>
         <div className="field">
           <label htmlFor="close-note">{t("closeNoteLabel")}</label>

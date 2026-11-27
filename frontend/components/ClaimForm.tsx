@@ -3,23 +3,29 @@
 import { useRef, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/Icon";
+import { AssistanceLink } from "@/components/Travel";
 import { ApiError, apiUpload, type Claim, type ClaimKind, type Policy } from "@/lib/api";
+import { destinationsLabel } from "@/lib/countries";
 import { formatPlate, plateInput } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 
 const KINDS: ClaimKind[] = ["accident", "theft", "fire", "glass", "other"];
+// Voyage : mêmes étapes de déclaration, autres types de sinistre (comme Claim.TRAVEL_KINDS côté serveur).
+const TRAVEL_KINDS: ClaimKind[] = ["medical", "repatriation", "baggage", "delay", "theft", "other"];
 const MAX_PHOTOS = 6;
 const MAX_BYTES = 8 * 1024 * 1024;
 
 /** Formulaire de déclaration de sinistre, partagé par l'app client et l'espace entreprise.
  *  `endpoint` : policies/<id>/claims (particulier) ou company/policies/<id>/claims (flotte). */
 export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, onCancel }: {
-  policy: Pick<Policy, "id" | "plate" | "insurer" | "product" | "starts_on" | "ends_on">;
+  policy: Pick<Policy, "id" | "plate" | "insurer" | "product" | "starts_on" | "ends_on">
+    & Partial<Pick<Policy, "trip" | "assistance_phone">>;
   endpoint: string;
   onSent: (claim: T) => void;
   onCancel?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const trip = policy.trip ?? null;
   const today = new Date().toISOString().slice(0, 10);
   const maxDate = policy.ends_on < today ? policy.ends_on : today;
   const ids = `claim-${policy.id}`;
@@ -30,6 +36,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
   const [description, setDescription] = useState("");
   const [thirdParty, setThirdParty] = useState("");
   const [injuries, setInjuries] = useState(false);
+  const [traveler, setTraveler] = useState<number | null>(trip?.travelers.length === 1 ? trip.travelers[0].id : null);
   const [photos, setPhotos] = useState<File[]>([]);
   const photoInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -57,6 +64,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
     form.append("description", description);
     form.append("third_party_plate", thirdParty);
     form.append("injuries", injuries ? "true" : "false");
+    if (traveler) form.append("traveler", String(traveler));
     photos.forEach((f) => form.append("photos", f));
     try {
       onSent(await apiUpload<T>(endpoint, form));
@@ -69,14 +77,40 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
 
   return (
     <form className="stack" style={{ gap: 18 }} onSubmit={submit} noValidate>
-      <p className="small ink2" style={{ margin: 0 }}>
-        <bdi dir="ltr">{formatPlate(policy.plate)}</bdi> · {policy.insurer} · {policy.product}
-      </p>
+      {trip ? (
+        <>
+          {/* Urgence : l'assistance d'abord (prise en charge directe des frais), la déclaration ensuite. */}
+          <div className="banner sand" role="note" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
+            <strong style={{ fontSize: 14 }}>{t("claimAssistanceFirst", { insurer: policy.insurer })}</strong>
+            <AssistanceLink phone={policy.assistance_phone ?? ""} insurer={policy.insurer} />
+          </div>
+          <p className="small ink2" style={{ margin: 0 }}>
+            {destinationsLabel(trip.destinations, lang, 3)} · {policy.insurer} · {policy.product}
+          </p>
+        </>
+      ) : (
+        <p className="small ink2" style={{ margin: 0 }}>
+          <bdi dir="ltr">{formatPlate(policy.plate)}</bdi> · {policy.insurer} · {policy.product}
+        </p>
+      )}
+
+      {trip && trip.travelers.length > 1 && (
+        <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
+          <legend style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{t("claimTraveler")}</legend>
+          <div className="chips" role="radiogroup" aria-label={t("claimTraveler")} style={{ flexWrap: "wrap" }}>
+            {trip.travelers.map((x) => (
+              <button key={x.id} type="button" role="radio" aria-checked={traveler === x.id} onClick={() => setTraveler(x.id)}>
+                {lang === "ar" && x.full_name_ar ? x.full_name_ar : x.full_name}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
         <legend style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{t("claimKind")}</legend>
         <div className="chips" role="radiogroup" aria-label={t("claimKind")} style={{ flexWrap: "wrap" }}>
-          {KINDS.map((k) => (
+          {(trip ? TRAVEL_KINDS : KINDS).map((k) => (
             <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}>
               {t(`claimKind_${k}` as Key)}
             </button>
@@ -84,7 +118,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
         </div>
       </fieldset>
 
-      <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
+      {!trip && <fieldset className="field" style={{ border: "none", padding: 0, margin: 0 }}>
         <legend style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{t("claimInjuries")}</legend>
         <div className="segmented" style={{ gridTemplateColumns: "1fr 1fr" }} role="radiogroup" aria-label={t("claimInjuries")}>
           {[true, false].map((v) => (
@@ -95,7 +129,7 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
           ))}
         </div>
         {injuries && <p className="banner red" role="alert" style={{ margin: "8px 0 0" }}>{t("claimInjuriesWarning")}</p>}
-      </fieldset>
+      </fieldset>}
 
       <div className="field">
         <label htmlFor={`${ids}-date`}>{t("claimDate")}</label>
@@ -117,14 +151,16 @@ export function ClaimForm<T extends Claim = Claim>({ policy, endpoint, onSent, o
         <span id={`${ids}-description-hint`} className="small muted">{t("claimDescriptionHint")}</span>
       </div>
 
-      <div className="field">
-        <label htmlFor={`${ids}-third-party`}>{t("claimThirdParty")}</label>
-        <input id={`${ids}-third-party`} className="input" dir="ltr" value={thirdParty} maxLength={40}
-          onChange={(e) => setThirdParty(plateInput(e.target.value))} autoCapitalize="characters" autoComplete="off" spellCheck={false} />
-      </div>
+      {!trip && (
+        <div className="field">
+          <label htmlFor={`${ids}-third-party`}>{t("claimThirdParty")}</label>
+          <input id={`${ids}-third-party`} className="input" dir="ltr" value={thirdParty} maxLength={40}
+            onChange={(e) => setThirdParty(plateInput(e.target.value))} autoCapitalize="characters" autoComplete="off" spellCheck={false} />
+        </div>
+      )}
 
       <div className="field">
-        <span id={`${ids}-photos-label`} style={{ fontWeight: 600, fontSize: 14 }}>{t("claimPhotos")}</span>
+        <span id={`${ids}-photos-label`} style={{ fontWeight: 600, fontSize: 14 }}>{t(trip ? "claimProofs" : "claimPhotos")}</span>
         <input ref={photoInput} type="file" accept="image/jpeg,image/png,application/pdf" multiple hidden
           onChange={(e) => addPhotos(e.target.files)} />
         {photos.length > 0 && (

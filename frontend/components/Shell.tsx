@@ -90,9 +90,11 @@ export function ErrorLine({ message, style }: { message?: string; style?: CSSPro
 }
 
 /** Étapes nommées du parcours de souscription : 0 véhicule, 1 offre, 2 paiement, 3 attestation. */
-export function Stepper({ current }: { current: number }) {
+export function Stepper({ current, flow = "auto" }: { current: number; flow?: "auto" | "travel" }) {
   const { t } = useI18n();
-  const labels = [t("stepVehicle"), t("stepOffer"), t("stepPay"), t("stepAttestation")];
+  const labels = flow === "travel"
+    ? [t("stepTrip"), t("stepTravelers"), t("stepOffer"), t("stepPay")]
+    : [t("stepVehicle"), t("stepOffer"), t("stepPay"), t("stepAttestation")];
   return (
     <ol className="stepper" aria-label="Étapes">
       {labels.map((label, i) => {

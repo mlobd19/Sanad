@@ -3,12 +3,14 @@
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFlow } from "@/components/ClientChrome";
 import { DURATION_LABEL } from "@/components/DurationPicker";
 import { Icon } from "@/components/Icon";
 import { Link, useNav } from "@/components/NavLink";
 import { ErrorBox } from "@/components/Shell";
 import { PaymentSkeleton } from "@/components/Skeletons";
 import { PhoneInput } from "@/components/PhoneInput";
+import { TripSummary } from "@/components/Travel";
 import { api, ApiError, type PaymentStart, type Policy, type Provider } from "@/lib/api";
 import { cache } from "@/lib/cache";
 import { date, formatPhone, formatPlate, localPhone, money } from "@/lib/format";
@@ -31,6 +33,8 @@ export default function PaymentPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Écran commun : les étapes affichées sont celles du voyage pour un contrat voyage.
+  useFlow(policy?.branch === "travel" ? "travel" : null);
 
   useEffect(() => {
     if (!user) return;
@@ -105,7 +109,13 @@ export default function PaymentPage() {
     <>
       <main className="content">
         {error && <ErrorBox message={error} />}
-        {policy && (
+        {policy && policy.trip ? (
+          <section className="amount-card" aria-label={t("summary")}>
+            <span className="sub">{policy.insurer} · {policy.product}</span>
+            <span className="big">{money(policy.premium, lang)}</span>
+            <span className="sub"><TripSummary trip={policy.trip} travelers={policy.trip.travelers.length} /></span>
+          </section>
+        ) : policy && (
           <section className="amount-card" aria-label={t("summary")}>
             <span className="sub">{policy.insurer} · {policy.product} · <bdi dir="ltr">{formatPlate(policy.plate)}</bdi></span>
             <span className="big">{money(policy.premium, lang)}</span>

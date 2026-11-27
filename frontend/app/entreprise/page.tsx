@@ -20,6 +20,7 @@ import { InsurerLogo } from "@/components/InsurerLogo";
 import { ThemeIconButton } from "@/components/ThemeChoice";
 import { PhoneInput } from "@/components/PhoneInput";
 import { ScanRegistration } from "@/components/ScanRegistration";
+import { TravelersEditor, TravelOffers, TripForm, TripSummary, VerificationPill, useTravelError } from "@/components/Travel";
 import { VehicleIllustration } from "@/components/VehicleIllustration";
 import { LanguageButton } from "@/components/LanguageButton";
 import {
@@ -37,9 +38,12 @@ import {
   type PaymentStart,
   type Policy,
   type Provider,
+  type Quote,
   type RegistrationScan,
+  type Trip,
   type Vehicle,
 } from "@/lib/api";
+import { destinationsLabel } from "@/lib/countries";
 import { cleanPlate, date, daysUntil, formatPlate, money, num, plateInput } from "@/lib/format";
 import { useI18n, type Key } from "@/lib/i18n";
 import { logout as signOut, useSpace } from "@/lib/spaces";
@@ -48,12 +52,13 @@ import { useLoad } from "@/lib/useLoad";
 import { ErrorLine, Skeleton } from "@/components/Shell";
 import { TableSkeleton } from "@/components/Skeletons";
 
-type Tab = "fleet" | "quotes" | "contracts" | "claims" | "company";
+type Tab = "fleet" | "quotes" | "contracts" | "missions" | "claims" | "company";
 
 const TABS: { id: Tab; label: Key }[] = [
   { id: "fleet", label: "tabFleet" },
   { id: "quotes", label: "tabQuotes" },
   { id: "contracts", label: "tabContracts" },
+  { id: "missions", label: "tabMissions" },
   { id: "claims", label: "tabClaims" },
   { id: "company", label: "tabCompany" },
 ];
@@ -138,7 +143,7 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
   // Contrat choisi dans « Contrats » pour déclarer un sinistre (ouvre le formulaire de l'onglet « Sinistres »).
   const [declareFor, setDeclareFor] = useState<number | null>(null);
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({
-    fleet: null, quotes: null, contracts: null, claims: null, company: null,
+    fleet: null, quotes: null, contracts: null, missions: null, claims: null, company: null,
   });
   const { company, member } = me;
 
@@ -220,6 +225,9 @@ function Space({ me, refreshMe }: { me: CompanyMe; refreshMe: () => Promise<void
                 onPaid={() => { setSelection([]); setTab("contracts"); }} />
             )}
             {tab === "contracts" && <ContractsTab onDeclare={(id) => { setDeclareFor(id); setTab("claims"); }} />}
+            {tab === "missions" && (
+              <MissionsTab verified={company.status === "verified"} onDeclare={(id) => { setDeclareFor(id); setTab("claims"); }} />
+            )}
             {tab === "claims" && <ClaimsTab declareFor={declareFor} setDeclareFor={setDeclareFor} />}
             {tab === "company" && <CompanyTab me={me} refreshMe={refreshMe} />}
           </div>
@@ -656,7 +664,10 @@ function OrderPayment({ order, verified, onPaid, onCancel }: {
             <tbody>
               {order.policies.map((p) => (
                 <tr key={p.id}>
-                  <td><bdi dir="ltr">{formatPlate(p.plate)}</bdi><span className="sub">{p.insurer} · {p.product}</span></td>
+                  <td>
+                    {p.trip ? <TripSummary trip={p.trip} travelers={p.trip.travelers.length} /> : <bdi dir="ltr">{formatPlate(p.plate)}</bdi>}
+                    <span className="sub">{p.insurer} · {p.product}</span>
+                  </td>
                   <td className="num">{money(p.premium, lang)}</td>
                 </tr>
               ))}
@@ -735,8 +746,8 @@ function ContractsTab({ onDeclare }: { onDeclare: (policyId: number) => void }) 
     }
   }
 
-  const rows = (data ?? []).filter((p) => p.status !== "draft");
-  const hasValid = rows.some((p) => p.status === "active" && p.attestation);
+  const rows = (data ?? []).filter((p) => p.status !== "draft" && p.branch !== "travel");
+  const hasValid = (data ?? []).some((p) => p.status === "active" && p.attestation);
 
   return (
     <>
@@ -811,6 +822,192 @@ function ContractsTab({ onDeclare }: { onDeclare: (policyId: number) => void }) 
   );
 }
 
+// --- Onglet « Missions » (assurance voyage des salariés) -----------------------------------------
+// Mêmes composants que l'app client (components/Travel.tsx) ; commande et paiement comme la flotte.
+
+type MissionStep = { step: "list" } | { step: "trip" } | { step: "travelers"; trip: Trip }
+  | { step: "offers"; trip: Trip } | { step: "pay"; order: CompanyOrder; trip: Trip };
+
+function MissionsTab({ verified, onDeclare }: { verified: boolean; onDeclare: (policyId: number) => void }) {
+  const { t, lang } = useI18n();
+  const travelError = useTravelError();
+  const { data, error, reload } = useLoad<Policy[]>("company/policies");
+  const [state, setState] = useState<MissionStep>({ step: "list" });
+  const [quotes, setQuotes] = useState<Quote[] | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
+  const [busy, setBusy] = useState("");
+  const [stepError, setStepError] = useState("");
+  const missions = (data ?? []).filter((p) => p.branch === "travel" && p.status !== "draft");
+
+  async function showOffers(trip: Trip) {
+    setState({ step: "offers", trip });
+    setQuotes(null);
+    setStepError("");
+    try {
+      const qs = await api<Quote[]>(`company/trips/${trip.id}/quotes`, { method: "POST" });
+      setQuotes(qs);
+      setPicked(qs[0]?.id ?? null);
+    } catch (err) {
+      setStepError(travelError(err));
+    }
+  }
+
+  async function order(trip: Trip) {
+    if (!picked) return;
+    setBusy("order");
+    setStepError("");
+    try {
+      const created = await api<CompanyOrder>("company/orders", { body: { quote_ids: [picked] } });
+      setState({ step: "pay", order: created, trip });
+    } catch (err) {
+      setStepError(travelError(err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function download(id: number, number: string) {
+    setBusy(`pdf-${id}`);
+    try {
+      await downloadFile(`attestations/${id}/pdf`, `attestation-${number}.pdf`);
+    } catch (err) {
+      setStepError(message(err, t("error")));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  if (state.step === "pay") {
+    return (
+      <OrderPayment order={state.order} verified={verified}
+        onPaid={() => { setState({ step: "list" }); reload(); }}
+        onCancel={() => showOffers(state.trip)} />
+    );
+  }
+
+  if (state.step !== "list") {
+    return (
+      <>
+        <SectionHead title={t("newMission")}>
+          <button type="button" className="btn outline" onClick={() => setState({ step: "list" })}>{t("cancel")}</button>
+        </SectionHead>
+        <div className="mission-flow">
+          {state.step === "trip" && (
+            <section className="card">
+              <h3 className="card-title">{t("travelTitle")}</h3>
+              <TripForm base="company/" onCreated={(trip) => setState({ step: "travelers", trip })} />
+            </section>
+          )}
+          {state.step === "travelers" && (
+            <section className="card">
+              <h3 className="card-title">{t("travelersTitle")}</h3>
+              <p className="small ink2" style={{ margin: 0 }}><TripSummary trip={state.trip} /></p>
+              <p className="note" style={{ margin: 0 }}>{t("employeesNoAccount")}</p>
+              <TravelersEditor base="company/" trip={state.trip} max={50}
+                onChange={(trip) => setState({ step: "travelers", trip })} />
+              <button type="button" className="btn primary block tall" disabled={!state.trip.travelers.length}
+                onClick={() => showOffers(state.trip)}>
+                {t("seeOffers")}
+              </button>
+            </section>
+          )}
+          {state.step === "offers" && (
+            <section className="card">
+              <h3 className="card-title">{t("quotesTitle")}</h3>
+              <p className="small ink2" style={{ margin: 0 }}>
+                <TripSummary trip={state.trip} travelers={state.trip.travelers.length} />
+              </p>
+              {!quotes && !stepError && <TableSkeleton rows={3} />}
+              {quotes && (
+                <TravelOffers quotes={quotes} picked={picked} onPick={setPicked} footer={(
+                  <button type="button" className="btn primary block tall" disabled={!picked || busy === "order"}
+                    onClick={() => order(state.trip)}>
+                    {t("missionOrder")}
+                  </button>
+                )} />
+              )}
+              <button type="button" className="btn link" onClick={() => setState({ step: "travelers", trip: state.trip })}>
+                {t("back")}
+              </button>
+            </section>
+          )}
+          <ErrorLine message={stepError} />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SectionHead title={t("missionsTitle")}>
+        <button type="button" className="btn outline" onClick={reload}>{t("refresh")}</button>
+        <button type="button" className="btn primary" onClick={() => setState({ step: "trip" })}>{t("newMission")}</button>
+      </SectionHead>
+      <p className="note" style={{ margin: 0 }}>{t("employeesNoAccount")}</p>
+      <ErrorLine message={stepError} />
+      {error && <div className="banner red" role="alert">{error === "error" ? t("error") : error}</div>}
+      {!data && !error && <TableSkeleton />}
+      {data && missions.length === 0 && <div className="card"><p className="ink2" style={{ margin: 0 }}>{t("noMissions")}</p></div>}
+      {missions.length > 0 && (
+        <div className="ptable-wrap">
+          <table className="ptable">
+            <thead>
+              <tr>
+                <th scope="col">{t("destinations")}</th>
+                <th scope="col">{t("insurer")}</th>
+                <th scope="col">{t("colPremium")}</th>
+                <th scope="col">{t("colStatus")}</th>
+                <th scope="col">{t("travelAttestations")}</th>
+                <th scope="col"><span className="sr-only">{t("colActions")}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {missions.map((p) => p.trip && (
+                <tr key={p.id}>
+                  <td data-label={t("destinations")}>
+                    <strong>{destinationsLabel(p.trip.destinations, lang, 3)}</strong>
+                    <span className="sub">{date(p.starts_on, lang)} → {date(p.ends_on, lang)} · {t("tripDays", { count: p.trip.days })}</span>
+                  </td>
+                  <td data-label={t("insurer")}><strong>{p.insurer}</strong><span className="sub">{p.product}</span></td>
+                  <td data-label={t("colPremium")}><strong className="num">{money(p.premium, lang)}</strong></td>
+                  <td data-label={t("colStatus")}>
+                    <span className={STATUS_PILL[p.status] ?? "pill quiet"}>{t(`status_${p.status}`)}</span>
+                    {p.status === "refused" && p.refusal_reason && <span className="sub">{p.refusal_reason}</span>}
+                  </td>
+                  <td data-label={t("travelAttestations")} className="wide">
+                    <ul className="stack" style={{ gap: 6, listStyle: "none", padding: 0, margin: 0 }}>
+                      {p.trip.travelers.map((x) => (
+                        <li key={x.id} className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                          <bdi>{x.full_name}</bdi>
+                          {x.verification === "declared" && <VerificationPill verification="declared" />}
+                          {x.attestation && p.status === "active" && (
+                            <button type="button" className="btn outline small-btn" disabled={busy === `pdf-${x.attestation.id}`}
+                              aria-label={t("pdfOf", { number: x.attestation.number })}
+                              onClick={() => download(x.attestation!.id, x.attestation!.number)}>
+                              {busy === `pdf-${x.attestation.id}` ? <span className="spinner sm" /> : t("pdf")}
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                  <td data-label={t("colActions")}>
+                    {claimable(p) && (
+                      <button type="button" className="btn outline small-btn" onClick={() => onDeclare(p.id)}>
+                        {t("declareClaim")}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 // --- Onglet « Sinistres » ----------------------------------------------------------------------
 
 function ClaimsTab({ declareFor, setDeclareFor }: {
@@ -860,7 +1057,7 @@ function ClaimsTab({ declareFor, setDeclareFor }: {
                 <option value="">{t("claimPickVehicle")}</option>
                 {eligible.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {formatPlate(p.plate)} · {p.insurer} · {p.product}{p.status === "expired" ? ` (${t("status_expired")})` : ""}
+                    {p.trip ? destinationsLabel(p.trip.destinations, lang, 2) : formatPlate(p.plate)} · {p.insurer} · {p.product}{p.status === "expired" ? ` (${t("status_expired")})` : ""}
                   </option>
                 ))}
               </select>
@@ -901,6 +1098,7 @@ function ClaimsTab({ declareFor, setDeclareFor }: {
                   </td>
                   <td data-label={t("vehicle")}>
                     <bdi className="plate" dir="ltr">{formatPlate(c.plate)}</bdi>
+                    {c.traveler && <span className="sub"><bdi>{c.traveler}</bdi></span>}
                     <span className="sub">{c.insurer}</span>
                   </td>
                   <td data-label={t("colOccurred")} className="num">

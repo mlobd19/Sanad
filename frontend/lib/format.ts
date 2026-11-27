@@ -19,6 +19,13 @@ export function date(iso: string, lang: Lang): string {
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
+/** Date courte, sans l'année : « 26 janv. », « ٢٦ يناير » (carte d'un voyage). */
+export function shortDate(iso: string, lang: Lang): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Intl.DateTimeFormat(lang === "ar" ? "ar-MR" : "fr-FR", { day: "numeric", month: "short" })
+    .format(new Date(y, m - 1, d));
+}
+
 export function daysUntil(iso: string): number {
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
   const target = Date.UTC(y, m - 1, d);
