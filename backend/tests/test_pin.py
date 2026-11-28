@@ -244,14 +244,19 @@ def test_reset_window_closes_with_the_sms_window(demo):
     assert resp.status_code == 400 and resp.data["code"] == "pin_setup_expired"  # plus de nouveau code sans SMS
 
 
-def test_change_pin_closes_other_devices(demo):
+def test_change_pin_closes_other_devices_and_warns_by_sms(demo, outbox, django_capture_on_commit_callbacks):
     key = login(APIClient(), PHONE)["token"]
     waiting = login(APIClient(), PHONE, pin=None)["token"]  # appareil en cours de connexion
     client = device(key)
-    resp = client.post("/api/auth/pin/change", {"old": TEST_PIN, "new": "1111"}, format="json")
+    with django_capture_on_commit_callbacks(execute=True):
+        resp = client.post("/api/auth/pin/change", {"old": TEST_PIN, "new": "1111"}, format="json")
     assert resp.data["code"] == "pin_weak"
-    resp = client.post("/api/auth/pin/change", {"old": TEST_PIN, "new": "1357"}, format="json")
+    assert not [m for m in outbox if "a été changé" in m["body"]]  # code refusé : aucun SMS
+    with django_capture_on_commit_callbacks(execute=True):
+        resp = client.post("/api/auth/pin/change", {"old": TEST_PIN, "new": "1357"}, format="json")
     assert resp.status_code == 200 and resp.data["closed"] == 1
+    sms = [m for m in outbox if m["channel"] == "sms" and m["to"] == PHONE][-1]
+    assert sms["body"] == "Votre code Sanad a été changé. Si ce n'est pas vous, contactez-nous."
     assert device(waiting).get("/api/auth/pin").status_code == 401
     assert AuditEvent.objects.filter(action="pin.changed").exists()
     lock(key)

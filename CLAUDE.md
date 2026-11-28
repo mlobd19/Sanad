@@ -228,7 +228,7 @@ compile_translations` ; sinon le test des traductions échoue.
   `verify`, mêmes 3 essais) et l'appareil est connecté sans fermer les autres. « Code oublié ? »
   après le SMS : nouveau code, **tous les autres appareils fermés**, SMS `pin_reset` au client
   (FR + AR, audit `pin.reset`) ; premier code : audit `pin.set`, sans SMS ; « Changer mon code »
-  (Profil) ferme aussi les autres appareils (audit `pin.changed`). API : `GET /api/auth/pin`
+  (Profil) ferme aussi les autres appareils et envoie le même SMS (audit `pin.changed`). API : `GET /api/auth/pin`
   (`setup`, `verify`, `locked`, `open`), `POST /api/auth/pin/setup|unlock|change`.
 - **Back-office** : second facteur par application d'authentification (TOTP,
   `accounts/totp.py`, un code ne sert qu'une fois, 5 essais) ; QR code au premier

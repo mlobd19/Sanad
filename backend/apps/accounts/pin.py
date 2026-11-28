@@ -110,8 +110,9 @@ def _store(token: AuthToken, pin: str, action: str) -> int:
     closed = AuthToken.objects.filter(user=user).exclude(pk=token.pk).delete()[0]
     _open(token)
     record(action, user, actor=user, closed=closed)
-    if action == "pin.reset":
-        # Prévenir le client : si ce n'est pas lui, quelqu'un a reçu ses SMS (carte SIM volée…).
+    if action in ("pin.reset", "pin.changed"):
+        # Prévenir le client (code oublié ou changé dans le Profil) : si ce n'est pas lui, quelqu'un a reçu
+        # ses SMS ou connaît son code.
         transaction.on_commit(lambda: notify("sms", user.phone, "pin_reset", {}, language=user.language))
     return closed
 
@@ -161,6 +162,6 @@ def unlock(token: AuthToken, pin: str) -> None:
 
 
 def change(token: AuthToken, old: str, new: str) -> int:
-    """Profil : ancien code puis nouveau code (confirmé dans l'app) ; ferme les autres appareils."""
+    """Profil : ancien code puis nouveau code (confirmé dans l'app) ; ferme les autres appareils, SMS au client."""
     _check(token, old)
     return _store(token, check_new_pin(token.user, new), "pin.changed")

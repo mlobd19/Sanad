@@ -103,7 +103,7 @@ superutilisateur : il a les droits métier du groupe « Équipe Sanad ».
    appareils sont fermés et le client reçoit le SMS « Votre code Sanad a été changé. Si ce n'est
    pas vous, contactez-nous. » (journal « pin.reset »).
 6. **Profil › Changer mon code** : code actuel, puis nouveau code deux fois ; les autres
-   appareils sont fermés.
+   appareils sont fermés et le client reçoit le même SMS « Votre code Sanad a été changé… ».
 
 ## Portail assureur
 
@@ -316,7 +316,7 @@ n'ouvre rien sans le code PIN (403 `pin_required`, ou `pin_setup` juste après l
 | GET | `/api/auth/pin` | Particulier : état du code PIN de l'appareil (`setup`, `verify`, `locked`, `open`), nom à afficher |
 | POST | `/api/auth/pin/setup` | `{pin}` juste après le SMS (10 min) : premier code, ou nouveau code (« Code oublié ? » : SMS au client) ; ferme les autres appareils ; 400 `pin_weak` si trop simple |
 | POST | `/api/auth/pin/unlock` | `{pin}` → session courte (aussi un nouvel appareil, sans fermer les autres) ; 400 `pin_wrong` + `attempts_left` ; 401 `pin_blocked` au 3e code faux |
-| POST | `/api/auth/pin/change` | `{old, new}` (session ouverte) ; ferme les autres appareils |
+| POST | `/api/auth/pin/change` | `{old, new}` (session ouverte) ; ferme les autres appareils, SMS au client |
 | POST | `/api/auth/pro/login` | Comptes pro : `{email, password}` → `{challenge, phone}` + code SMS |
 | POST | `/api/auth/pro/verify` | `{challenge, code}` → `{token, user}` |
 | POST | `/api/auth/pro/password/forgot` | `{email}` → lien par email (réponse identique si l'email est inconnu) |
