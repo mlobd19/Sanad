@@ -85,3 +85,25 @@ def test_profile_explains_the_pin_and_devices():
     hint = re.search(r'  devicesHint: "([^"]+)"', i18n).group(1)
     assert "à chaque ouverture" in hint and "« Code oublié ? »" in hint and "déconnectés" in hint
     assert i18n.count("  pinResetHint: ") == 2 and i18n.count("  pinRemember: ") == 2
+
+
+def test_dots_sit_in_the_middle_of_the_free_space():
+    pad = source(*PAD)
+    assert '<div className="pin-intro">' in pad and '<div className="pin-entry">' in pad
+    css = source("app", "globals.css")
+    assert ".pin-entry { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;" in css
+    assert '.pin-entry::before { content: ""; height: 22px; }' in css  # contrepoids du message d'erreur
+    assert 'className="content pin-change"' in source(*SCREENS[1])  # pas de barre du bas : pas de marge pour elle
+
+
+def test_contracts_tab_has_no_subscribe_buttons():
+    contracts = source("app", "(client)", "contrats", "page.tsx")
+    assert 'href="/vehicule"' not in contracts and 'href="/voyage"' not in contracts
+    assert "newTrip" not in source("lib", "i18n.tsx")
+
+
+def test_pin_title_is_centred_without_greeting():
+    assert "helloName" not in source(*SCREENS[0])  # pas de « Bonjour, … » sur l'écran du code
+    css = source("app", "globals.css")
+    assert ".pin-intro { display: flex; flex-direction: column; gap: 8px; padding-top: 19px; text-align: center; }" in css
+    assert "  .pin-intro { padding-top: 9px; }" in css  # petit écran

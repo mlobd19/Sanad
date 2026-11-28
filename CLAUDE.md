@@ -118,7 +118,7 @@ compile_translations` ; sinon le test des traductions échoue.
   - **Code PIN des particuliers** : `/connexion/code` (après le SMS : compte sans code « Choisissez
     votre code » puis « Confirmez votre code » ; compte qui a déjà un code, nouvel appareil « Entrez
     votre code », et « Code oublié ? » y mène au choix d'un nouveau code ; ensuite « Entrez votre
-    code », nom du client, « Code oublié ? » → `/connexion?oubli=1` → SMS → nouveau code),
+    code » (titre centré, sans salutation), « Code oublié ? » → `/connexion?oubli=1` → SMS → nouveau code),
     `/profil/code` (« Changer mon code »). Pavé `components/SecurePinPad.tsx` : grille 3 × 4, les
     10 chiffres mélangés à chaque affichage (`lib/pin.ts` : `crypto.getRandomValues`, Fisher-Yates ;
     nouvelle `key` du pavé = nouveau mélange), « Effacer » et case vide fixes, chiffres 0-9 en arabe

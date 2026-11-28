@@ -73,7 +73,7 @@ export default function ChangePinPage() {
   }
 
   return (
-    <main className="content with-nav pin-change">
+    <main className="content pin-change">
       <SecurePinPad
         key={round}
         title={t(TITLES[step])}

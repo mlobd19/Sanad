@@ -59,15 +59,18 @@ export function SecurePinPad({ title, hint, error, busy = false, onComplete, foo
 
   return (
     <div className="pin-step">
-      <div className="stack" style={{ gap: 6 }}>
+      <div className="pin-intro">
         <h2 className="title" id={titleId}>{title}</h2>
-        {hint && <p className="ink2" style={{ margin: 0 }}>{hint}</p>}
+        {hint && <p className="ink2">{hint}</p>}
       </div>
-      <div className="pin-dots" aria-hidden="true">
-        {Array.from({ length: PIN_LENGTH }, (_, i) => <span key={i} className={i < count ? "on" : ""} />)}
+      {/* Points et message au milieu de l'espace libre, entre le titre et le pavé. */}
+      <div className="pin-entry">
+        <div className="pin-dots" aria-hidden="true">
+          {Array.from({ length: PIN_LENGTH }, (_, i) => <span key={i} className={i < count ? "on" : ""} />)}
+        </div>
+        <p className="sr-only" aria-live="polite">{t("pinProgress", { n: count })}</p>
+        <ErrorLine message={error} style={{ textAlign: "center" }} />
       </div>
-      <p className="sr-only" aria-live="polite">{t("pinProgress", { n: count })}</p>
-      <ErrorLine message={error} style={{ textAlign: "center" }} />
       <div className="pinpad" role="group" aria-labelledby={titleId} dir="ltr" aria-busy={busy}>
         {cells.map((cell, i) =>
           cell === "empty" ? (

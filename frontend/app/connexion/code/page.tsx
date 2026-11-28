@@ -120,9 +120,6 @@ function Pin() {
     send("setup", pin);
   }
 
-  // Nom du client (identité vérifiée), sinon la fin de son numéro, masqué.
-  const name = status ? (lang === "ar" && status.full_name_ar) || status.full_name : "";
-  const greeting = name ? t("helloName", { name }) : <bdi dir="ltr">•• •• •• {status?.phone_end}</bdi>;
 
   return (
     <div className="app" style={{ background: "var(--green-deep)" }}>
@@ -141,7 +138,6 @@ function Pin() {
           <SecurePinPad
             key={round}
             title={t("pinEnterTitle")}
-            hint={greeting}
             error={error}
             busy={busy}
             onComplete={(pin) => send("unlock", pin)}

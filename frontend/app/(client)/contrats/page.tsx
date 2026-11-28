@@ -57,16 +57,6 @@ export default function ContractsPage() {
           <span className="small muted">{date(p.starts_on, lang)} → {date(p.ends_on, lang)}</span>
         </Link>
       ))}
-      <div className="grid2">
-        <Link href="/vehicule" className="btn outline">
-          <Icon name="car" size={18} />
-          {t("addVehicle")}
-        </Link>
-        <Link href="/voyage" className="btn outline">
-          <Icon name="plane" size={18} />
-          {t("newTrip")}
-        </Link>
-      </div>
     </main>
   );
 }

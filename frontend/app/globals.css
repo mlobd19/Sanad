@@ -499,8 +499,17 @@ html[dir="rtl"]::view-transition-new(.nav-back) { --nav-from: var(--nav-shift); 
 .pin-head { padding: 20px 24px 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; }
 .pin-head .head-actions { align-self: stretch; }
 .pin-sheet { gap: 0; }
-.pin-step { display: flex; flex-direction: column; gap: 14px; flex: 1; }
-.pin-dots { display: flex; justify-content: center; gap: 18px; padding: 6px 0 0; }
+.pin-step { display: flex; flex-direction: column; flex: 1; }
+.pin-intro { display: flex; flex-direction: column; gap: 8px; padding-top: 19px; text-align: center; }
+.pin-intro .title { font-size: 22px; line-height: 28px; text-wrap: balance; }
+.pin-intro p { margin: 0; font-size: 15px; line-height: 22px; text-wrap: pretty; }
+/* Points et message au milieu de l'espace libre (autant d'air au-dessus qu'en dessous). */
+.pin-entry { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  min-height: 112px; padding: 20px 0; }
+.pin-entry .error-slot { min-height: 22px; line-height: 22px; }
+/* Contrepoids du message d'erreur, au-dessus des points : les points restent au centre exact. */
+.pin-entry::before { content: ""; height: 22px; }
+.pin-dots { display: flex; justify-content: center; gap: 18px; }
 .pin-dots span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ink-2); }
 .pin-dots span.on { background: var(--ink); border-color: var(--ink); }
 .pinpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: auto; }
@@ -518,16 +527,18 @@ html[dir="rtl"]::view-transition-new(.nav-back) { --nav-from: var(--nav-shift); 
 .pinpad .pin-erase { font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1.2; background: transparent; border-color: transparent; }
 .pinpad .pin-erase:active, .pinpad .pin-erase:hover { background: transparent; }
 .pinpad .pin-erase:disabled { color: var(--muted); }
-.pin-forgot { align-self: center; min-height: 44px; }
-.pin-change { min-height: calc(100dvh - 180px); }
-.pin-change .pin-step { padding-bottom: 8px; }
+.pin-forgot { align-self: center; min-height: 44px; margin-top: 14px; }
+/* « Changer mon code » : écran sans barre du bas, le pavé descend jusqu'au bas de l'écran. */
+.pin-change { padding: 24px 24px calc(24px + env(safe-area-inset-bottom)); }
 /* Écran sur le fond de page : touches sur fond de carte pour rester visibles. */
 .pin-change .pinpad button:not(.pin-erase), .pin-change .pinpad button:not(.pin-erase):active,
 .pin-change .pinpad button:not(.pin-erase):hover { background: var(--card); }
 /* Petit téléphone (hauteur ≤ 760 px) : en-tête et touches plus compacts, tout tient sans défiler. */
 @media (max-height: 760px) {
   .pin-head { padding: 12px 24px 14px; gap: 4px; }
-  .pin-step { gap: 10px; }
+  .pin-intro { padding-top: 9px; }
+  .pin-intro .title { font-size: 20px; line-height: 26px; }
+  .pin-entry { min-height: 80px; padding: 10px 0; gap: 8px; }
   .pinpad { gap: 10px; }
   .pinpad button { min-height: 56px; }
 }
