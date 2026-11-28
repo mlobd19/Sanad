@@ -22,6 +22,10 @@ api = [
     path("auth/pro/password/reset", accounts.PasswordResetView.as_view()),
     path("auth/logout", accounts.LogoutView.as_view()),
     path("auth/logout-others", accounts.LogoutOthersView.as_view()),
+    path("auth/pin", accounts.PinStatusView.as_view()),
+    path("auth/pin/setup", accounts.PinSetupView.as_view()),
+    path("auth/pin/unlock", accounts.PinUnlockView.as_view()),
+    path("auth/pin/change", accounts.PinChangeView.as_view()),
     path("me", accounts.MeView.as_view()),
     path("me/identity", accounts.IdentityCheckView.as_view()),
     # Biens, devis, polices

@@ -49,13 +49,20 @@ def outbox():
     return MemoryBackend.outbox
 
 
-def login(client: APIClient, phone: str) -> dict:
+TEST_PIN = "2580"  # accepté : ni suite, ni répétition, ni année, ni fin d'un numéro de test
+
+
+def login(client: APIClient, phone: str, pin: str | None = TEST_PIN) -> dict:
+    """Connexion d'un particulier : code SMS puis choix du code PIN (pin=None : s'arrête après le SMS)."""
     client.post("/api/auth/otp/request", {"phone": phone}, format="json")
     sms = [m for m in MemoryBackend.outbox if m["channel"] == "sms"][-1]
     code = re.search(r"\b(\d{6})\b", sms["body"]).group(1)
     resp = client.post("/api/auth/otp/verify", {"phone": phone, "code": code}, format="json")
     assert resp.status_code == 200, resp.data
     client.credentials(HTTP_AUTHORIZATION=f"Token {resp.data['token']}")
+    if pin is not None:
+        setup = client.post("/api/auth/pin/setup", {"pin": pin}, format="json")
+        assert setup.status_code == 200, setup.data
     return resp.data
 
 

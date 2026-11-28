@@ -92,6 +92,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Protection du mot de passe des comptes professionnels.
     failed_logins = models.PositiveSmallIntegerField(default=0, verbose_name=_("échecs de connexion"))
     locked_until = models.DateTimeField(null=True, blank=True, verbose_name=_("bloqué jusqu'au"))
+    # Particuliers : code PIN à 4 chiffres (accounts/pin.py), haché par le hacheur de mots de passe de Django.
+    pin = models.CharField(max_length=128, blank=True, verbose_name=_("code PIN (haché)"))
+    pin_changed_at = models.DateTimeField(null=True, blank=True, verbose_name=_("code PIN choisi le"))
 
     objects = UserManager()
 
@@ -203,6 +206,7 @@ class AuthToken(models.Model):
 
     Seule l'empreinte SHA-256 du jeton est enregistrée : une fuite de la base ne donne accès à aucun compte.
     Durée : 30 jours pour un particulier, 8 h pour un compte professionnel (accounts/tokens.py).
+    Particulier : le jeton n'ouvre rien sans le code PIN, qui ouvre une session courte (accounts/pin.py).
     """
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="auth_tokens", verbose_name=_("compte"))
@@ -211,6 +215,12 @@ class AuthToken(models.Model):
     expires_at = models.DateTimeField(db_index=True, verbose_name=_("expire le"))
     last_used_at = models.DateTimeField(null=True, blank=True, verbose_name=_("dernière utilisation"))
     user_agent = models.CharField(max_length=200, blank=True, verbose_name=_("appareil"))
+    # Particuliers (accounts/pin.py) : le jeton seul ne donne accès à rien sans le code PIN.
+    # Juste après le code SMS : choix du code PIN permis jusqu'à cette heure.
+    pin_setup_until = models.DateTimeField(null=True, blank=True, verbose_name=_("choix du code PIN jusqu'au"))
+    # Dernière activité avec le bon code PIN : la session reste ouverte PIN_SESSION_IDLE minutes après.
+    pin_open_at = models.DateTimeField(null=True, blank=True, verbose_name=_("code PIN saisi le"))
+    pin_failures = models.PositiveSmallIntegerField(default=0, verbose_name=_("codes PIN faux de suite"))
 
     class Meta:
         verbose_name = _("connexion")

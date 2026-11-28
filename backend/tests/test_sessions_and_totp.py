@@ -66,24 +66,25 @@ def test_one_token_per_device(demo):
     phone_a = login(APIClient(), "+22236000103")["token"]
     phone_b = login(APIClient(), "+22236000103")["token"]
     assert phone_a != phone_b
-    assert client_with(phone_a).get("/api/me").status_code == 200
+    # Un nouvel appareil choisit le code PIN du compte après le SMS : les autres appareils sont fermés.
+    assert client_with(phone_a).get("/api/me").status_code == 401
     assert client_with(phone_b).get("/api/me").status_code == 200
 
 
 def test_logout_deletes_the_token_on_the_server(demo):
     key = login(APIClient(), "+22236000104")["token"]
-    other = login(APIClient(), "+22236000104")["token"]
+    other = login(APIClient(), "+22236000104", pin=None)["token"]  # code SMS validé, code PIN pas encore choisi
     assert client_with(key).post("/api/auth/logout").status_code == 204
     assert client_with(key).get("/api/me").status_code == 401  # même copié, il ne vaut plus rien
-    assert client_with(other).get("/api/me").status_code == 200  # l'autre appareil reste connecté
+    assert client_with(other).get("/api/auth/pin").status_code == 200  # l'autre appareil reste connecté
 
 
 def test_logout_other_devices(demo):
     current = login(APIClient(), "+22236000105")["token"]
-    others = [login(APIClient(), "+22236000105")["token"] for _ in range(2)]
+    others = [login(APIClient(), "+22236000105", pin=None)["token"] for _ in range(2)]
     resp = client_with(current).post("/api/auth/logout-others")
     assert resp.status_code == 200 and resp.data["closed"] == 2
-    assert all(client_with(k).get("/api/me").status_code == 401 for k in others)
+    assert all(client_with(k).get("/api/auth/pin").status_code == 401 for k in others)
     assert client_with(current).get("/api/me").status_code == 200
 
 

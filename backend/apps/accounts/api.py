@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from apps.audit.models import record
 
-from . import services
+from . import pin, services
 from .models import IdentityCheck, User
 from .services import LoginError, OtpError, OtpRateLimited, request_otp, verify_otp
 from .tokens import issue_token, revoke_others
@@ -33,6 +33,7 @@ class CustomerOnly:
 class OtpRequestView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "otp"
+    pin_exempt = True  # « Code oublié ? » : retour au code SMS
 
     def post(self, request):
         try:
@@ -47,6 +48,7 @@ class OtpRequestView(APIView):
 class OtpVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "otp"
+    pin_exempt = True
 
     def post(self, request):
         try:
@@ -54,7 +56,9 @@ class OtpVerifyView(APIView):
         except (OtpError, DjangoValidationError) as exc:
             message = exc.messages[0] if isinstance(exc, DjangoValidationError) else str(exc)
             return Response({"detail": message}, status=400)
-        return Response({"token": issue_token(user, request), "created": created, "user": UserSerializer(user).data})
+        # Le jeton n'ouvre rien tant que l'appareil n'a pas choisi le code PIN (« pin »: « setup »).
+        return Response({"token": issue_token(user, request), "created": created, "pin": "setup",
+                         "user": UserSerializer(user).data})
 
 
 class ProLoginView(APIView):
@@ -159,6 +163,8 @@ class IdentityCheckView(CustomerOnly, APIView):
 class LogoutView(APIView):
     """Déconnexion : le jeton de cet appareil est supprimé côté serveur (il ne vaut plus rien, même copié)."""
 
+    pin_exempt = True  # aussi depuis l'écran du code PIN (« Code oublié ? »)
+
     def post(self, request):
         if request.auth is not None:
             request.auth.delete()
@@ -171,4 +177,71 @@ class LogoutOthersView(APIView):
     def post(self, request):
         closed = revoke_others(request.user, keep=request.auth)
         record("user.logout_others", request.user, actor=request.user, closed=closed)
+        return Response({"closed": closed})
+
+
+# --- Code PIN des particuliers (accounts/pin.py) -----------------------------------------------------
+
+def pin_error(exc: pin.PinError) -> Response:
+    body = {"detail": str(exc), "code": exc.code}
+    if exc.attempts_left is not None:
+        body["attempts_left"] = exc.attempts_left
+    # Connexion de l'appareil fermée (3 codes faux) : 401, l'app revient au code SMS.
+    return Response(body, status=401 if exc.code == "pin_blocked" else 400)
+
+
+class PinStatusView(CustomerOnly, APIView):
+    """GET : état du code PIN de cet appareil (« setup », « locked » ou « open ») et nom du client à afficher."""
+
+    pin_exempt = True
+
+    def get(self, request):
+        user, token = request.user, request.auth
+        return Response({
+            "state": pin.state(token),
+            "attempts_left": pin.MAX_FAILURES - token.pin_failures,
+            "full_name": user.full_name,
+            "full_name_ar": user.full_name_ar,
+            "phone_end": user.phone[-2:],
+        })
+
+
+class PinSetupView(CustomerOnly, APIView):
+    """POST {pin} : choix du code juste après le code SMS ; ferme les autres appareils du compte."""
+
+    pin_exempt = True
+    throttle_scope = "pin"
+
+    def post(self, request):
+        try:
+            pin.set_after_sms(request.auth, request.data.get("pin", ""))
+        except pin.PinError as exc:
+            return pin_error(exc)
+        return Response({"user": UserSerializer(request.user).data})
+
+
+class PinUnlockView(CustomerOnly, APIView):
+    """POST {pin} : ouvre une session courte sur cet appareil ; 3 codes faux de suite la ferment."""
+
+    pin_exempt = True
+    throttle_scope = "pin"
+
+    def post(self, request):
+        try:
+            pin.unlock(request.auth, request.data.get("pin", ""))
+        except pin.PinError as exc:
+            return pin_error(exc)
+        return Response({"user": UserSerializer(request.user).data})
+
+
+class PinChangeView(CustomerOnly, APIView):
+    """POST {old, new} : « Changer mon code » (session ouverte) ; ferme les autres appareils du compte."""
+
+    throttle_scope = "pin"
+
+    def post(self, request):
+        try:
+            closed = pin.change(request.auth, request.data.get("old", ""), request.data.get("new", ""))
+        except pin.PinError as exc:
+            return pin_error(exc)
         return Response({"closed": closed})

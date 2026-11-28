@@ -1347,3 +1347,18 @@ msgstr "تاريخ الميلاد"
 
 msgid "objet"
 msgstr "الغرض"
+
+msgid "code PIN (haché)"
+msgstr "الرمز السري (مشفّر)"
+
+msgid "code PIN choisi le"
+msgstr "تاريخ اختيار الرمز السري"
+
+msgid "choix du code PIN jusqu'au"
+msgstr "اختيار الرمز السري حتى"
+
+msgid "code PIN saisi le"
+msgstr "آخر إدخال للرمز السري"
+
+msgid "codes PIN faux de suite"
+msgstr "رموز سرية خاطئة متتالية"

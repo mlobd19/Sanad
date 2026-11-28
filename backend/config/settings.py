@@ -160,6 +160,9 @@ REST_FRAMEWORK = {
         "identity": env("IDENTITY_THROTTLE_RATE", "5/hour"),  # vérifications d'identité numérique (eID), par compte
         # Voyageurs d'un contrat voyage (eID de chaque voyageur) : une famille ou une mission en compte plusieurs.
         "traveler_check": env("TRAVELER_CHECK_RATE", "30/hour"),
+        # Codes PIN des particuliers (déverrouillage, choix, changement), par compte. 3 codes faux de suite
+        # ferment de toute façon la connexion de l'appareil (accounts/pin.py).
+        "pin": env("PIN_THROTTLE_RATE", "30/hour"),
     },
 }
 
@@ -181,6 +184,8 @@ PRO_LOGIN_LOCK_MINUTES = int(env("PRO_LOGIN_LOCK_MINUTES", 15))
 # Connexions à l'app : durée de vie du jeton d'un appareil.
 AUTH_TOKEN_TTL_CUSTOMER_DAYS = int(env("AUTH_TOKEN_TTL_CUSTOMER_DAYS", 30))
 AUTH_TOKEN_TTL_PRO_HOURS = int(env("AUTH_TOKEN_TTL_PRO_HOURS", 8))
+# Particuliers : session ouverte par le code PIN, fermée après ce nombre de minutes d'inactivité.
+PIN_SESSION_IDLE = int(env("PIN_SESSION_IDLE", 15))
 
 # Back-office : second facteur après le mot de passe. « totp » (application d'authentification),
 # obligatoire en production ; « sms » (code dans la console) ou « off » : développement (DEBUG) seulement.
