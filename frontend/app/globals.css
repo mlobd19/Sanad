@@ -214,6 +214,10 @@ button.card { text-align: start; cursor: pointer; width: 100%; color: inherit; }
 .field label, .field legend { font-weight: 700; font-size: 14px; }
 .input { height: 52px; border-radius: 14px; border: 2px solid var(--line-strong); padding: 0 14px; background: var(--card); font-size: 16px; width: 100%; }
 .input:focus { border-color: var(--green); outline: none; box-shadow: 0 0 0 3px var(--green-soft); }
+/* Numéros, NNI, e-mails, noms du passeport : écrits de gauche à droite, mais alignés à droite en arabe. */
+[dir="rtl"] .input[dir="ltr"] { text-align: right; }
+/* Champ figé (téléphone du compte, NNI vérifié) : fond de la page, bordure fine, pas de curseur de saisie. */
+.input:disabled { background: var(--bg); border-color: var(--line); color: var(--ink); -webkit-text-fill-color: var(--ink); opacity: 1; cursor: default; }
 .error { color: var(--red); font-size: 14px; font-weight: 600; margin: 0; }
 .error-slot { min-height: 1.45em; } /* place réservée : le formulaire ne saute pas quand l'erreur s'affiche */
 /* Erreur sous un champ (components/FormValidation.tsx) */

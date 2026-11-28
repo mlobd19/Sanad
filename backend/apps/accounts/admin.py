@@ -89,6 +89,8 @@ class UserAdmin(BaseUserAdmin):
         fields = tuple(super().get_readonly_fields(request, obj))
         if obj is not None and obj.role == User.Role.CUSTOMER:
             fields = (*fields, *self.CUSTOMER_IDENTITY_FIELDS)
+            if obj.kyc_status == User.KycStatus.VERIFIED:
+                fields = (*fields, "nni")  # NNI figé une fois l'identité vérifiée, comme dans l'app
         return fields if request.user.is_superuser else (*fields, *self.ACCESS_FIELDS)
 
     def has_change_permission(self, request, obj=None):

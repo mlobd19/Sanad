@@ -188,18 +188,18 @@ def test_verified_identity_is_not_checked_again(customer_client):
     assert IdentityCheck.objects.count() == 1
 
 
-def test_changing_nni_resets_verification(customer_client):
-    set_nni(customer_client, "1234567890")
+def test_verified_nni_cannot_be_changed(customer_client):
+    set_nni(customer_client, "4567890123")
+    set_nni(customer_client, "1234567890")  # avant la vérification : le NNI se corrige librement
     verify(customer_client)
     customer_client.patch("/api/me", {"language": "ar"}, format="json")
     set_nni(customer_client, "1234567890")  # même NNI : rien ne change
-    assert me(customer_client).kyc_status == User.KycStatus.VERIFIED
 
-    resp = set_nni(customer_client, "4567890123")
-    assert resp.data["kyc_status"] == "none"
-    assert AuditEvent.objects.filter(action="kyc.reset").exists()
-    assert verify(customer_client).data["outcome"] == "verified"  # nouveau nom, celui du nouveau NNI
-    assert me(customer_client).full_name != "Sidi Mohamed"
+    resp = customer_client.patch("/api/me", {"nni": "4567890123", "language": "fr"}, format="json")
+    assert resp.status_code == 400 and resp.data["code"] == "nni_locked"
+    user = me(customer_client)
+    assert user.nni == "1234567890" and user.kyc_status == User.KycStatus.VERIFIED
+    assert user.full_name == "Sidi Mohamed" and user.language == "ar"
 
 
 def test_identity_documents_endpoint_is_gone(customer_client):
@@ -267,12 +267,12 @@ def test_payment_requires_verified_identity(customer_client):
     assert pay(customer_client, policy).status_code == 201
 
 
-def test_nni_change_blocks_payment_again(customer_client):
+def test_refused_nni_change_keeps_payment_open(customer_client):
     set_nni(customer_client, "1234567890")
     verify(customer_client)
     policy = draft_policy(customer_client)
-    set_nni(customer_client, "4567890123")
-    assert pay(customer_client, policy).data["code"] == "kyc_required"
+    assert customer_client.patch("/api/me", {"nni": "4567890123"}, format="json").status_code == 400
+    assert pay(customer_client, policy).data.get("code") != "kyc_required"
 
 
 def test_new_customer_starts_unverified(demo):
@@ -318,3 +318,20 @@ def test_migration_deletes_identity_documents_and_converts_statuses(settings, tm
     assert sorted(NewCheck.objects.values_list("outcome", flat=True)) == ["not_found", "valid"]
 
     MigrationExecutor(connection).migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+
+def test_verified_nni_is_read_only_in_backoffice(customer_client):
+    from django.contrib.admin.sites import site
+    from django.test import RequestFactory
+
+    boss = User.objects.create_superuser("+22230000009", password="Patron-Sanad-2026")
+    request = RequestFactory().get("/")
+    request.user = boss
+    user_admin = site._registry[User]
+    customer = User.objects.get(phone="+22236000001", role=User.Role.CUSTOMER)
+    assert "nni" not in user_admin.get_readonly_fields(request, customer)  # pas encore vérifiée
+
+    set_nni(customer_client, "1234567890")
+    verify(customer_client)
+    customer.refresh_from_db()
+    assert "nni" in user_admin.get_readonly_fields(request, customer)  # même pour un superutilisateur

@@ -282,18 +282,17 @@ IDENTITY_FIELDS = ("nni", "language")  # le nom vient de l'ANRPTS, jamais de la 
 
 
 def update_profile(user: User, data: dict) -> User:
-    """Mise à jour du profil. Changer le NNI d'une identité vérifiée relance la vérification."""
+    """Mise à jour du profil. Le NNI d'une identité vérifiée ne change plus (code « nni_locked »)."""
     fields = [key for key in IDENTITY_FIELDS if key in data]
     if not fields:
         return user
     nni_changed = "nni" in data and str(data["nni"]).strip() != user.nni
+    if nni_changed and user.kyc_status == User.KycStatus.VERIFIED:
+        # Le NNI porte le nom officiel repris de l'ANRPTS et les attestations en cours : il est figé.
+        raise ValidationError("Votre NNI est lié à votre identité vérifiée : il ne peut plus être modifié.",
+                              code="nni_locked")
     for key in fields:
         setattr(user, key, str(data[key]).strip())
-    if nni_changed and user.kyc_status == User.KycStatus.VERIFIED:
-        # Le nom reste affiché (attestations en cours) jusqu'à la prochaine vérification, qui le remplace.
-        user.kyc_status = User.KycStatus.NONE
-        fields.append("kyc_status")
-        record("kyc.reset", user, actor=user, reason="NNI modifié")
     user.save(update_fields=fields)
     return user
 

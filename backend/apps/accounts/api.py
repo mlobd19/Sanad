@@ -121,7 +121,10 @@ class MeView(APIView):
     def patch(self, request):
         serializer = UserSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        user = services.update_profile(request.user, serializer.validated_data)
+        try:
+            user = services.update_profile(request.user, serializer.validated_data)
+        except DjangoValidationError as exc:
+            return Response({"detail": exc.messages[0], "code": exc.error_list[0].code or "invalid"}, status=400)
         return Response(UserSerializer(user).data)
 
 

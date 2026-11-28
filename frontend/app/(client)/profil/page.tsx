@@ -28,6 +28,7 @@ const ID_ERRORS: Record<string, Key> = {
   missing_nni: "idMissing",
   invalid_nni: "idInvalidNni",
   already_verified: "idVerified",
+  nni_locked: "idNniLocked",
 };
 
 export default function ProfilePage() {
@@ -51,7 +52,7 @@ export default function ProfilePage() {
     if (user) setNni(user.nni);
   }, [user]);
 
-  // Un seul champ, le NNI : il est enregistré (un changement relance la vérification), puis l'eID est vérifiée.
+  // Un seul champ, le NNI : enregistré puis vérifié (eID). Une fois l'identité vérifiée, il ne change plus.
   async function checkIdentity(e: FormEvent) {
     e.preventDefault();
     setChecking(true);
@@ -96,6 +97,7 @@ export default function ProfilePage() {
   }
 
   if (!user) return <main className="content with-nav"><ProfileSkeleton /></main>;
+  const verified = user.kyc_status === "verified";
 
   return (
     <main className="content with-nav">
@@ -105,7 +107,7 @@ export default function ProfilePage() {
           <span className={`pill ${user.kyc_status === "verified" ? "" : "warn"}`}>{t(`kyc_${user.kyc_status}` as Key)}</span>
         </div>
         {user.full_name && (
-          <div className="field">
+          <div className="row" style={{ gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
             <span className="small muted" id="name-label">{t("idName")}</span>
             <strong aria-labelledby="name-label"><bdi>{displayName(user, lang)}</bdi></strong>
           </div>
@@ -116,11 +118,15 @@ export default function ProfilePage() {
         </div>
         <div className="field">
           <label htmlFor="nni">{t("nni")}</label>
-          <input id="nni" className="input" value={nni} dir="ltr" inputMode="numeric" autoComplete="off" maxLength={10}
-            onChange={(e) => setNni(e.target.value.replace(/\D/g, "").slice(0, 10))} aria-describedby="nni-hint" />
-          <span id="nni-hint" className="small muted">{user.kyc_status === "verified" ? t("idChangeResets") : t("idCheckHint")}</span>
+          {verified ? (
+            <input id="nni" className="input" value={user.nni} dir="ltr" disabled aria-describedby="nni-hint" />
+          ) : (
+            <input id="nni" className="input" value={nni} dir="ltr" inputMode="numeric" autoComplete="off" maxLength={10}
+              onChange={(e) => setNni(e.target.value.replace(/\D/g, "").slice(0, 10))} aria-describedby="nni-hint" />
+          )}
+          <span id="nni-hint" className="small muted">{verified ? t("idNniLocked") : t("idCheckHint")}</span>
         </div>
-        {(user.kyc_status !== "verified" || nni !== user.nni) && (
+        {!verified && (
           <button className="btn primary block" disabled={checking}>
             {checking ? <span className="spinner sm" aria-hidden="true" /> : <Icon name="shield" size={20} strokeWidth={2} />}
             {checking ? t("idChecking") : t("idCheck")}

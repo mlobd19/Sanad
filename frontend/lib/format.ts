@@ -77,12 +77,13 @@ export function plateInput(raw: string): string {
 }
 
 // --- Téléphones ----------------------------------------------------------------------------
-// Numéros mauritaniens : enregistrés « +22236000001 », affichés « +222 36 00 00 01 ».
+// Numéros mauritaniens : enregistrés « +22236000001 », affichés « 36 00 00 01 » (Sanad n'existe qu'en
+// Mauritanie : l'indicatif +222 n'est jamais affiché ni saisi, il est ajouté à l'envoi).
 
-/** Les 8 chiffres locaux d'un numéro mauritanien (« +222 36 00 00 01 » → « 36000001 »). */
+/** Les 8 chiffres locaux d'un numéro mauritanien (« +222 36 00 00 01 » ou « 0022236000001 » → « 36000001 »). */
 export function localPhone(value: string): string {
-  const digits = (value ?? "").replace(/\D/g, "");
-  return (digits.length === 11 && digits.startsWith("222") ? digits.slice(3) : digits).slice(0, 8);
+  const digits = (value ?? "").replace(/\D/g, "").replace(/^(00)?222(?=\d{8}$)/, "");
+  return digits.slice(0, 8);
 }
 
 /** Chiffres locaux groupés par deux, pendant la saisie : « 3600000 » → « 36 00 00 0 ». */
@@ -90,11 +91,11 @@ export function groupPhone(local: string): string {
   return localPhone(local).replace(/(\d{2})(?=\d)/g, "$1 ");
 }
 
-/** Affichage : « +22236000001 » ou « 36000001 » → « +222 36 00 00 01 ». Tout autre format reste tel quel. */
+/** Affichage : « +22236000001 » ou « 36000001 » → « 36 00 00 01 ». Tout autre format reste tel quel. */
 export function formatPhone(value: string): string {
   const digits = (value ?? "").replace(/\D/g, "");
   const local = digits.length === 11 && digits.startsWith("222") ? digits.slice(3) : digits.length === 8 ? digits : "";
-  return local ? `+222 ${local.replace(/(\d{2})(?=\d)/g, "$1 ")}` : value ?? "";
+  return local ? local.replace(/(\d{2})(?=\d)/g, "$1 ") : value ?? "";
 }
 
 /** Nom du client : en arabe en mode arabe s'il a été fourni par l'ANRPTS, sinon en caractères latins. */

@@ -160,7 +160,7 @@ const fr = {
   idUnavailable: "Service indisponible, réessayez dans quelques minutes.",
   idMissing: "Saisissez votre NNI.",
   idInvalidNni: "Le NNI compte 10 chiffres.",
-  idChangeResets: "Modifier le NNI relancera la vérification.",
+  idNniLocked: "Votre NNI est lié à votre identité vérifiée : il ne peut plus être modifié.",
   kycBeforePay: "Avant de payer, vérifiez votre identité avec votre NNI, en une minute.",
   // Divers
   loading: "Chargement…",
@@ -687,7 +687,7 @@ const ar: Record<Key, string> = {
   idUnavailable: "الخدمة غير متاحة، أعد المحاولة بعد بضع دقائق.",
   idMissing: "أدخل رقمك الوطني.",
   idInvalidNni: "الرقم الوطني يتكون من 10 أرقام.",
-  idChangeResets: "تعديل الرقم الوطني يعيد التحقق.",
+  idNniLocked: "رقمك الوطني مرتبط بهويتك التي تم التحقق منها: لا يمكن تعديله بعد الآن.",
   kycBeforePay: "قبل الدفع، تحقق من هويتك برقمك الوطني، في دقيقة واحدة.",
   loading: "جار التحميل…",
   error: "حدث خطأ.",

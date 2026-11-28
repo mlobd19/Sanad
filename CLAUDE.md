@@ -66,8 +66,8 @@ compile_translations` ; sinon le test des traductions échoue.
     NNI : le nom (`full_name`, `full_name_ar`) vient de l'ANRPTS, jamais de la
     saisie ; le nom arabe s'affiche en mode arabe et sur la partie arabe du PDF.
     Téléphone de l'eID ≠ téléphone du compte : rien n'est vérifié, message
-    neutre (`not_verified`), détail au journal `IdentityCheck`. Changer le NNI
-    réinitialise la vérification. Limite : `IDENTITY_THROTTLE_RATE` par compte
+    neutre (`not_verified`), détail au journal `IdentityCheck`. NNI figé une fois
+    l'identité vérifiée (app : champ grisé ; API : `nni_locked` ; back-office : lecture seule). Limite : `IDENTITY_THROTTLE_RATE` par compte
   - `companies` : entreprises (NIF, RC, statut de vérification), pièces,
     membres (administrateur / gestionnaire), flotte, devis groupés, commandes ;
     tout part de `services.member_company(user)`
@@ -162,6 +162,10 @@ compile_translations` ; sinon le test des traductions échoue.
     vidées à chaque `setToken` (connexion, déconnexion). Erreur de formulaire : `ErrorLine`
     (place réservée). Langue et sens de lecture posés avant l'affichage (`LANG_BOOT_SCRIPT`) ;
     barre du haut et étapes de même hauteur en français et en arabe.
+  - Téléphones : **jamais d'indicatif +222 affiché ni saisi** (Sanad n'existe qu'en Mauritanie) ;
+    `PhoneInput` (8 chiffres groupés « 36 00 00 01 », un « +222 » tapé ou collé est retiré),
+    `formatPhone` ; l'appelant envoie `+222${chiffres}`. Champs écrits de gauche à droite
+    (numéros, NNI, e-mails) : `dir="ltr"` sur l'`.input`, alignés à droite en arabe (`globals.css`).
   - Validation des champs : `components/FormValidation.tsx` (monté dans le layout)
     remplace la bulle du navigateur (langue et style du système) par un message
     sous le champ, traduit (`field*` dans `lib/i18n.tsx`). Garder les attributs
