@@ -26,10 +26,13 @@ export class ApiError extends Error {
   status: number;
   /** Code d'erreur machine renvoyé par certaines API (ex. lecture de carte grise), traduit par l'app. */
   code: string;
-  constructor(status: number, message: string, code = "") {
+  /** Réponse complète de l'API (ex. « attempts_left » d'un code PIN faux). */
+  data: Record<string, unknown>;
+  constructor(status: number, message: string, code = "", data: unknown = null) {
     super(message);
     this.status = status;
     this.code = code;
+    this.data = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
   }
 }
 
@@ -59,18 +62,34 @@ export async function api<T = unknown>(path: string, options: { method?: string;
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
-  if (response.status === 401) {
-    setToken(null);
-    if (typeof window !== "undefined") {
-      // Session expirée : retour à la page de connexion unique, sur l'onglet de l'espace (cf. lib/spaces.ts).
-      const path = window.location.pathname;
+  const data = response.status === 204 ? null : await response.json().catch(() => null);
+  const code = errorCode(data);
+  if (typeof window !== "undefined" && (response.status === 401 || isPinGate(response.status, code))) {
+    const path = window.location.pathname;
+    if (response.status === 401) {
+      setToken(null);
+      // Session expirée : retour à la page de connexion unique, sur l'onglet de l'espace (cf. lib/spaces.ts) ;
+      // après 3 codes PIN faux, avec le message qui l'explique.
       const pro = path.startsWith("/assureur") || path.startsWith("/entreprise");
-      if (!path.startsWith("/connexion")) window.location.href = pro ? "/connexion?espace=pro" : "/connexion";
+      const target = pro ? "/connexion?espace=pro" : code === "pin_blocked" ? "/connexion?raison=pin_blocked" : "/connexion";
+      if (!path.startsWith("/connexion")) window.location.href = target;
+    } else if (!path.startsWith("/connexion")) {
+      // Particulier : jeton valable mais session du code PIN fermée (ou code à choisir) → écran du code.
+      window.location.href = pinUrl(path + window.location.search);
     }
   }
-  const data = response.status === 204 ? null : await response.json().catch(() => null);
-  if (!response.ok) throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`, errorCode(data));
+  if (!response.ok) throw new ApiError(response.status, firstMessage(data) || `Erreur ${response.status}`, code, data);
   return data as T;
+}
+
+/** Écran du code PIN (particuliers), avec l'écran où revenir ensuite. */
+export function pinUrl(back = ""): string {
+  return back && back !== "/" ? `/connexion/code?retour=${encodeURIComponent(back)}` : "/connexion/code";
+}
+
+/** Réponse « code PIN à saisir » (pin_required) ou « à choisir » (pin_setup) : le jeton reste valable. */
+export function isPinGate(status: number, code: string): boolean {
+  return status === 403 && (code === "pin_required" || code === "pin_setup");
 }
 
 export async function apiBlobUrl(path: string): Promise<string> {

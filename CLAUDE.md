@@ -47,7 +47,7 @@ compile_translations` ; sinon le test des traductions échoue.
   Chaque app garde ses tables ; la logique métier vit dans `services.py`, jamais
   dans les vues (`api.py`).
   - `accounts` : utilisateurs, OTP, identité numérique (eID), rôles `customer` / `insurer_agent` /
-    `company_member` / `staff`. Particuliers : téléphone + code SMS ; le numéro
+    `company_member` / `staff`. Particuliers : téléphone + code SMS, puis code PIN (`pin.py`) ; le numéro
     n'est unique que parmi eux. Comptes pro (`User.PRO_ROLES`) : email + mot de
     passe + code SMS ; le SMS seul n'ouvre jamais qu'un compte particulier
     (ni compte pro, ni compte équipe).
@@ -115,6 +115,15 @@ compile_translations` ; sinon le test des traductions échoue.
     jamais coder une redirection liée au rôle ailleurs. `/connexion` a deux
     onglets (Particulier : `OtpLogin` ; Professionnel : `ProAuth`) ; les
     anciennes `/assureur/connexion` et `/entreprise/connexion` redirigent.
+  - **Code PIN des particuliers** : `/connexion/code` (après le SMS « Choisissez votre code » puis
+    « Confirmez votre code » ; ensuite « Entrez votre code », nom du client, « Code oublié ? » → SMS),
+    `/profil/code` (« Changer mon code »). Pavé `components/SecurePinPad.tsx` : grille 3 × 4, les
+    10 chiffres mélangés à chaque affichage (`lib/pin.ts` : `crypto.getRandomValues`, Fisher-Yates ;
+    nouvelle `key` du pavé = nouveau mélange), « Effacer » et case vide fixes, chiffres 0-9 en arabe
+    aussi, **jamais d'`<input>`** ni de stockage du code, 4 points, validation au 4e chiffre, aucune
+    surbrillance de touche (vibration brève seulement), touches ≥ 56 px. `api()` : 403
+    `pin_required` / `pin_setup` → écran du code (`pinUrl`, retour à l'écran demandé) ; 401
+    `pin_blocked` → `/connexion?raison=pin_blocked`.
   - Illustration du véhicule : `VehicleIllustration.tsx` (7 silhouettes originales,
     toujours gris métallisé, aucun logo de constructeur) ; type de carrosserie
     déduit de « marque et modèle » côté backend (`policies/body_types.py`,
@@ -204,6 +213,18 @@ compile_translations` ; sinon le test des traductions échoue.
   Tout nouveau mot de passe (`User.set_password` puis `save`) ferme toutes les
   connexions du compte. Nettoyage : tâche Celery quotidienne et
   `manage.py purge_expired_tokens`. Ne jamais revenir au `Token` DRF.
+- **Code PIN des particuliers** (`accounts/pin.py` ; comptes pro et back-office inchangés) : le
+  jeton d'un particulier n'ouvre rien sans le code PIN (403 `pin_required`, ou `pin_setup` juste
+  après le SMS, 10 min pour le choisir) ; le bon code ouvre une session de `PIN_SESSION_IDLE`
+  minutes d'inactivité (15). Vues sans code : `pin_exempt` (code PIN, déconnexion, SMS) ; vue
+  publique (`AllowAny`) : traitée en visiteur. Code haché (hacheur de mots de passe de Django,
+  `User.pin`), jamais en clair ni dans les journaux. 3 codes faux de suite (déverrouillage ou
+  ancien code au changement) → jeton de l'appareil supprimé, audit `pin.blocked`, retour au SMS ;
+  limite `PIN_THROTTLE_RATE` (30/h par compte). Refusés : 4 chiffres identiques, suites (1234,
+  4321, 0123), paires répétées (1212, 2020), années 1940 → année en cours, 4 derniers chiffres du
+  numéro. **Choisir un code après le SMS (nouvel appareil, code oublié) ou le changer ferme les
+  autres appareils** (audit `pin.set` / `pin.changed`) : un particulier n'a donc qu'un appareil
+  connecté à la fois. API : `GET /api/auth/pin`, `POST /api/auth/pin/setup|unlock|change`.
 - **Back-office** : second facteur par application d'authentification (TOTP,
   `accounts/totp.py`, un code ne sert qu'une fois, 5 essais) ; QR code au premier
   accès. `BACKOFFICE_2FA=totp` obligatoire en production ; `sms` ou `off`

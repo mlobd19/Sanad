@@ -34,6 +34,8 @@ const SCREENS: { pattern: RegExp; params: string[]; screen: Screen }[] = [
   { pattern: /^\/$/, params: [], screen: { id: "home", depth: 0, tab: true } },
   { pattern: /^\/contrats$/, params: [], screen: { id: "contracts", depth: 0, tab: true, title: "myContracts" } },
   { pattern: /^\/profil$/, params: [], screen: { id: "profile", depth: 0, tab: true, title: "profileTitle" } },
+  { pattern: /^\/profil\/code$/, params: [],
+    screen: { id: "pinChange", depth: 1, title: "pinChangeTitle", back: () => "/profil" } },
   { pattern: /^\/vehicule$/, params: [], screen: { id: "vehicle", depth: 1, title: "vehicleTitle", back: () => "/", step: 0 } },
   { pattern: /^\/devis\/([^/]+)$/, params: ["assetId"],
     screen: { id: "quotes", depth: 2, title: "quotesTitle", back: () => "/vehicule", step: 1 } },

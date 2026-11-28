@@ -7,7 +7,7 @@
 import { useRouter } from "next/navigation";
 import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from "react";
 
-import { api, ApiError, getToken, setToken, type User } from "@/lib/api";
+import { api, ApiError, getToken, isPinGate, pinUrl, setToken, type User } from "@/lib/api";
 
 export type Role = "customer" | "company_member" | "insurer_agent" | "staff";
 
@@ -80,6 +80,7 @@ function useGuard(expected: Role, enabled: boolean): SpaceValue {
         else enterSpace(router, me);
       })
       .catch((err) => {
+        if (err instanceof ApiError && isPinGate(err.status, err.code)) return; // api() ouvre l'écran du code PIN
         if (err instanceof ApiError && err.status === 401) setToken(null); // jeton expiré ou révoqué
         router.replace(loginUrl(expected));
       });
@@ -122,12 +123,22 @@ export function useRedirectIfLoggedIn(): "checking" | "anonymous" {
         enterSpace(router, me);
         if (me.role === "staff") setState("anonymous");
       })
-      .catch(() => {
+      .catch((err) => {
+        // Particulier dont la session du code PIN est fermée : écran du code, sans SMS.
+        if (err instanceof ApiError && isPinGate(err.status, err.code)) {
+          router.replace(pinUrl());
+          return;
+        }
         setToken(null);
         setState("anonymous");
       });
   }, [router]);
   return state;
+}
+
+/** Écran où revenir après le code PIN : une adresse de l'app client seulement (jamais un autre site). */
+export function safeReturn(value: string | null): string {
+  return value && /^\/(?![/\\])/.test(value) && !value.startsWith("/connexion") ? value : HOMES.customer;
 }
 
 /** Vrai / faux une fois le navigateur lu (null pendant le rendu serveur : pas d'écart d'hydratation). */

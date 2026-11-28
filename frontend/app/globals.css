@@ -494,3 +494,40 @@ html[dir="rtl"]::view-transition-new(.nav-back) { --nav-from: var(--nav-shift); 
   .carousel { scroll-behavior: auto; }
   .carousel-dots span { transition: none; }
 }
+
+/* --- Code PIN des particuliers (components/SecurePinPad.tsx, app/connexion/code) ------------------------ */
+.pin-head { padding: 20px 24px 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; }
+.pin-head .head-actions { align-self: stretch; }
+.pin-sheet { gap: 0; }
+.pin-step { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.pin-dots { display: flex; justify-content: center; gap: 18px; padding: 6px 0 0; }
+.pin-dots span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ink-2); }
+.pin-dots span.on { background: var(--ink); border-color: var(--ink); }
+.pinpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: auto; }
+/* Aucune surbrillance de la touche touchée (une capture d'écran ne révèle pas le chiffre) : ni couleur au
+   toucher, ni effet :active, ni transition ; seul le contour du clavier physique (:focus-visible) reste. */
+.pinpad button {
+  min-height: 60px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  font: 700 26px/1 var(--display); cursor: pointer; touch-action: manipulation; user-select: none;
+  -webkit-user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; transition: none;
+}
+.pinpad button:active, .pinpad button:hover { background: var(--bg); color: var(--ink); }
+.pinpad button:focus { outline: none; }
+.pinpad button:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+.pinpad button:disabled { cursor: default; color: var(--ink); opacity: 1; }
+.pinpad .pin-erase { font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1.2; background: transparent; border-color: transparent; }
+.pinpad .pin-erase:active, .pinpad .pin-erase:hover { background: transparent; }
+.pinpad .pin-erase:disabled { color: var(--muted); }
+.pin-forgot { align-self: center; min-height: 44px; }
+.pin-change { min-height: calc(100dvh - 180px); }
+.pin-change .pin-step { padding-bottom: 8px; }
+/* Écran sur le fond de page : touches sur fond de carte pour rester visibles. */
+.pin-change .pinpad button:not(.pin-erase), .pin-change .pinpad button:not(.pin-erase):active,
+.pin-change .pinpad button:not(.pin-erase):hover { background: var(--card); }
+/* Petit téléphone (hauteur ≤ 760 px) : en-tête et touches plus compacts, tout tient sans défiler. */
+@media (max-height: 760px) {
+  .pin-head { padding: 12px 24px 14px; gap: 4px; }
+  .pin-step { gap: 10px; }
+  .pinpad { gap: 10px; }
+  .pinpad button { min-height: 56px; }
+}

@@ -57,7 +57,8 @@ le backend joue le rôle de l'opérateur. Ce bouton n'existe pas en production.
 | Adresse | Pour qui |
 | --- | --- |
 | `/` | Visiteur : page d'accueil (Particulier, Entreprise, Assureur partenaire, lien « Espace admin »). Client connecté : son accueil. |
-| `/connexion` | **Page de connexion unique**, onglet « Particulier » (téléphone + code SMS) |
+| `/connexion` | **Page de connexion unique**, onglet « Particulier » (téléphone + code SMS, puis code PIN) |
+| `/connexion/code` | Particuliers : choix du code PIN après le SMS, puis « Entrez votre code » aux ouvertures suivantes |
 | `/connexion?espace=pro` | Même page, onglet « Professionnel » (assureurs et entreprises : email + mot de passe + code SMS) |
 | `/connexion/mot-de-passe-oublie` | Mot de passe oublié (comptes professionnels) |
 | `/entreprise`, `/assureur` | Espaces professionnels ; `/entreprise/inscription` pour créer un compte entreprise |
@@ -80,10 +81,23 @@ superutilisateur : il a les droits métier du groupe « Équipe Sanad ».
 
 | Espace | Connexion | Identifiant | Méthode |
 | --- | --- | --- | --- |
-| Particulier (`/`) | `/connexion` | n'importe quel numéro, ex. `36000001` | code SMS (le compte se crée) |
+| Particulier (`/`) | `/connexion` | n'importe quel numéro, ex. `36000001` | code SMS (le compte se crée), puis code PIN à 4 chiffres |
 | Portail assureur (`/assureur`) | `/connexion?espace=pro` | `agent@mar.test` (ou nasr, medina, iman) | mot de passe + code SMS |
 | Espace entreprise (`/entreprise`) | `/connexion?espace=pro` | `entreprise@demo.test` (Entreprise démo SARL, vérifiée) | mot de passe + code SMS |
 | Back-office (`/admin/`) | `/admin/` | `+22230000000` | mot de passe + application d'authentification |
+
+### Scénarios de connexion d'un particulier (code PIN)
+
+1. **Première connexion sur un appareil** : numéro, code SMS (console du backend), puis
+   « Choisissez votre code » et « Confirmez votre code » sur le pavé aux touches mélangées
+   (refusés : `0000`, `1234`, `4321`, `1212`, `2020`, une année de 1940 à aujourd'hui, les 4
+   derniers chiffres du numéro ; ex. accepté : `2580`). Les autres appareils du compte sont fermés.
+2. **Ouvertures suivantes** (ou après 15 minutes sans activité, `PIN_SESSION_IDLE`) :
+   « Entrez votre code », sans SMS ; l'app revient ensuite à l'écran demandé.
+3. **Code faux** : « Code incorrect, il vous reste 2 essais », puis 1 ; au 3e, la connexion de
+   l'appareil est fermée et l'app revient au code SMS (journal « pin.blocked »).
+4. **Code oublié ?** : retour au code SMS, puis nouveau code (les autres appareils sont fermés).
+5. **Profil › Changer mon code** : code actuel, puis nouveau code deux fois.
 
 ## Portail assureur
 
@@ -286,12 +300,17 @@ active ──résiliation──▶ résiliée (attestation révoquée)
 
 ## API
 
-Authentification : `Authorization: Token <jeton>` obtenu après l'OTP.
+Authentification : `Authorization: Token <jeton>` obtenu après l'OTP. Particulier : le jeton
+n'ouvre rien sans le code PIN (403 `pin_required`, ou `pin_setup` juste après le SMS).
 
 | Méthode | Chemin | Usage |
 | --- | --- | --- |
 | POST | `/api/auth/otp/request` | `{phone}` → envoie un code par SMS |
-| POST | `/api/auth/otp/verify` | `{phone, code}` → `{token, user}` (refusé aux comptes professionnels) |
+| POST | `/api/auth/otp/verify` | `{phone, code}` → `{token, pin: "setup", user}` (refusé aux comptes professionnels) |
+| GET | `/api/auth/pin` | Particulier : état du code PIN de l'appareil (`setup`, `locked`, `open`), nom à afficher |
+| POST | `/api/auth/pin/setup` | `{pin}` juste après le SMS (10 min) ; ferme les autres appareils ; 400 `pin_weak` si trop simple |
+| POST | `/api/auth/pin/unlock` | `{pin}` → session courte ; 400 `pin_wrong` + `attempts_left` ; 401 `pin_blocked` au 3e code faux |
+| POST | `/api/auth/pin/change` | `{old, new}` (session ouverte) ; ferme les autres appareils |
 | POST | `/api/auth/pro/login` | Comptes pro : `{email, password}` → `{challenge, phone}` + code SMS |
 | POST | `/api/auth/pro/verify` | `{challenge, code}` → `{token, user}` |
 | POST | `/api/auth/pro/password/forgot` | `{email}` → lien par email (réponse identique si l'email est inconnu) |

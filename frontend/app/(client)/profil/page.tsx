@@ -160,6 +160,15 @@ export default function ProfilePage() {
         <ThemeChoicePicker />
       </section>
 
+      <section className="card" aria-labelledby="pin-title">
+        <h2 id="pin-title" className="eyebrow">{t("pinSectionTitle")}</h2>
+        <p className="small ink2" style={{ margin: 0 }}>{t("pinSectionHint")}</p>
+        <Link href="/profil/code" className="btn outline block">
+          <Icon name="shield" size={18} strokeWidth={2} />
+          {t("pinChangeTitle")}
+        </Link>
+      </section>
+
       <section className="card" aria-labelledby="devices-title">
         <h2 id="devices-title" className="eyebrow">{t("devicesTitle")}</h2>
         <p className="small ink2" style={{ margin: 0 }}>{t("devicesHint")}</p>

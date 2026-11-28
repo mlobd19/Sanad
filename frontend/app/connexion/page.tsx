@@ -9,16 +9,17 @@ import { ThemeIconButton } from "@/components/ThemeChoice";
 import { OtpLogin, type OtpResult } from "@/components/OtpLogin";
 import { ProLoginForm } from "@/components/ProAuth";
 import { LanguageButton } from "@/components/LanguageButton";
-import { api, setToken } from "@/lib/api";
+import { pinUrl, setToken } from "@/lib/api";
 import { useI18n, type Key } from "@/lib/i18n";
-import { enterSpace, useRedirectIfLoggedIn, type LoginTab } from "@/lib/spaces";
+import { useRedirectIfLoggedIn, type LoginTab } from "@/lib/spaces";
 
 const TABS: { id: LoginTab; label: Key }[] = [
   { id: "particulier", label: "tabPersonal" },
   { id: "pro", label: "tabPro" },
 ];
 
-/** Page de connexion unique : particuliers (téléphone + SMS) et professionnels (email + mot de passe + SMS). */
+/** Page de connexion unique : particuliers (téléphone + SMS, puis code PIN) et professionnels (email + mot de
+ *  passe + SMS). */
 export default function LoginPage() {
   return (
     <Suspense fallback={<div className="app" style={{ background: "var(--green-deep)" }} />}>
@@ -28,7 +29,7 @@ export default function LoginPage() {
 }
 
 function Login() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
   const [tab, setTab] = useState<LoginTab>(params.get("espace") === "pro" ? "pro" : "particulier");
@@ -52,11 +53,14 @@ function Login() {
     tabRefs.current[TABS[j].id]?.focus();
   }
 
-  async function onVerified({ token, user }: OtpResult) {
+  // Code SMS validé : l'appareil choisit ensuite le code PIN du compte (app/connexion/code), qui ouvre la session.
+  async function onVerified({ token }: OtpResult) {
     setToken(token);
-    if (user.language !== lang) await api("me", { method: "PATCH", body: { language: lang } });
-    enterSpace(router, user);
+    router.replace(pinUrl());
   }
+  // Retour au code SMS depuis l'écran du code PIN : 3 codes faux, ou délai de choix dépassé.
+  const reason = params.get("raison");
+  const reasonKey: Key | null = reason === "pin_blocked" ? "pinBlocked" : reason === "pin_setup_expired" ? "pinSetupExpired" : null;
 
   return (
     <div className="app" style={{ background: "var(--green-deep)" }}>
@@ -96,6 +100,9 @@ function Login() {
             </div>
             <div role="tabpanel" id={`login-panel-${tab}`} aria-labelledby={`login-tab-${tab}`}
               className="stack" style={{ gap: 0, flex: 1 }}>
+              {tab === "particulier" && reasonKey && (
+                <p className="banner sand" role="alert" style={{ margin: "0 0 18px" }}>{t(reasonKey)}</p>
+              )}
               {tab === "particulier" ? (
                 <OtpLogin key="particulier" title={t("loginTitle")} intro={t("loginIntro")} onVerified={onVerified} />
               ) : (
