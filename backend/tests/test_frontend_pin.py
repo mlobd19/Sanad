@@ -66,11 +66,22 @@ def test_pin_texts_exist_in_french_and_arabic():
 
 def test_customers_reach_the_pin_screen_after_sms_and_when_locked():
     login = source("app", "connexion", "page.tsx")
-    assert "router.replace(pinUrl())" in login and '"pinBlocked"' in login
+    assert '"pinBlocked"' in login
     api = source("lib", "api.ts")
     assert 'code === "pin_required" || code === "pin_setup"' in api
     assert "window.location.href = pinUrl(path + window.location.search)" in api
     pin_screen = source(*SCREENS[0])
-    assert 'onClick={() => logout(router)}' in pin_screen  # « Code oublié ? » : retour au code SMS
+    # « Code oublié ? » : juste après le SMS (nouvel appareil), nouveau code ici ; sinon retour au code SMS.
+    assert 'onClick={forgot}' in pin_screen and 'await logout(router, "customer", "?oubli=1")' in pin_screen
+    assert 'if (status?.state === "verify")' in pin_screen and 'params.get("oubli") === "1"' in pin_screen
+    assert 'router.replace(forgot ? "/connexion/code?oubli=1" : pinUrl())' in login
     assert '{ id: "pinChange", depth: 1, title: "pinChangeTitle"' in source("lib", "screens.ts")
     assert 'href="/profil/code"' in source("app", "(client)", "profil", "page.tsx")
+
+
+def test_profile_explains_the_pin_and_devices():
+    i18n = source("lib", "i18n.tsx")
+    assert "30 jours sur chaque téléphone" not in i18n and "30 يوما على كل هاتف" not in i18n
+    hint = re.search(r'  devicesHint: "([^"]+)"', i18n).group(1)
+    assert "à chaque ouverture" in hint and "« Code oublié ? »" in hint and "déconnectés" in hint
+    assert i18n.count("  pinResetHint: ") == 2 and i18n.count("  pinRemember: ") == 2

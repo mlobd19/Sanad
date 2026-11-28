@@ -163,19 +163,85 @@ def test_refused_code_message(demo):
 
 # --- Code oublié : réinitialisation par SMS, changement ---------------------------------------------------
 
-def test_forgotten_pin_is_reset_by_sms_and_closes_other_devices(demo):
+def test_new_device_enters_the_existing_pin_and_keeps_other_devices(demo, outbox,
+                                                                     django_capture_on_commit_callbacks):
+    first = login(APIClient(), PHONE)["token"]
+    data = login(APIClient(), PHONE, pin=None)
+    assert data["pin"] == "verify"  # le compte a déjà un code : il est demandé après le SMS
+    second = device(data["token"])
+    resp = second.get("/api/me")
+    assert resp.status_code == 403 and resp.data["code"] == "pin_required"
+    assert second.get("/api/auth/pin").data["state"] == "verify"
+    assert unlock(second, "1357").data["attempts_left"] == 2
+    with django_capture_on_commit_callbacks(execute=True):
+        assert unlock(second, TEST_PIN).status_code == 200
+    assert second.get("/api/me").status_code == 200
+    assert device(first).get("/api/me").status_code == 200  # aucun autre appareil fermé
+    assert not [m for m in outbox if "a été changé" in m["body"]]
+
+
+def test_new_device_three_wrong_pins_go_back_to_sms(demo):
+    first = login(APIClient(), PHONE)["token"]
+    key = login(APIClient(), PHONE, pin=None)["token"]
+    client = device(key)
+    unlock(client, "1357")
+    unlock(client, "1358")
+    resp = unlock(client, "1359")
+    assert resp.status_code == 401 and resp.data["code"] == "pin_blocked"
+    assert not AuthToken.objects.filter(digest=digest(key)).exists()
+    assert device(first).get("/api/me").status_code == 200  # seul cet appareil est fermé
+
+
+def test_forgotten_pin_after_sms_closes_every_other_device_and_warns_by_sms(demo, outbox,
+                                                                           django_capture_on_commit_callbacks):
     old_device = login(APIClient(), PHONE)["token"]
+    other = login(APIClient(), PHONE)["token"]
+    # « Code oublié ? » sur l'écran du code : déconnexion de cet appareil (permise sans le code PIN)…
     lock(old_device)
-    # « Code oublié ? » : déconnexion de cet appareil, puis code SMS et nouveau code.
-    assert device(old_device).post("/api/auth/logout").status_code == 204  # permise sans le code PIN
-    other_device = login(APIClient(), PHONE, pin=None)["token"]
-    third = login(APIClient(), PHONE, pin=None)["token"]
-    new_device = device(login(APIClient(), PHONE, pin="1357")["token"])
+    assert device(old_device).post("/api/auth/logout").status_code == 204
+    # … code SMS, puis nouveau code au lieu de l'ancien.
+    data = login(APIClient(), PHONE, pin=None)
+    assert data["pin"] == "verify"
+    new_device = device(data["token"])
+    assert new_device.post("/api/auth/pin/setup", {"pin": "1111"}, format="json").data["code"] == "pin_weak"
+    with django_capture_on_commit_callbacks(execute=True):
+        resp = new_device.post("/api/auth/pin/setup", {"pin": "1357"}, format="json")
+    assert resp.status_code == 200
     assert new_device.get("/api/me").status_code == 200
-    assert device(other_device).get("/api/auth/pin").status_code == 401  # autres appareils fermés
-    assert device(third).get("/api/auth/pin").status_code == 401
+    assert device(other).get("/api/me").status_code == 401  # tous les autres appareils fermés
     user = User.objects.get(phone=PHONE, role=User.Role.CUSTOMER)
     assert check_password("1357", user.pin) and not check_password(TEST_PIN, user.pin)
+    assert AuditEvent.objects.filter(action="pin.reset").count() == 1
+    sms = [m for m in outbox if m["channel"] == "sms" and m["to"] == PHONE][-1]
+    assert sms["body"] == "Votre code Sanad a été changé. Si ce n'est pas vous, contactez-nous."
+
+
+def test_reset_sms_is_in_arabic_for_an_arabic_customer(demo, outbox, django_capture_on_commit_callbacks):
+    login(APIClient(), PHONE)
+    User.objects.filter(phone=PHONE, role=User.Role.CUSTOMER).update(language="ar")
+    client = device(login(APIClient(), PHONE, pin=None)["token"])
+    with django_capture_on_commit_callbacks(execute=True):
+        assert client.post("/api/auth/pin/setup", {"pin": "1357"}, format="json").status_code == 200
+    sms = [m for m in outbox if m["channel"] == "sms" and m["to"] == PHONE][-1]
+    assert sms["body"] == "تم تغيير رمزك في Sanad. إذا لم تكن أنت، اتصل بنا."
+
+
+def test_first_pin_sends_no_warning(demo, outbox, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        login(APIClient(), PHONE)
+    assert AuditEvent.objects.filter(action="pin.set").count() == 1
+    assert not AuditEvent.objects.filter(action="pin.reset").exists()
+    assert not [m for m in outbox if "a été changé" in m["body"]]
+
+
+def test_reset_window_closes_with_the_sms_window(demo):
+    login(APIClient(), PHONE)
+    key = login(APIClient(), PHONE, pin=None)["token"]
+    AuthToken.objects.filter(digest=digest(key)).update(pin_setup_until=timezone.now() - timedelta(seconds=1))
+    client = device(key)
+    assert client.get("/api/auth/pin").data["state"] == "locked"  # le code reste demandé
+    resp = client.post("/api/auth/pin/setup", {"pin": "1357"}, format="json")
+    assert resp.status_code == 400 and resp.data["code"] == "pin_setup_expired"  # plus de nouveau code sans SMS
 
 
 def test_change_pin_closes_other_devices(demo):

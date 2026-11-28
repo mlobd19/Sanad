@@ -47,8 +47,9 @@ export function enterSpace(router: Navigate, user: Pick<User, "role">) {
   goTo(router, homeFor(user.role));
 }
 
-/** Déconnexion depuis n'importe quel espace : retour à la page de connexion unique. */
-export async function logout(router: Navigate, role?: Role) {
+/** Déconnexion depuis n'importe quel espace : retour à la page de connexion unique (`search` : paramètres
+ *  ajoutés, ex. « ?oubli=1 » pour « Code oublié ? »). */
+export async function logout(router: Navigate, role?: Role, search = "") {
   // Le jeton est d'abord supprimé côté serveur : même copié, il ne vaut plus rien.
   const token = getToken();
   if (token) {
@@ -56,7 +57,7 @@ export async function logout(router: Navigate, role?: Role) {
       .catch(() => undefined); // hors ligne : il expirera de lui-même
   }
   setToken(null);
-  router.replace(loginUrl(role));
+  router.replace(loginUrl(role) + search);
 }
 
 type SpaceValue = { user: User | null; setUser: (user: User) => void };

@@ -88,16 +88,22 @@ superutilisateur : il a les droits métier du groupe « Équipe Sanad ».
 
 ### Scénarios de connexion d'un particulier (code PIN)
 
-1. **Première connexion sur un appareil** : numéro, code SMS (console du backend), puis
+1. **Première connexion, compte sans code** : numéro, code SMS (console du backend), puis
    « Choisissez votre code » et « Confirmez votre code » sur le pavé aux touches mélangées
    (refusés : `0000`, `1234`, `4321`, `1212`, `2020`, une année de 1940 à aujourd'hui, les 4
-   derniers chiffres du numéro ; ex. accepté : `2580`). Les autres appareils du compte sont fermés.
-2. **Ouvertures suivantes** (ou après 15 minutes sans activité, `PIN_SESSION_IDLE`) :
+   derniers chiffres du numéro ; ex. accepté : `2580`).
+2. **Nouvel appareil, compte qui a déjà un code** : numéro, code SMS, puis « Entrez votre code »
+   (le code du compte, 3 essais). L'appareil est connecté ; les autres restent connectés.
+3. **Ouvertures suivantes** (ou après 15 minutes sans activité, `PIN_SESSION_IDLE`) :
    « Entrez votre code », sans SMS ; l'app revient ensuite à l'écran demandé.
-3. **Code faux** : « Code incorrect, il vous reste 2 essais », puis 1 ; au 3e, la connexion de
+4. **Code faux** : « Code incorrect, il vous reste 2 essais », puis 1 ; au 3e, la connexion de
    l'appareil est fermée et l'app revient au code SMS (journal « pin.blocked »).
-4. **Code oublié ?** : retour au code SMS, puis nouveau code (les autres appareils sont fermés).
-5. **Profil › Changer mon code** : code actuel, puis nouveau code deux fois.
+5. **Code oublié ?** : depuis l'écran du code, retour au code SMS, puis « Choisissez votre nouveau
+   code » (juste après le SMS d'un nouvel appareil, directement le nouveau code). Tous les autres
+   appareils sont fermés et le client reçoit le SMS « Votre code Sanad a été changé. Si ce n'est
+   pas vous, contactez-nous. » (journal « pin.reset »).
+6. **Profil › Changer mon code** : code actuel, puis nouveau code deux fois ; les autres
+   appareils sont fermés.
 
 ## Portail assureur
 
@@ -306,10 +312,10 @@ n'ouvre rien sans le code PIN (403 `pin_required`, ou `pin_setup` juste après l
 | Méthode | Chemin | Usage |
 | --- | --- | --- |
 | POST | `/api/auth/otp/request` | `{phone}` → envoie un code par SMS |
-| POST | `/api/auth/otp/verify` | `{phone, code}` → `{token, pin: "setup", user}` (refusé aux comptes professionnels) |
-| GET | `/api/auth/pin` | Particulier : état du code PIN de l'appareil (`setup`, `locked`, `open`), nom à afficher |
-| POST | `/api/auth/pin/setup` | `{pin}` juste après le SMS (10 min) ; ferme les autres appareils ; 400 `pin_weak` si trop simple |
-| POST | `/api/auth/pin/unlock` | `{pin}` → session courte ; 400 `pin_wrong` + `attempts_left` ; 401 `pin_blocked` au 3e code faux |
+| POST | `/api/auth/otp/verify` | `{phone, code}` → `{token, pin, user}` ; `pin` : `setup` (code à choisir) ou `verify` (code du compte à saisir) ; refusé aux comptes professionnels |
+| GET | `/api/auth/pin` | Particulier : état du code PIN de l'appareil (`setup`, `verify`, `locked`, `open`), nom à afficher |
+| POST | `/api/auth/pin/setup` | `{pin}` juste après le SMS (10 min) : premier code, ou nouveau code (« Code oublié ? » : SMS au client) ; ferme les autres appareils ; 400 `pin_weak` si trop simple |
+| POST | `/api/auth/pin/unlock` | `{pin}` → session courte (aussi un nouvel appareil, sans fermer les autres) ; 400 `pin_wrong` + `attempts_left` ; 401 `pin_blocked` au 3e code faux |
 | POST | `/api/auth/pin/change` | `{old, new}` (session ouverte) ; ferme les autres appareils |
 | POST | `/api/auth/pro/login` | Comptes pro : `{email, password}` → `{challenge, phone}` + code SMS |
 | POST | `/api/auth/pro/verify` | `{challenge, code}` → `{token, user}` |

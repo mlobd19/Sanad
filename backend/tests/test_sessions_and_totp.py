@@ -66,8 +66,8 @@ def test_one_token_per_device(demo):
     phone_a = login(APIClient(), "+22236000103")["token"]
     phone_b = login(APIClient(), "+22236000103")["token"]
     assert phone_a != phone_b
-    # Un nouvel appareil choisit le code PIN du compte après le SMS : les autres appareils sont fermés.
-    assert client_with(phone_a).get("/api/me").status_code == 401
+    # Le second appareil saisit le code du compte après le SMS : le premier reste connecté.
+    assert client_with(phone_a).get("/api/me").status_code == 200
     assert client_with(phone_b).get("/api/me").status_code == 200
 
 

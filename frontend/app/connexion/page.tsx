@@ -56,11 +56,14 @@ function Login() {
   // Code SMS validé : l'appareil choisit ensuite le code PIN du compte (app/connexion/code), qui ouvre la session.
   async function onVerified({ token }: OtpResult) {
     setToken(token);
-    router.replace(pinUrl());
+    router.replace(forgot ? "/connexion/code?oubli=1" : pinUrl());
   }
+  // « Code oublié ? » : après le code SMS, choix d'un nouveau code.
+  const forgot = params.get("oubli") === "1";
   // Retour au code SMS depuis l'écran du code PIN : 3 codes faux, ou délai de choix dépassé.
   const reason = params.get("raison");
-  const reasonKey: Key | null = reason === "pin_blocked" ? "pinBlocked" : reason === "pin_setup_expired" ? "pinSetupExpired" : null;
+  const reasonKey: Key | null = reason === "pin_blocked" ? "pinBlocked" : reason === "pin_setup_expired" ? "pinSetupExpired"
+    : forgot ? "pinForgotIntro" : null;
 
   return (
     <div className="app" style={{ background: "var(--green-deep)" }}>

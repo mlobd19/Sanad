@@ -39,7 +39,9 @@ export function tooSimplePin(pin: string): boolean {
 
 /** Réponse de GET /api/auth/pin : état de cet appareil et nom du client. */
 export type PinStatus = {
-  state: "setup" | "locked" | "open";
+  /** setup : code à choisir (compte sans code) ; verify : nouvel appareil, après le SMS, code du compte à
+   *  saisir (ou nouveau code si oublié) ; locked : code à saisir ; open : session ouverte. */
+  state: "setup" | "verify" | "locked" | "open";
   attempts_left: number;
   full_name: string;
   full_name_ar: string;

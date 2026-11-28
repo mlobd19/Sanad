@@ -24,6 +24,11 @@ TEMPLATES = {
         "fr": "Votre attestation d'assurance n° {number} est prête : {url}",
         "ar": "شهادة التأمين رقم {number} جاهزة: {url}",
     },
+    # Code PIN réinitialisé après un code SMS (« Code oublié ? ») : tous les autres appareils sont fermés.
+    "pin_reset": {
+        "fr": "Votre code {platform} a été changé. Si ce n'est pas vous, contactez-nous.",
+        "ar": "تم تغيير رمزك في {platform}. إذا لم تكن أنت، اتصل بنا.",
+    },
     "attestation_issued_travel": {
         "fr": "Assurance voyage active ({destinations_fr}, du {start} au {end}). "
               "Les attestations des voyageurs sont dans l'app {platform}.",

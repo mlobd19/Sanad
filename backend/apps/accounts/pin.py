@@ -1,7 +1,10 @@
 """Code PIN à 4 chiffres des particuliers (les comptes pro et le back-office ne sont pas concernés).
 
-- Première connexion sur un appareil : code SMS, puis choix du code PIN (fenêtre de SETUP_WINDOW).
-  Choisir un code par SMS remplace celui du compte et ferme les autres appareils.
+- Première connexion sur un appareil : code SMS, puis (fenêtre de SETUP_WINDOW) :
+  - compte sans code : choix du code ;
+  - compte qui a déjà un code : ce code est demandé (mêmes règles : 3 essais) ; le bon code connecte
+    l'appareil sans fermer les autres. « Code oublié ? » : nouveau code, tous les autres appareils
+    fermés et SMS au client (« pin_reset »).
 - Ouvertures suivantes : le jeton de l'appareil (accounts/tokens.py) ne donne accès à rien sans le
   code PIN ; le bon code ouvre une session courte, fermée après PIN_SESSION_IDLE minutes d'inactivité.
 - MAX_FAILURES codes faux de suite : connexion de l'appareil fermée, retour au code SMS (journal « pin.blocked »).
@@ -17,6 +20,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.models import record
+from apps.notifications.service import notify
 
 from .models import AuthToken, User
 
@@ -67,22 +71,19 @@ def check_new_pin(user: User, pin: str) -> str:
 
 
 def state(token: AuthToken, now=None) -> str:
-    """« setup » (code SMS validé, code PIN à choisir), « open » (session ouverte), « locked » (code PIN
-    à saisir) ou « closed » (pas de code PIN et plus de fenêtre de choix : reconnexion par SMS)."""
+    """État de l'appareil :
+    - « setup » : code SMS validé, compte sans code PIN : il le choisit ;
+    - « verify » : code SMS validé, compte qui a déjà un code : il le saisit (ou en choisit un nouveau) ;
+    - « open » : session ouverte ; « locked » : code PIN à saisir ;
+    - « closed » : pas de code PIN et plus de fenêtre de choix (reconnexion par SMS)."""
     now = now or timezone.now()
     if token.pin_setup_until and token.pin_setup_until > now:
-        return "setup"
+        return "verify" if token.user.pin else "setup"
     if not token.user.pin:
         return "closed"
     if token.pin_open_at and now - token.pin_open_at < idle():
         return "open"
     return "locked"
-
-
-def start_setup(token: AuthToken) -> None:
-    """Après un code SMS valide : l'appareil peut choisir le code PIN du compte."""
-    token.pin_setup_until = timezone.now() + SETUP_WINDOW
-    token.save(update_fields=["pin_setup_until"])
 
 
 def touch(token: AuthToken) -> None:
@@ -109,6 +110,9 @@ def _store(token: AuthToken, pin: str, action: str) -> int:
     closed = AuthToken.objects.filter(user=user).exclude(pk=token.pk).delete()[0]
     _open(token)
     record(action, user, actor=user, closed=closed)
+    if action == "pin.reset":
+        # Prévenir le client : si ce n'est pas lui, quelqu'un a reçu ses SMS (carte SIM volée…).
+        transaction.on_commit(lambda: notify("sms", user.phone, "pin_reset", {}, language=user.language))
     return closed
 
 
@@ -135,14 +139,18 @@ def _check(token: AuthToken, pin: str) -> None:
 
 
 def set_after_sms(token: AuthToken, pin: str) -> int:
-    """Choix du code PIN juste après le code SMS (première connexion de l'appareil ou code oublié)."""
-    if state(token) != "setup":
+    """Choix du code PIN juste après le code SMS : premier code du compte (« pin.set »), ou « Code oublié ? »
+    (« pin.reset ») : nouveau code, tous les autres appareils fermés, SMS au client."""
+    current = state(token)
+    if current not in ("setup", "verify"):
         raise PinError("pin_setup_expired", "Délai dépassé. Reconnectez-vous par SMS.")
-    return _store(token, check_new_pin(token.user, pin), "pin.set")
+    pin = check_new_pin(token.user, pin)
+    return _store(token, pin, "pin.reset" if current == "verify" else "pin.set")
 
 
 def unlock(token: AuthToken, pin: str) -> None:
-    """Ouverture de l'app sur cet appareil : le bon code ouvre une session courte."""
+    """Ouverture de l'app (ou nouvel appareil, après le SMS, si le compte a déjà un code) : le bon code ouvre
+    une session courte, sans fermer les autres appareils."""
     current = state(token)
     if current == "setup":
         raise PinError("pin_setup", "Choisissez d'abord votre code.")

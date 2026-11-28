@@ -56,9 +56,10 @@ class OtpVerifyView(APIView):
         except (OtpError, DjangoValidationError) as exc:
             message = exc.messages[0] if isinstance(exc, DjangoValidationError) else str(exc)
             return Response({"detail": message}, status=400)
-        # Le jeton n'ouvre rien tant que l'appareil n'a pas choisi le code PIN (« pin »: « setup »).
-        return Response({"token": issue_token(user, request), "created": created, "pin": "setup",
-                         "user": UserSerializer(user).data})
+        # Le jeton n'ouvre rien sans le code PIN : à choisir (« setup », compte sans code) ou à saisir
+        # (« verify », compte qui en a déjà un ; « Code oublié ? » permet alors d'en choisir un nouveau).
+        return Response({"token": issue_token(user, request), "created": created,
+                         "pin": "verify" if user.pin else "setup", "user": UserSerializer(user).data})
 
 
 class ProLoginView(APIView):
@@ -191,7 +192,7 @@ def pin_error(exc: pin.PinError) -> Response:
 
 
 class PinStatusView(CustomerOnly, APIView):
-    """GET : état du code PIN de cet appareil (« setup », « locked » ou « open ») et nom du client à afficher."""
+    """GET : état du code PIN de cet appareil (« setup », « verify », « locked » ou « open ») et nom du client."""
 
     pin_exempt = True
 
@@ -207,7 +208,8 @@ class PinStatusView(CustomerOnly, APIView):
 
 
 class PinSetupView(CustomerOnly, APIView):
-    """POST {pin} : choix du code juste après le code SMS ; ferme les autres appareils du compte."""
+    """POST {pin} : choix du code juste après le code SMS (premier code, ou « Code oublié ? » : SMS au client) ;
+    ferme les autres appareils du compte."""
 
     pin_exempt = True
     throttle_scope = "pin"
@@ -221,7 +223,8 @@ class PinSetupView(CustomerOnly, APIView):
 
 
 class PinUnlockView(CustomerOnly, APIView):
-    """POST {pin} : ouvre une session courte sur cet appareil ; 3 codes faux de suite la ferment."""
+    """POST {pin} : ouvre une session courte sur cet appareil (aussi un nouvel appareil, après le SMS, sans
+    fermer les autres) ; 3 codes faux de suite ferment la connexion de l'appareil."""
 
     pin_exempt = True
     throttle_scope = "pin"
